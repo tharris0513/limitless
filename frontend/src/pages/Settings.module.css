@@ -1,0 +1,92 @@
+/* Settings Page Styles */
+.settingsContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.backButton {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.backButton svg {
+  filter: drop-shadow(0 0 5px #00ff00);
+}
+
+.backButton:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 0, 0.5),
+    inset 0 0 10px rgba(0, 255, 0, 0.2);
+  text-shadow: 0 0 10px #00ff00;
+}
+
+.backButton:hover svg {
+  filter: drop-shadow(0 0 10px #00ff00);
+}
+
+.title {
+  text-align: center;
+  color: #00ff00;
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+  text-shadow: 0 0 20px #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: terminal-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes terminal-glow {
+  from {
+    text-shadow:
+      0 0 20px #00ff00,
+      0 0 30px #00ff00;
+  }
+  to {
+    text-shadow:
+      0 0 10px #00ff00,
+      0 0 20px #00ff00;
+  }
+}
+
+.settingsContent {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #00ff00;
+  padding: 2rem;
+  border-radius: 0;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.emptyMessage {
+  text-align: center;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  text-shadow: 0 0 5px #00ff00;
+  margin: 3rem 0;
+}

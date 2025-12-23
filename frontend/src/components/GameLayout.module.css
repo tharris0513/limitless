@@ -1,0 +1,313 @@
+/* Global CRT Terminal Theme */
+.layoutContainer {
+  min-height: 100vh;
+  background: #0a0a0a;
+  background-image:
+    linear-gradient(
+      transparent 2px,
+      rgba(0, 255, 0, 0.03) 2px,
+      rgba(0, 255, 0, 0.03) 4px,
+      transparent 4px
+    ),
+    linear-gradient(
+      90deg,
+      transparent 2px,
+      rgba(0, 255, 0, 0.03) 2px,
+      rgba(0, 255, 0, 0.03) 4px,
+      transparent 4px
+    );
+  background-size: 100px 100px;
+  color: #00ff00;
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  animation: crt-flicker 0.15s infinite linear alternate;
+}
+
+@keyframes crt-flicker {
+  0% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 1;
+  }
+  99% {
+    opacity: 0.98;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.layoutContainer::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    transparent 0%,
+    rgba(0, 255, 0, 0.02) 50%,
+    transparent 100%
+  );
+  background-size: 100% 4px;
+  background-repeat: repeat;
+  animation: scanlines 0.1s linear infinite;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+@keyframes scanlines {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(4px);
+  }
+}
+
+.header {
+  background: rgba(0, 0, 0, 0.9);
+  border-bottom: 2px solid #00ff00;
+  padding: 1rem;
+  box-shadow: 0 2px 20px rgba(0, 255, 0, 0.3);
+  position: relative;
+  z-index: 10;
+}
+
+.headerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.gameTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  text-shadow: 0 0 20px #00ff00;
+  color: #00ff00;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: title-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes title-glow {
+  from {
+    text-shadow:
+      0 0 20px #00ff00,
+      0 0 30px #00ff00;
+  }
+  to {
+    text-shadow:
+      0 0 10px #00ff00,
+      0 0 20px #00ff00;
+  }
+}
+
+.playerStats {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  font-size: 0.9rem;
+}
+
+.playerInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.playerName {
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700;
+}
+
+.playerLevel {
+  color: #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #00ff00;
+  border-radius: 3px;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.statIcon {
+  color: #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.logoutButton {
+  background: transparent;
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #00ff00;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.logoutButton:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 
+    0 0 10px #00ff00,
+    inset 0 0 10px rgba(0, 255, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.logoutButton:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 0 5px #00ff00,
+    inset 0 0 5px rgba(0, 255, 0, 0.2);
+}
+
+.headerButtons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.adminButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #ff0000;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff0000;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.adminButton svg {
+  filter: drop-shadow(0 0 5px #ff0000);
+}
+
+.adminButton:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: 
+    0 0 20px rgba(255, 0, 0, 0.5),
+    inset 0 0 10px rgba(255, 0, 0, 0.2);
+  text-shadow: 0 0 10px #ff0000;
+}
+
+.adminButton:hover svg {
+  filter: drop-shadow(0 0 10px #ff0000);
+}
+
+.adminButton:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 0 10px rgba(255, 0, 0, 0.3),
+    inset 0 0 5px rgba(255, 0, 0, 0.2);
+}
+
+.settingsButton {
+  padding: 0.5rem;
+  border: none;
+  background: transparent;
+  color: #00ff00;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+}
+
+.settingsButton svg {
+  filter: drop-shadow(0 0 5px #00ff00);
+}
+
+.settingsButton:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 0, 0.5),
+    inset 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+.settingsButton:hover svg {
+  filter: drop-shadow(0 0 10px #00ff00);
+}
+
+.settingsButton:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 0 10px rgba(0, 255, 0, 0.3),
+    inset 0 0 5px rgba(0, 255, 0, 0.2);
+}
+
+.mainContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  position: relative;
+  z-index: 5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .headerContent {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .gameTitle {
+    font-size: 1.5rem;
+  }
+
+  .playerStats {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .stats {
+    gap: 1rem;
+  }
+
+  .stat {
+    font-size: 0.8rem;
+  }
+
+  .mainContent {
+    padding: 1rem;
+  }
+}

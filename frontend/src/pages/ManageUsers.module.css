@@ -1,0 +1,243 @@
+/* Manage Users Styles */
+.manageUsersContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.backButton {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #ff0000;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff0000;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.backButton svg {
+  filter: drop-shadow(0 0 5px #ff0000);
+}
+
+.backButton:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: 
+    0 0 20px rgba(255, 0, 0, 0.5),
+    inset 0 0 10px rgba(255, 0, 0, 0.2);
+  text-shadow: 0 0 10px #ff0000;
+}
+
+.backButton:hover svg {
+  filter: drop-shadow(0 0 10px #ff0000);
+}
+
+.title {
+  text-align: center;
+  color: #00ff00;
+  margin: 0;
+  font-size: 2rem;
+  text-shadow: 0 0 20px #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: terminal-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes terminal-glow {
+  from {
+    text-shadow:
+      0 0 20px #00ff00,
+      0 0 30px #00ff00;
+  }
+  to {
+    text-shadow:
+      0 0 10px #00ff00,
+      0 0 20px #00ff00;
+  }
+}
+
+.content {
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #00ff00;
+  padding: 2rem;
+  border-radius: 0;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+}
+
+.loadingText {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  text-shadow: 0 0 10px #00ff00;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #ff0000;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  text-shadow: 0 0 10px #ff0000;
+}
+
+.errorIcon {
+  font-size: 2rem;
+  filter: drop-shadow(0 0 10px #ff0000);
+}
+
+.tableContainer {
+  overflow-x: auto;
+}
+
+.tableHeader {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid #00ff00;
+}
+
+.statsBar {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.highlight {
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700;
+  font-weight: bold;
+}
+
+.userTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Courier New', monospace;
+}
+
+.userTable thead {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.userTable th {
+  padding: 1rem;
+  text-align: left;
+  color: #00ff00;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 1px solid #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+  font-size: 0.9rem;
+}
+
+.userTable td {
+  padding: 0.75rem 1rem;
+  color: #00ff00;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.6);
+}
+
+.userTable tbody tr {
+  transition: all 0.2s ease;
+}
+
+.userTable tbody tr:hover {
+  background: rgba(0, 255, 0, 0.05);
+  box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.1);
+}
+
+.adminRow {
+  background: rgba(255, 0, 0, 0.05) !important;
+}
+
+.adminRow:hover {
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nameCell svg {
+  filter: drop-shadow(0 0 3px #00ff00);
+}
+
+.discordId {
+  font-size: 0.85rem;
+  color: rgba(0, 255, 0, 0.7);
+}
+
+.adminBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid #ff0000;
+  color: #ff0000;
+  font-weight: bold;
+  font-size: 0.75rem;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.adminBadge svg {
+  filter: drop-shadow(0 0 3px #ff0000);
+}
+
+.userBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 0.75rem;
+}
+
+.dateCell {
+  font-size: 0.85rem;
+  color: rgba(0, 255, 0, 0.8);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem;
+  color: rgba(0, 255, 0, 0.6);
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+}

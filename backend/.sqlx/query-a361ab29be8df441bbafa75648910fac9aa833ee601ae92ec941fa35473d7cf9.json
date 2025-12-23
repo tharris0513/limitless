@@ -1,0 +1,116 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, user_id, username, muscle, mysticism, moxie, level, current_hp, max_hp, current_mp, max_mp, adventures_remaining, meat, inventory, equipment, created_at, updated_at FROM players WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "username",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "muscle",
+        "ordinal": 3,
+        "type_info": "Int64"
+      },
+      {
+        "name": "mysticism",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "moxie",
+        "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "level",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "current_hp",
+        "ordinal": 7,
+        "type_info": "Int64"
+      },
+      {
+        "name": "max_hp",
+        "ordinal": 8,
+        "type_info": "Int64"
+      },
+      {
+        "name": "current_mp",
+        "ordinal": 9,
+        "type_info": "Int64"
+      },
+      {
+        "name": "max_mp",
+        "ordinal": 10,
+        "type_info": "Int64"
+      },
+      {
+        "name": "adventures_remaining",
+        "ordinal": 11,
+        "type_info": "Int64"
+      },
+      {
+        "name": "meat",
+        "ordinal": 12,
+        "type_info": "Int64"
+      },
+      {
+        "name": "inventory",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "equipment",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 15,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 16,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "a361ab29be8df441bbafa75648910fac9aa833ee601ae92ec941fa35473d7cf9"
+}

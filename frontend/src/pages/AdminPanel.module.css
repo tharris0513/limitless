@@ -1,0 +1,171 @@
+/* Admin Panel Styles */
+.adminContainer {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.header {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.backButton {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #ff0000;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff0000;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.backButton svg {
+  filter: drop-shadow(0 0 5px #ff0000);
+}
+
+.backButton:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: 
+    0 0 20px rgba(255, 0, 0, 0.5),
+    inset 0 0 10px rgba(255, 0, 0, 0.2);
+  text-shadow: 0 0 10px #ff0000;
+}
+
+.backButton:hover svg {
+  filter: drop-shadow(0 0 10px #ff0000);
+}
+
+.title {
+  text-align: center;
+  color: #ff0000;
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+  text-shadow: 0 0 20px #ff0000;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: terminal-glow-red 2s ease-in-out infinite alternate;
+}
+
+@keyframes terminal-glow-red {
+  from {
+    text-shadow:
+      0 0 20px #ff0000,
+      0 0 30px #ff0000;
+  }
+  to {
+    text-shadow:
+      0 0 10px #ff0000,
+      0 0 20px #ff0000;
+  }
+}
+
+.adminContent {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #ff0000;
+  padding: 2rem;
+  border-radius: 0;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+}
+
+.adminGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.adminActionButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1rem;
+  border: 2px solid #ff0000;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff0000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Courier New', monospace;
+}
+
+.adminActionButton svg {
+  filter: drop-shadow(0 0 5px #ff0000);
+}
+
+.adminActionButton:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: 
+    0 0 30px rgba(255, 0, 0, 0.5),
+    inset 0 0 15px rgba(255, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.adminActionButton:hover svg {
+  filter: drop-shadow(0 0 15px #ff0000);
+  transform: scale(1.1);
+}
+
+.adminActionButton:active {
+  transform: translateY(0);
+}
+
+.buttonLabel {
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.buttonDescription {
+  font-size: 0.85rem;
+  color: rgba(255, 0, 0, 0.8);
+  text-align: center;
+  text-shadow: 0 0 3px rgba(255, 0, 0, 0.6);
+}
+
+.warningBox {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #ffa500;
+  background: rgba(255, 165, 0, 0.1);
+  margin-top: 2rem;
+}
+
+.warningIcon {
+  font-size: 2rem;
+  filter: drop-shadow(0 0 10px #ffa500);
+  animation: warning-pulse 2s ease-in-out infinite;
+}
+
+@keyframes warning-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.warningText {
+  color: #ffa500;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  text-shadow: 0 0 5px #ffa500;
+  margin: 0;
+  letter-spacing: 0.5px;
+}

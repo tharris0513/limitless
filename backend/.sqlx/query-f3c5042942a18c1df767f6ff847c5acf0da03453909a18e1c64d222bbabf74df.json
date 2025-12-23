@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO players (\n                user_id, username, muscle, mysticism, moxie, level,\n                current_hp, max_hp, current_mp, max_mp, adventures_remaining,\n                meat, inventory, equipment\n            ) VALUES (?, ?, 10, 10, 10, 1, 100, 100, 50, 50, 10, 0, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "f3c5042942a18c1df767f6ff847c5acf0da03453909a18e1c64d222bbabf74df"
+}

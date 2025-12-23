@@ -1,0 +1,177 @@
+/* Character Creation Styles */
+.characterContainer {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.title {
+  text-align: center;
+  color: #00ff00;
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+  text-shadow: 0 0 20px #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: terminal-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes terminal-glow {
+  from {
+    text-shadow:
+      0 0 20px #00ff00,
+      0 0 30px #00ff00;
+  }
+  to {
+    text-shadow:
+      0 0 10px #00ff00,
+      0 0 20px #00ff00;
+  }
+}
+
+.welcomeText {
+  text-align: center;
+  color: #00ff00;
+  margin-bottom: 2rem;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.highlight {
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700;
+  font-weight: bold;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-shadow: 0 0 5px #00ff00;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.input {
+  padding: 0.75rem;
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  font-size: 1rem;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.input::placeholder {
+  color: rgba(0, 255, 0, 0.6);
+}
+
+.input:focus {
+  outline: none;
+  border-color: #00ff00;
+  box-shadow:
+    0 0 10px rgba(0, 255, 0, 0.5),
+    inset 0 0 5px rgba(0, 255, 0, 0.2);
+}
+
+.select {
+  composes: input;
+}
+
+.button {
+  padding: 1rem 1.5rem;
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  font-weight: bold;
+  font-size: 1.1rem;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-shadow: 0 0 5px #00ff00;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.button:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow:
+    0 0 20px rgba(0, 255, 0, 0.5),
+    inset 0 0 10px rgba(0, 255, 0, 0.2);
+  text-shadow: 0 0 10px #00ff00;
+}
+
+.button:active {
+  transform: scale(0.98);
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.errorMessage {
+  color: #ff0000;
+  text-align: center;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #ff0000;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 5px #ff0000;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+  animation: error-blink 1s ease-in-out infinite alternate;
+}
+
+@keyframes error-blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+.statsPreview {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #00ff00;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 0;
+}
+
+.statsTitle {
+  color: #ffd700;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-shadow: 0 0 10px #ffd700;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.statsList {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 5px #00ff00;
+  line-height: 1.5;
+}

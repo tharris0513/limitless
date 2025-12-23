@@ -1,0 +1,387 @@
+/* Basic Spinner */
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinnerRing {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner.small .spinnerRing {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner.medium .spinnerRing {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.spinner.large .spinnerRing {
+  width: 48px;
+  height: 48px;
+  border-width: 4px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Loading Button */
+.loadingButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 40px;
+}
+
+.loadingButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.loadingButton.primary {
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  text-shadow: 0 0 5px #00ff00;
+  text-transform: uppercase;
+}
+
+.loadingButton.primary:not(:disabled):hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 0, 0.5),
+    inset 0 0 10px rgba(0, 255, 0, 0.2);
+  text-shadow: 0 0 10px #00ff00;
+  transform: translateY(-1px);
+}
+
+.loadingButton.secondary {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(0, 255, 0, 0.6);
+  color: rgba(0, 255, 0, 0.8);
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.6);
+}
+
+.loadingButton.secondary:not(:disabled):hover {
+  background: rgba(0, 255, 0, 0.05);
+  border-color: #00ff00;
+  color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+/* Skeleton Loaders */
+.cardSkeleton, 
+.characterSkeleton {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.skeletonHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.skeletonAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeletonText {
+  flex: 1;
+}
+
+.skeletonLine {
+  height: 12px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.skeletonLine:first-child {
+  width: 70%;
+}
+
+.skeletonLine:last-child {
+  width: 50%;
+}
+
+.skeletonContent .skeletonLine {
+  margin-bottom: 10px;
+}
+
+.skeletonContent .skeletonLine:nth-child(1) { width: 90%; }
+.skeletonContent .skeletonLine:nth-child(2) { width: 75%; }
+.skeletonContent .skeletonLine:nth-child(3) { width: 85%; }
+
+.skeletonStats {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.skeletonStat {
+  flex: 1;
+  height: 40px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Full Page Loading Overlay */
+.loadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.overlayContent {
+  text-align: center;
+  color: white;
+}
+
+.overlayContent p {
+  margin-top: 16px;
+  font-size: 16px;
+}
+
+/* Inline Loader */
+.inlineLoader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .skeletonAvatar,
+  .skeletonLine,
+  .skeletonStat {
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+  }
+  
+  .cardSkeleton,
+  .characterSkeleton {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Error Screen - Terminal Theme */
+.errorScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0a0a0a;
+  background-image:
+    linear-gradient(
+      transparent 2px,
+      rgba(0, 255, 0, 0.03) 2px,
+      rgba(0, 255, 0, 0.03) 4px,
+      transparent 4px
+    ),
+    linear-gradient(
+      90deg,
+      transparent 2px,
+      rgba(0, 255, 0, 0.03) 2px,
+      rgba(0, 255, 0, 0.03) 4px,
+      transparent 4px
+    );
+  background-size: 100px 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  animation: crt-flicker 0.15s infinite linear alternate;
+}
+
+@keyframes crt-flicker {
+  0%, 98% { opacity: 1; }
+  99% { opacity: 0.98; }
+  100% { opacity: 1; }
+}
+
+.errorScreen::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    transparent 0%,
+    rgba(0, 255, 0, 0.02) 50%,
+    transparent 100%
+  );
+  background-size: 100% 4px;
+  background-repeat: repeat;
+  animation: scanlines 0.1s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes scanlines {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+.errorContent {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ff0000;
+  border-radius: 8px;
+  max-width: 500px;
+  position: relative;
+  z-index: 2;
+  box-shadow: 
+    0 0 30px rgba(255, 0, 0, 0.3),
+    inset 0 0 20px rgba(255, 0, 0, 0.1);
+}
+
+.errorIcon {
+  font-size: 64px;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 0 10px #ff0000);
+  animation: error-pulse 2s ease-in-out infinite;
+}
+
+@keyframes error-pulse {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px #ff0000);
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 20px #ff0000);
+  }
+}
+
+.errorTitle {
+  color: #ff0000;
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  text-shadow: 
+    0 0 10px #ff0000,
+    0 0 20px #ff0000;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: title-flicker 3s ease-in-out infinite alternate;
+}
+
+@keyframes title-flicker {
+  from {
+    text-shadow:
+      0 0 10px #ff0000,
+      0 0 20px #ff0000;
+  }
+  to {
+    text-shadow:
+      0 0 5px #ff0000,
+      0 0 10px #ff0000;
+  }
+}
+
+.errorMessage {
+  color: #00ff00;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.errorActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.retryButton, .logoutButton {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.retryButton {
+  background: rgba(0, 255, 0, 0.1);
+  color: #00ff00;
+  border-color: #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.retryButton:hover {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.logoutButton {
+  background: rgba(255, 0, 0, 0.1);
+  color: #ff0000;
+  border-color: #ff0000;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.logoutButton:hover {
+  background: rgba(255, 0, 0, 0.2);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+  transform: translateY(-2px);
+}
