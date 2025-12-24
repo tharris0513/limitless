@@ -40,12 +40,11 @@ async fn main() -> anyhow::Result<()> {
     let repo = Arc::new(repository::UserRepository::new(pool));
 
     // Setup CORS for frontend
+    let frontend_origin =
+        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+
     let cors = CorsLayer::new()
-        .allow_origin(
-            "http://localhost:5173"
-                .parse::<axum::http::HeaderValue>()
-                .unwrap(),
-        )
+        .allow_origin(frontend_origin.parse::<axum::http::HeaderValue>().unwrap())
         .allow_methods([
             Method::GET,
             Method::POST,
