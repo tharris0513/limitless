@@ -35,6 +35,8 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build backend
+        env:
+          SQLX_OFFLINE: true
         run: |
           cd backend
           cargo build --release
