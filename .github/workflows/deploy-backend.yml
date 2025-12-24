@@ -104,6 +104,10 @@ jobs:
             export DISCORD_CLIENT_SECRET="${{ secrets.DISCORD_CLIENT_SECRET }}"
             export DISCORD_REDIRECT_URI="${{ secrets.DISCORD_REDIRECT_URI }}"
             
+            # Create database file if it doesn'\''t exist
+            touch limitless.db
+            chmod 644 limitless.db
+            
             # Install sqlx-cli if not already installed
             if ! command -v sqlx &> /dev/null; then
               cargo install sqlx-cli --no-default-features --features sqlite
