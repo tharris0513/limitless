@@ -48,6 +48,7 @@ jobs:
     name: Deploy to CloudFront
     needs: build
     runs-on: ubuntu-latest
+    environment: dev
 
     steps:
       - name: Download build artifacts
