@@ -78,23 +78,25 @@ jobs:
           echo "$PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
 
+          # Stop the service first (before copying files)
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
+            sudo systemctl stop limitless-backend || true
+          '
+
           # Create deployment directory on EC2
           ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
             mkdir -p ~/limitless-backend
             mkdir -p ~/limitless-backend/migrations
           '
 
-          # Copy files to EC2
+          # Copy files to EC2 (now that service is stopped)
           scp -i private_key.pem -o StrictHostKeyChecking=no deploy/limitless-backend ${USER}@${HOST}:~/limitless-backend/
           scp -i private_key.pem -o StrictHostKeyChecking=no -r deploy/migrations/* ${USER}@${HOST}:~/limitless-backend/migrations/
 
-          # Stop existing service, run migrations, and restart
+          # Run migrations and start service
           ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
             # Load Rust environment
             source $HOME/.cargo/env
-            
-            # Stop the service if it exists
-            sudo systemctl stop limitless-backend || true
             
             # Run migrations
             cd ~/limitless-backend
@@ -115,7 +117,10 @@ jobs:
             
             sqlx migrate run
             
-            # Restart the service
+            # Set correct permissions on binary
+            chmod +x limitless-backend
+            
+            # Start the service
             sudo systemctl start limitless-backend
             sudo systemctl enable limitless-backend
           '
