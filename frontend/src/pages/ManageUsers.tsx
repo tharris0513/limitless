@@ -26,7 +26,8 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
         setLoading(true);
         setError(null);
         const token = localStorage.getItem('authToken');
-        const response = await axios.get('http://localhost:8080/api/admin/users', {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+        const response = await axios.get(`${API_BASE_URL}/admin/users`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
