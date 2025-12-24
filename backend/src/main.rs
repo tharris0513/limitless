@@ -65,8 +65,12 @@ async fn main() -> anyhow::Result<()> {
         .layer(TraceLayer::new_for_http())
         .layer(cors);
 
-    // Run it with hyper
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    // Bind to 0.0.0.0 in production, localhost in development
+    let addr = if is_development() {
+        SocketAddr::from(([127, 0, 0, 1], 8080))
+    } else {
+        SocketAddr::from(([0, 0, 0, 0], 8080))
+    };
     tracing::info!("🎮 Limitless backend server starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
