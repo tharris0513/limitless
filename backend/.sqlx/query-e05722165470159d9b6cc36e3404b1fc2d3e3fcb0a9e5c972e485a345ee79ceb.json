@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, discord_id, discord_name, admin, created_at FROM users WHERE discord_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "discord_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "discord_name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "admin",
+        "ordinal": 3,
+        "type_info": "Bool"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e05722165470159d9b6cc36e3404b1fc2d3e3fcb0a9e5c972e485a345ee79ceb"
+}

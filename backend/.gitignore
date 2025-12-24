@@ -1,3 +1,5 @@
 .env
-.sqlx
+*.db
+*.db-shm
+*.db-wal
 target

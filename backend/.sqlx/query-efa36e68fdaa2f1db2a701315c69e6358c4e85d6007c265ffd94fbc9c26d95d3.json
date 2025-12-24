@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT might, defense, magic, resistance, agility, adventures, max_adventures FROM character_stats WHERE character_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "might",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "defense",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "magic",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "resistance",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "agility",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "adventures",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "max_adventures",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "efa36e68fdaa2f1db2a701315c69e6358c4e85d6007c265ffd94fbc9c26d95d3"
+}

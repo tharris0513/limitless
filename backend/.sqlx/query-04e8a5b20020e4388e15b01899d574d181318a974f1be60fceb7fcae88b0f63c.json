@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO character_stats (character_id, might, defense, magic, resistance, agility, adventures, max_adventures) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "04e8a5b20020e4388e15b01899d574d181318a974f1be60fceb7fcae88b0f63c"
+}

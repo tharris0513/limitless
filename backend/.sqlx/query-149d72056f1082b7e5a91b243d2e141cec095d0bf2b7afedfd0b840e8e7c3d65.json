@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE characters SET last_played = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "149d72056f1082b7e5a91b243d2e141cec095d0bf2b7afedfd0b840e8e7c3d65"
+}

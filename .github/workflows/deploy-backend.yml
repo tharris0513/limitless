@@ -34,12 +34,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Prepare SQLx offline data
-        run: |
-          cd backend
-          cargo install sqlx-cli --no-default-features --features sqlite
-          cargo sqlx prepare --check || cargo sqlx prepare
-
       - name: Build backend
         env:
           SQLX_OFFLINE: true
