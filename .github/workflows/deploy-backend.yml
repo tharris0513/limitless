@@ -90,6 +90,9 @@ jobs:
 
           # Stop existing service, run migrations, and restart
           ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
+            # Load Rust environment
+            source $HOME/.cargo/env
+            
             # Stop the service if it exists
             sudo systemctl stop limitless-backend || true
             
