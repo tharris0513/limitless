@@ -1,20 +1,20 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import './App.css';
 import { GameLayout } from './components/GameLayout';
-import { LoadingOverlay, CharacterSkeleton, ErrorScreen } from './components/LoadingStates';
-import { LoginPage } from './pages/LoginPage';
+import { GlobalLoadingIndicator } from './components/GlobalLoadingIndicator';
+import { ErrorScreen, LoadingOverlay } from './components/LoadingStates';
+import { LoadingProvider } from './contexts/LoadingContext';
+import { AdminPanel } from './pages/AdminPanel';
+import AuthCallback from './pages/AuthCallback';
 import { CharacterCreation } from './pages/CharacterCreation';
 import { CharacterSelection } from './pages/CharacterSelection';
 import { GamePage } from './pages/GamePage';
+import { LoginPage } from './pages/LoginPage';
 import { Settings } from './pages/Settings';
-import { AdminPanel } from './pages/AdminPanel';
-import AuthCallback from './pages/AuthCallback';
-import { type User, type Character } from './types/game';
 import GameAPI from './services/api';
-import axios from 'axios';
-import './App.css';
-import { LoadingProvider } from './contexts/LoadingContext';
-import { GlobalLoadingIndicator } from './components/GlobalLoadingIndicator';
+import { type Character, type User } from './types/game';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -24,8 +24,8 @@ function App() {
   const [needsCharacterCreation, setNeedsCharacterCreation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Initializing...');
-  const [charactersLoading, setCharactersLoading] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
+  const [charactersLoading, _setCharactersLoading] = useState(false);
+  const [_authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);

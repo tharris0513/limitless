@@ -26,7 +26,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({
           ⚔️ SELECT CHARACTER
         </h2>
         <p className={styles.welcome}>
-          Welcome back, <span className={styles.username}>{user.username}</span>!
+          Welcome back, <span className={styles.username}>{user.discordName}</span>!
         </p>
         <p className={styles.subtitle}>
           Choose a character to continue your adventure in the Limitless realm.
@@ -37,7 +37,7 @@ export const CharacterSelection: React.FC<CharacterSelectionProps> = ({
         {isLoading ? (
           // Show skeleton loaders while loading
           Array.from({ length: 3 }, (_, index) => (
-            <CardSkeleton key={index} height="120px" />
+            <CardSkeleton key={index} />
           ))
         ) : (
           characters.map((character) => (

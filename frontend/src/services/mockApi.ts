@@ -9,7 +9,8 @@ import {
 // Mock player data for development
 export const mockPlayer: Player = {
   id: '1',
-  username: 'TestAdventurer',
+  userId: 'mock-user-1',
+  name: 'TestAdventurer',
   level: 5,
   health: 80,
   maxHealth: 100,
@@ -17,6 +18,8 @@ export const mockPlayer: Player = {
   maxMana: 60,
   experience: 1250,
   experienceToNext: 1500,
+  createdAt: new Date().toISOString(),
+  lastPlayed: new Date().toISOString(),
   stats: {
     might: 12,
     defense: 8,
@@ -146,7 +149,7 @@ export const MockAPI = {
     await delay(1500);
     return {
       token: 'mock-jwt-token',
-      player: { ...mockPlayer, username },
+      player: { ...mockPlayer, name: username },
     };
   },
 

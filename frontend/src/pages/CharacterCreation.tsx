@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import type { Character, User } from '../types/game';
-import GameAPI from '../services/api';
 import { LoadingButton } from '../components/LoadingStates';
 import { useApiWithLoading } from '../hooks/useApiWithLoading';
+import type { Character, User } from '../types/game';
 import styles from './CharacterCreation.module.css';
 
 interface CharacterCreationProps {
