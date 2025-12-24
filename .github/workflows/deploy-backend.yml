@@ -105,6 +105,7 @@ jobs:
             export DISCORD_CLIENT_ID="${{ secrets.DISCORD_CLIENT_ID }}"
             export DISCORD_CLIENT_SECRET="${{ secrets.DISCORD_CLIENT_SECRET }}"
             export DISCORD_REDIRECT_URI="${{ secrets.DISCORD_REDIRECT_URI }}"
+            export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
             
             # Create database file if it doesn'\''t exist
             touch limitless.db
@@ -120,7 +121,33 @@ jobs:
             # Set correct permissions on binary
             chmod +x limitless-backend
             
-            # Start the service
+            # Update systemd service file with environment variables
+            sudo tee /etc/systemd/system/limitless-backend.service > /dev/null <<EOF
+[Unit]
+Description=Limitless Backend Game Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/limitless-backend
+Environment="DATABASE_URL=/home/ubuntu/limitless-backend/limitless.db"
+Environment="JWT_SECRET=${{ secrets.JWT_SECRET }}"
+Environment="DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}"
+Environment="DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}"
+Environment="DISCORD_REDIRECT_URI=${{ secrets.DISCORD_REDIRECT_URI }}"
+Environment="FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
+Environment="RUST_LOG=info"
+ExecStart=/home/ubuntu/limitless-backend/limitless-backend
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+            
+            # Reload systemd and start the service
+            sudo systemctl daemon-reload
             sudo systemctl start limitless-backend
             sudo systemctl enable limitless-backend
           '

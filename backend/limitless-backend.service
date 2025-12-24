@@ -11,6 +11,7 @@ Environment="JWT_SECRET=your-jwt-secret-here"
 Environment="DISCORD_CLIENT_ID=your-discord-client-id"
 Environment="DISCORD_CLIENT_SECRET=your-discord-client-secret"
 Environment="DISCORD_REDIRECT_URI=your-redirect-uri"
+Environment="FRONTEND_URL=your-frontend-url"
 Environment="RUST_LOG=info"
 ExecStart=/home/ubuntu/limitless-backend/limitless-backend
 Restart=always
