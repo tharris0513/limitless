@@ -122,29 +122,27 @@ jobs:
             chmod +x limitless-backend
             
             # Update systemd service file with environment variables
-            sudo tee /etc/systemd/system/limitless-backend.service > /dev/null <<EOF
-[Unit]
-Description=Limitless Backend Game Server
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/limitless-backend
-Environment="DATABASE_URL=/home/ubuntu/limitless-backend/limitless.db"
-Environment="JWT_SECRET=${{ secrets.JWT_SECRET }}"
-Environment="DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}"
-Environment="DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}"
-Environment="DISCORD_REDIRECT_URI=${{ secrets.DISCORD_REDIRECT_URI }}"
-Environment="FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
-Environment="RUST_LOG=info"
-ExecStart=/home/ubuntu/limitless-backend/limitless-backend
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
+            echo "[Unit]" | sudo tee /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Description=Limitless Backend Game Server" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "After=network.target" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "[Service]" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Type=simple" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "User=ubuntu" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "WorkingDirectory=/home/ubuntu/limitless-backend" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"DATABASE_URL=/home/ubuntu/limitless-backend/limitless.db\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"JWT_SECRET=${{ secrets.JWT_SECRET }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"DISCORD_REDIRECT_URI=${{ secrets.DISCORD_REDIRECT_URI }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"FRONTEND_URL=${{ secrets.FRONTEND_URL }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"RUST_LOG=info\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "ExecStart=/home/ubuntu/limitless-backend/limitless-backend" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Restart=always" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "RestartSec=10" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "[Install]" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "WantedBy=multi-user.target" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
             
             # Reload systemd and start the service
             sudo systemctl daemon-reload

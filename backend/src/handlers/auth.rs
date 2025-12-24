@@ -203,7 +203,8 @@ pub async fn discord_callback(
         auth_token
     );
 
-    let frontend_url = env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+    let frontend_url =
+        env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
     let mut response = Redirect::to(&frontend_url).into_response();
     response
         .headers_mut()
