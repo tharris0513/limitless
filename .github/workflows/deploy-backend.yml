@@ -1,0 +1,135 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            backend/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build backend
+        run: |
+          cd backend
+          cargo build --release
+
+      - name: Create deployment package
+        run: |
+          cd backend
+          mkdir -p deploy
+          cp target/release/limitless-backend deploy/
+          cp -r migrations deploy/
+          chmod +x deploy/limitless-backend
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary
+          path: backend/deploy/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to EC2
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binary
+          path: deploy/
+
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+
+          # Create deployment directory on EC2
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
+            mkdir -p ~/limitless-backend
+            mkdir -p ~/limitless-backend/migrations
+          '
+
+          # Copy files to EC2
+          scp -i private_key.pem -o StrictHostKeyChecking=no deploy/limitless-backend ${USER}@${HOST}:~/limitless-backend/
+          scp -i private_key.pem -o StrictHostKeyChecking=no -r deploy/migrations/* ${USER}@${HOST}:~/limitless-backend/migrations/
+
+          # Stop existing service, run migrations, and restart
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
+            # Stop the service if it exists
+            sudo systemctl stop limitless-backend || true
+            
+            # Run migrations
+            cd ~/limitless-backend
+            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export DISCORD_CLIENT_ID="${{ secrets.DISCORD_CLIENT_ID }}"
+            export DISCORD_CLIENT_SECRET="${{ secrets.DISCORD_CLIENT_SECRET }}"
+            export DISCORD_REDIRECT_URI="${{ secrets.DISCORD_REDIRECT_URI }}"
+            
+            # Install sqlx-cli if not already installed
+            if ! command -v sqlx &> /dev/null; then
+              cargo install sqlx-cli --no-default-features --features sqlite
+            fi
+            
+            sqlx migrate run
+            
+            # Restart the service
+            sudo systemctl start limitless-backend
+            sudo systemctl enable limitless-backend
+          '
+
+          # Clean up
+          rm -f private_key.pem
+
+      - name: Verify deployment
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
+            sudo systemctl status limitless-backend
+          '
+
+          rm -f private_key.pem
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Backend deployed successfully to EC2!"
+          echo "Backend URL: https://${{ secrets.EC2_HOST }}"

@@ -1,0 +1,20 @@
+[Unit]
+Description=Limitless Backend Game Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/limitless-backend
+Environment="DATABASE_URL=/home/ubuntu/limitless-backend/limitless.db"
+Environment="JWT_SECRET=your-jwt-secret-here"
+Environment="DISCORD_CLIENT_ID=your-discord-client-id"
+Environment="DISCORD_CLIENT_SECRET=your-discord-client-secret"
+Environment="DISCORD_REDIRECT_URI=your-redirect-uri"
+Environment="RUST_LOG=info"
+ExecStart=/home/ubuntu/limitless-backend/limitless-backend
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
