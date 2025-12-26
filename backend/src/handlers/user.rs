@@ -12,6 +12,12 @@ pub async fn get_user(
 ) -> Result<Json<User>, AppError> {
     match repo.find_by_id(&claims.sub).await {
         Ok(user) => Ok(Json(user)),
-        Err(_) => Err(AppError::user_not_found(&claims.sub)),
+        Err(_) => {
+            // User doesn't exist in database (e.g., after migration to DynamoDB)
+            // Return 401 to force re-login via OAuth
+            Err(AppError::authentication_error(
+                "User session expired. Please log in again."
+            ))
+        }
     }
 }
