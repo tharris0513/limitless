@@ -9,7 +9,6 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     const handleDiscordCallback = async (code: string, state?: string) => {
@@ -60,22 +59,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
-
-  const handleDemoLogin = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      const response = await GameAPI.login('demo', 'demo');
-      localStorage.setItem('authToken', response.token);
-      onLogin(response.token);
-    } catch (err: unknown) {
-      console.error('Demo login error:', err);
-      setError('Demo login failed');
-      setLoading(false);
-    }
-  };
-
   return (
     <div className={styles.loginContainer}>
       <h1 className={styles.title}>🏰 Limitless</h1>
@@ -90,24 +73,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       {loading && <div className={styles.loadingMessage}>Authenticating...</div>}
 
       {!loading && (
-        <>
-          <button onClick={handleDiscordLogin} disabled={loading} className={styles.discordButton}>
-            <div className={styles.discordIcon} />
-            Login with Discord
-          </button>
-
-          <div className={styles.orDivider}>or</div>
-
-          {!showFallback ? (
-            <button onClick={() => setShowFallback(true)} className={styles.fallbackButton}>
-              Use Demo Account
-            </button>
-          ) : (
-            <button onClick={handleDemoLogin} disabled={loading} className={styles.fallbackButton}>
-              Login as Demo User
-            </button>
-          )}
-        </>
+        <button onClick={handleDiscordLogin} disabled={loading} className={styles.discordButton}>
+          <div className={styles.discordIcon} />
+          Login with Discord
+        </button>
       )}
 
       {error && <div className={styles.errorMessage}>{error}</div>}

@@ -132,13 +132,7 @@ export const MockAPI = {
     password: string
   ): Promise<{ token: string; player: Player }> {
     await delay(1000);
-    if (username === 'demo' && password === 'demo') {
-      return {
-        token: 'mock-jwt-token',
-        player: mockPlayer,
-      };
-    }
-    throw new Error('Invalid credentials');
+    throw new Error('Login not supported in mock API');
   },
 
   async register(
