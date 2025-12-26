@@ -16,7 +16,7 @@ pub async fn get_user(
             // User doesn't exist in database (e.g., after migration to DynamoDB)
             // Return 401 to force re-login via OAuth
             Err(AppError::authentication_error(
-                "User session expired. Please log in again."
+                "User session expired. Please log in again.",
             ))
         }
     }
