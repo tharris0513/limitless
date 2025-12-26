@@ -33,11 +33,14 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Initialize database
-    let pool = database::init_database().await?;
-    tracing::info!("🗄️  Database connected and migrations applied");
+    let db = database::Database::new(None).await?;
+    tracing::info!("🗄️  DynamoDB connected to table: {}", db.table_name);
 
     // Create repository as shared state
-    let repo = Arc::new(repository::UserRepository::new(pool));
+    let repo = Arc::new(repository::UserRepository::new(
+        db.client.clone(),
+        db.table_name.clone(),
+    ));
 
     // Setup CORS for frontend
     let frontend_origin =

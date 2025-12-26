@@ -9,6 +9,11 @@ on:
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
+# Required for OIDC authentication with AWS
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     name: Build Backend
@@ -35,8 +40,6 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build backend
-        env:
-          SQLX_OFFLINE: true
         run: |
           cd backend
           cargo build --release
@@ -46,7 +49,6 @@ jobs:
           cd backend
           mkdir -p deploy
           cp target/release/limitless-backend deploy/
-          cp -r migrations deploy/
           chmod +x deploy/limitless-backend
 
       - name: Upload build artifacts
@@ -69,6 +71,12 @@ jobs:
           name: backend-binary
           path: deploy/
 
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
       - name: Deploy to EC2
         env:
           PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
@@ -86,39 +94,15 @@ jobs:
           # Create deployment directory on EC2
           ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
             mkdir -p ~/limitless-backend
-            mkdir -p ~/limitless-backend/migrations
           '
 
           # Copy files to EC2 (now that service is stopped)
           scp -i private_key.pem -o StrictHostKeyChecking=no deploy/limitless-backend ${USER}@${HOST}:~/limitless-backend/
-          scp -i private_key.pem -o StrictHostKeyChecking=no -r deploy/migrations/* ${USER}@${HOST}:~/limitless-backend/migrations/
 
-          # Run migrations and start service
+          # Start service
           ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} '
-            # Load Rust environment
-            source $HOME/.cargo/env
-            
-            # Run migrations
-            cd ~/limitless-backend
-            export DATABASE_URL="${{ secrets.DATABASE_URL }}"
-            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
-            export DISCORD_CLIENT_ID="${{ secrets.DISCORD_CLIENT_ID }}"
-            export DISCORD_CLIENT_SECRET="${{ secrets.DISCORD_CLIENT_SECRET }}"
-            export DISCORD_REDIRECT_URI="${{ secrets.DISCORD_REDIRECT_URI }}"
-            export FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
-            
-            # Create database file if it doesn'\''t exist
-            touch limitless.db
-            chmod 644 limitless.db
-            
-            # Install sqlx-cli if not already installed
-            if ! command -v sqlx &> /dev/null; then
-              cargo install sqlx-cli --no-default-features --features sqlite
-            fi
-            
-            sqlx migrate run
-            
             # Set correct permissions on binary
+            cd ~/limitless-backend
             chmod +x limitless-backend
             
             # Update systemd service file with environment variables
@@ -130,7 +114,8 @@ jobs:
             echo "Type=simple" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
             echo "User=ubuntu" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
             echo "WorkingDirectory=/home/ubuntu/limitless-backend" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
-            echo "Environment=\"DATABASE_URL=/home/ubuntu/limitless-backend/limitless.db\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"AWS_REGION=us-east-1\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
+            echo "Environment=\"DYNAMODB_TABLE_NAME=${{ secrets.DYNAMODB_TABLE_NAME }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
             echo "Environment=\"JWT_SECRET=${{ secrets.JWT_SECRET }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
             echo "Environment=\"DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null
             echo "Environment=\"DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}\"" | sudo tee -a /etc/systemd/system/limitless-backend.service > /dev/null

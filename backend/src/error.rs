@@ -20,7 +20,7 @@ pub struct ApiError {
 #[derive(Debug)]
 pub enum AppError {
     // Database errors
-    DatabaseError(sqlx::Error),
+    DatabaseError(aws_sdk_dynamodb::Error),
     DatabaseConnectionError(String),
 
     // Authentication errors
@@ -181,8 +181,8 @@ impl IntoResponse for AppError {
 }
 
 // Implement From traits for common error types
-impl From<sqlx::Error> for AppError {
-    fn from(err: sqlx::Error) -> Self {
+impl From<aws_sdk_dynamodb::Error> for AppError {
+    fn from(err: aws_sdk_dynamodb::Error) -> Self {
         AppError::DatabaseError(err)
     }
 }
