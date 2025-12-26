@@ -127,26 +127,6 @@ export const mockLocations: Location[] = [
 
 // Mock API responses with delays to simulate network calls
 export const MockAPI = {
-  async login(
-    username: string,
-    password: string
-  ): Promise<{ token: string; player: Player }> {
-    await delay(1000);
-    throw new Error('Login not supported in mock API');
-  },
-
-  async register(
-    username: string,
-    _: string,
-    __: string
-  ): Promise<{ token: string; player: Player }> {
-    await delay(1500);
-    return {
-      token: 'mock-jwt-token',
-      player: { ...mockPlayer, name: username },
-    };
-  },
-
   async getPlayer(): Promise<Player> {
     await delay(500);
     return mockPlayer;
