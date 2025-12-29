@@ -34,6 +34,26 @@ api.interceptors.response.use(
   }
 );
 
+// Helper functions to transform between backend snake_case and frontend camelCase
+function transformUserFromBackend(backendUser: any): User {
+  return {
+    id: backendUser.id,
+    discordId: backendUser.discord_id, // Transform snake_case to camelCase
+    discordName: backendUser.discord_name, // Transform snake_case to camelCase
+    username: backendUser.username,
+    dateOfBirth: backendUser.date_of_birth, // Transform snake_case to camelCase
+    admin: backendUser.admin,
+    createdAt: backendUser.created_at, // Transform snake_case to camelCase
+  };
+}
+
+function transformUserToBackend(frontendUser: any): any {
+  return {
+    username: frontendUser.username,
+    dateOfBirth: frontendUser.dateOfBirth, // Keep camelCase, backend expects it in the update payload
+  };
+}
+
 export class GameAPI {
   // Check if user is authenticated via cookie
   static async getAuthFromCookie(): Promise<{ token: string; user: User }> {
@@ -95,7 +115,27 @@ export class GameAPI {
   // User endpoints
   static async getUser(): Promise<User> {
     const response = await api.get('/user');
-    return response.data;
+    return transformUserFromBackend(response.data);
+  }
+
+  static async updateUser(updates: {
+    username?: string;
+    dateOfBirth?: string;
+  }): Promise<User> {
+    const response = await api.patch('/user', transformUserToBackend(updates));
+    return transformUserFromBackend(response.data);
+  }
+
+  // Admin endpoints
+  static async getAllUsers(): Promise<User[]> {
+    const response = await api.get('/admin/users');
+    return response.data.map((user: any) => transformUserFromBackend(user));
+  }
+
+  // Public username check (no auth required)
+  static async checkUsernameAvailable(username: string): Promise<boolean> {
+    const response = await api.post('/user/check-username', { username });
+    return response.data.available;
   }
 
   // Character endpoints

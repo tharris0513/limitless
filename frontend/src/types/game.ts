@@ -3,6 +3,8 @@ export interface User {
   id: string; // User UUID
   discordId: string; // Discord ID
   discordName: string; // Discord username with discriminator
+  username?: string; // User's chosen username (optional until account setup complete)
+  dateOfBirth?: string; // User's date of birth (optional until account setup complete)
   admin: boolean; // Whether the user is an admin
   createdAt: string; // When user first logged in
 }

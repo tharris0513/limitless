@@ -80,6 +80,8 @@
   padding: 2rem;
   border-radius: 0;
   box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+  overflow: visible;
+  position: relative;
 }
 
 .loading {
@@ -119,6 +121,10 @@
 
 .tableContainer {
   overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
+  /* Prevent clipping of dropdown menus */
+  z-index: 1;
 }
 
 .tableHeader {
@@ -143,12 +149,19 @@
 
 .userTable {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-family: 'Courier New', monospace;
 }
 
 .userTable thead {
   background: rgba(0, 255, 0, 0.1);
+  overflow: visible;
+}
+
+.userTable thead tr,
+.userTable tbody {
+  overflow: visible;
 }
 
 .userTable th {
@@ -168,6 +181,7 @@
   color: #00ff00;
   border: 1px solid rgba(0, 255, 0, 0.3);
   text-shadow: 0 0 3px rgba(0, 255, 0, 0.6);
+  overflow: visible;
 }
 
 .userTable tbody tr {
@@ -195,6 +209,105 @@
 
 .nameCell svg {
   filter: drop-shadow(0 0 3px #00ff00);
+}
+
+.noUsername {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  text-shadow: none;
+}
+
+.actionsHeader {
+  text-align: center;
+  width: 140px;
+}
+
+.actionsCell {
+  text-align: center;
+  overflow: visible;
+}
+
+.actionsDropdown {
+  position: relative;
+  display: inline-block;
+  /* Ensure dropdown appears above table rows */
+  z-index: 10;
+}
+
+.actionsButton {
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  font-family: 'Courier New', monospace;
+}
+
+.actionsButton:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.3);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+}
+
+.actionsButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dropdownMenu {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #00ff00;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 255, 0, 0.3);
+  z-index: 9999;
+  min-width: 180px;
+  overflow: visible;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-family: 'Courier New', monospace;
+}
+
+.dropdownItem:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+}
+
+.dropdownItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dropdownItem:not(:last-child) {
+  border-bottom: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+.deleteItem {
+  color: #ff6b6b;
+}
+
+.deleteItem:hover:not(:disabled) {
+  background: rgba(220, 20, 60, 0.2);
+  color: #ff4444;
 }
 
 .discordId {

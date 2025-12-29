@@ -47,9 +47,10 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
 
       console.log('Created character:', newCharacter);
       onCharacterCreated(newCharacter);
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('Character creation error:', err);
-      setError('Failed to create character. Please try again.');
+      const errorMessage = err?.response?.data?.error || err?.message || 'Failed to create character. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

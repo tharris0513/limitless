@@ -307,6 +307,8 @@ pub async fn get_auth_from_cookie(
             id: claims.sub.clone(),
             discord_id: claims.discord_id.clone(),
             discord_name: "User".to_string(), // We could get this from DB if needed
+            username: None,
+            date_of_birth: None,
             admin: claims.admin,
             created_at: chrono::Utc::now().to_rfc3339(),
         },

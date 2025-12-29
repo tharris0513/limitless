@@ -6,6 +6,35 @@
   margin-bottom: 2rem;
 }
 
+.characterInfo {
+  background: rgba(139, 69, 19, 0.3);
+  border: 2px solid #8b4513;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  color: #ffd700;
+}
+
+.characterInfo p {
+  margin: 0.5rem 0;
+}
+
+.error {
+  background: rgba(220, 20, 60, 0.2);
+  border: 2px solid #dc143c;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #ff6b6b;
+  margin-bottom: 1rem;
+}
+
+.noContent {
+  text-align: center;
+  padding: 2rem;
+  color: #888;
+  font-style: italic;
+}
+
 .section {
   background: rgba(0, 0, 0, 0.8);
   border: 2px solid #00ff00;

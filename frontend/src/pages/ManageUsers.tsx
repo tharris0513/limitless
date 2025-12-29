@@ -1,24 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Shield, User } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { ArrowLeft, Shield, User as UserIcon, ChevronDown, Edit, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import styles from './ManageUsers.module.css';
 
 interface User {
   id: string;
-  discord_id: string;
-  discord_name: string;
+  discordId: string;
+  discordName: string;
+  username?: string;
   admin: boolean;
-  created_at: string;
+  createdAt: string;
 }
 
 interface ManageUsersProps {
   onBack: () => void;
+  onLogout?: () => void;
 }
 
-export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
+export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -32,7 +39,17 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
             Authorization: `Bearer ${token}`,
           },
         });
-        setUsers(response.data);
+        // Transform backend snake_case to frontend camelCase
+        const transformedUsers = response.data.map((user: any) => ({
+          id: user.id,
+          discordId: user.discord_id,
+          discordName: user.discord_name,
+          username: user.username,
+          dateOfBirth: user.date_of_birth,
+          admin: user.admin,
+          createdAt: user.created_at,
+        }));
+        setUsers(transformedUsers);
       } catch (err) {
         console.error('Failed to fetch users:', err);
         if (axios.isAxiosError(err) && err.response?.status === 403) {
@@ -47,6 +64,122 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
 
     fetchUsers();
   }, []);
+
+  // Handle dropdown toggle with positioning
+  const handleDropdownToggle = (userId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (openDropdown === userId) {
+      setOpenDropdown(null);
+      setDropdownPosition(null);
+    } else {
+      const button = event.currentTarget;
+      const rect = button.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.right + window.scrollX - 180, // 180 = min-width of dropdown
+      });
+      setOpenDropdown(userId);
+      buttonRefs.current.set(userId, button);
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown) {
+        const button = buttonRefs.current.get(openDropdown);
+        const dropdown = document.getElementById('user-actions-dropdown');
+        if (
+          button &&
+          dropdown &&
+          !button.contains(event.target as Node) &&
+          !dropdown.contains(event.target as Node)
+        ) {
+          setOpenDropdown(null);
+          setDropdownPosition(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openDropdown]);
+
+  const handleChangeUsername = async (user: User) => {
+    const newUsername = prompt(`Enter new username for ${user.discordName}:`, user.username || '');
+    if (!newUsername || newUsername === user.username) return;
+
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      
+      await axios.patch(
+        `${API_BASE_URL}/admin/users/${user.id}`,
+        { username: newUsername },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update local state
+      setUsers(users.map(u => u.id === user.id ? { ...u, username: newUsername } : u));
+      setOpenDropdown(null);
+    } catch (err) {
+      console.error('Failed to update username:', err);
+      alert('Failed to update username');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    if (!confirm(`Are you sure you want to delete user "${user.username || user.discordName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      
+      // Check if deleting current user
+      const currentUserResponse = await axios.get(`${API_BASE_URL}/user`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const currentUserId = currentUserResponse.data.id;
+      const isDeletingSelf = user.id === currentUserId;
+      
+      await axios.delete(
+        `${API_BASE_URL}/admin/users/${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update local state
+      setUsers(users.filter(u => u.id !== user.id));
+      setOpenDropdown(null);
+      
+      // If user deleted themselves, log them out
+      if (isDeletingSelf) {
+        alert('You have deleted your own account. You will now be logged out.');
+        if (onLogout) {
+          onLogout();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      alert('Failed to delete user');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
     <div className={styles.manageUsersContainer}>
@@ -85,10 +218,12 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
             <table className={styles.userTable}>
               <thead>
                 <tr>
+                  <th>Username</th>
                   <th>Discord Name</th>
                   <th>Discord ID</th>
                   <th>Role</th>
                   <th>Created At</th>
+                  <th className={styles.actionsHeader}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,11 +231,16 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
                   <tr key={user.id} className={user.admin ? styles.adminRow : ''}>
                     <td>
                       <div className={styles.nameCell}>
-                        <User size={16} />
-                        {user.discord_name}
+                        <UserIcon size={16} />
+                        {user.username || <span className={styles.noUsername}>Not set</span>}
                       </div>
                     </td>
-                    <td className={styles.discordId}>{user.discord_id}</td>
+                    <td>
+                      <div className={styles.nameCell}>
+                        {user.discordName}
+                      </div>
+                    </td>
+                    <td className={styles.discordId}>{user.discordId}</td>
                     <td>
                       {user.admin ? (
                         <span className={styles.adminBadge}>
@@ -112,13 +252,24 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
                       )}
                     </td>
                     <td className={styles.dateCell}>
-                      {new Date(user.created_at).toLocaleDateString('en-US', {
+                      {new Date(user.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
+                    </td>
+                    <td className={styles.actionsCell}>
+                      <div className={styles.actionsDropdown}>
+                        <button
+                          className={styles.actionsButton}
+                          onClick={(e) => handleDropdownToggle(user.id, e)}
+                          disabled={actionLoading}
+                        >
+                          Actions <ChevronDown size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -133,6 +284,43 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack }) => {
           </div>
         )}
       </div>
+
+      {/* Render dropdown using portal to escape parent container constraints */}
+      {openDropdown && dropdownPosition && createPortal(
+        <div
+          id="user-actions-dropdown"
+          className={styles.dropdownMenu}
+          style={{
+            position: 'fixed',
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+          }}
+        >
+          <button
+            className={styles.dropdownItem}
+            onClick={() => {
+              const user = users.find(u => u.id === openDropdown);
+              if (user) handleChangeUsername(user);
+            }}
+            disabled={actionLoading}
+          >
+            <Edit size={14} />
+            Change Username
+          </button>
+          <button
+            className={`${styles.dropdownItem} ${styles.deleteItem}`}
+            onClick={() => {
+              const user = users.find(u => u.id === openDropdown);
+              if (user) handleDeleteUser(user);
+            }}
+            disabled={actionLoading}
+          >
+            <Trash2 size={14} />
+            Delete User
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

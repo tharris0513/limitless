@@ -1,6 +1,6 @@
 use axum::{
     middleware,
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use std::sync::Arc;
@@ -25,6 +25,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/auth/verify", get(auth::verify_token))
         .route("/auth/status", get(auth::get_auth_status))
         .route("/health", get(health::health_check))
+        .route("/user/check-username", post(user::check_username_available))
         // Legacy routes for backward compatibility
         .route("/player", get(player::get_player))
         .route("/locations", get(location::get_locations))
@@ -33,6 +34,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
     // Protected routes (require JWT authentication)
     let protected_routes = Router::new()
         .route("/user", get(user::get_user))
+        .route("/user", patch(user::update_user))
         .route("/characters", get(character::get_user_characters))
         .route("/characters", post(character::create_character))
         .route("/characters/:id", patch(character::update_character))
@@ -49,6 +51,8 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
     let admin_routes = Router::new()
         .route("/admin/check", get(admin::check_admin_status))
         .route("/admin/users", get(admin::get_all_users))
+        .route("/admin/users/:id", patch(admin::update_user_username))
+        .route("/admin/users/:id", delete(admin::delete_user))
         .layer(middleware::from_fn(jwt_auth_middleware));
 
     Router::new()

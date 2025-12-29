@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import GameAPI from '../services/api';
 import styles from './AuthCallback.module.css';
@@ -6,6 +6,7 @@ import styles from './AuthCallback.module.css';
 const AuthCallback = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const processAuth = async () => {
@@ -22,16 +23,22 @@ const AuthCallback = () => {
           
           // Token is valid, redirect to main app
           navigate('/', { replace: true });
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to validate auth token:', error);
-          // Token is invalid or expired, remove it and redirect to login
+          setError('Authentication failed. Please try logging in again.');
+          // Token is invalid or expired, remove it and redirect to login after showing error
           localStorage.removeItem('authToken');
-          navigate('/login', { replace: true });
+          setTimeout(() => {
+            navigate('/login', { replace: true });
+          }, 2000);
         }
       } else {
         // No token, redirect to login
         console.error('No auth token received from Discord callback');
-        navigate('/login', { replace: true });
+        setError('No authentication token received.');
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 2000);
       }
     };
 
@@ -41,8 +48,17 @@ const AuthCallback = () => {
   return (
     <div className={styles.container}>
       <div className={styles.message}>
-        <p>Processing Discord authentication...</p>
-        <div className={styles.loading}>Loading...</div>
+        {error ? (
+          <>
+            <p style={{ color: '#ff6b6b' }}>❌ {error}</p>
+            <p>Redirecting to login...</p>
+          </>
+        ) : (
+          <>
+            <p>Processing Discord authentication...</p>
+            <div className={styles.loading}>Loading...</div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -25,58 +25,81 @@ limitless/
 │   │   ├── types/        # TypeScript definitions
 │   │   └── ...
 │   └── README.md         # Frontend-specific documentation
-└── backend/              # Rust backend (to be implemented)
+└── backend/              # Rust backend (✅ Complete)
     ├── src/
-    ├── migrations/
+    │   ├── handlers/      # API endpoint handlers
+    │   ├── models.rs      # Data models
+    │   ├── repository.rs  # DynamoDB data access
+    │   └── ...
     ├── Cargo.toml
     └── README.md
 ```
 
 ## 🚀 Getting Started
 
-### Frontend Setup (Current)
+### Prerequisites
 
-The React frontend is fully functional with mock data:
+- **Frontend**: Node.js 18+, npm
+- **Backend**: Rust (latest stable), AWS CLI with DynamoDB access
+- **Auth**: Discord OAuth application
+
+### Quick Setup
+
+See [INTEGRATION.md](./INTEGRATION.md) for complete setup instructions.
+
+**TL;DR:**
+
+1. Set up environment variables (`.env` files in both directories)
+2. Start backend: `cd backend && cargo run`
+3. Start frontend: `cd frontend && npm install && npm run dev`
+4. Visit `http://localhost:5173`
+
+### Frontend Setup
+
+The React frontend is fully functional:
 
 ```bash
 cd frontend
+cp .env.example .env  # Configure VITE_API_URL
 npm install
 npm run dev
 ```
 
-Visit `http://localhost:5173` and log in with:
+Visit `http://localhost:5173` and log in with Discord OAuth.
 
-- Username: `demo`
-- Password: `demo`
+### Backend Setup
 
-### Backend Setup (Next Steps)
+The Rust backend is complete and ready to run:
 
-The Rust backend is designed but not yet implemented. Expected structure:
+```bash
+cd backend
+cp .env.example .env  # Configure AWS, Discord OAuth, JWT secret
+cargo run
+```
 
-- **Web Framework:** Axum or Actix-web
-- **Database:** PostgreSQL with Diesel ORM
-- **Authentication:** JWT tokens
-- **API:** RESTful endpoints matching frontend expectations
+Requires AWS credentials configured for DynamoDB access.
+
+**Features:**
+
+- **Web Framework:** Axum with async/await
+- **Database:** AWS DynamoDB
+- **Authentication:** JWT tokens with Discord OAuth
+- **API:** RESTful endpoints for all game features
 
 ## 🎮 Game Features
 
-### Implemented (Frontend)
+### Implemented
 
-- ✅ User authentication system
-- ✅ Player character display with stats
-- ✅ Adventure system with location selection
-- ✅ Equipment management
-- ✅ Experience and leveling
+- ✅ User authentication with Discord OAuth
+- ✅ Player character creation and management
+- ✅ Persistent player data in DynamoDB
+- ✅ Adventure system with location-based gameplay
+- ✅ Equipment and inventory management
+- ✅ Experience and leveling system
+- ✅ Real-time stat calculations
+- ✅ Daily adventure limit tracking
+- ✅ Admin panel for user management
 - ✅ Responsive game UI with fantasy theme
-
-### Planned (Backend Required)
-
-- 🔄 Persistent player data
-- 🔄 Real adventure mechanics
-- 🔄 Item and equipment system
-- 🔄 Shop and trading
-- 🔄 Multiplayer features
-- 🔄 Daily rollover mechanics
 
 ### Future Enhancements
 
@@ -97,14 +120,15 @@ The Rust backend is designed but not yet implemented. Expected structure:
 - **Axios** - HTTP client
 - **Lucide React** - Icons
 
-### Backend (Planned)
+### Backend
 
 - **Rust** - Systems programming language
-- **Axum/Actix-web** - Web framework
-- **PostgreSQL** - Database
-- **Diesel** - ORM and migrations
-- **JWT** - Authentication
-- **Serde** - Serialization
+- **Axum** - Async web framework
+- **AWS DynamoDB** - NoSQL database
+- **AWS SDK** - DynamoDB client
+- **JWT** - Token-based authentication
+- **Serde** - JSON serialization
+- **Discord OAuth** - Third-party authentication
 
 ## 🎯 Kingdom of Loathing Inspiration
 
@@ -134,13 +158,16 @@ This project draws heavily from KoL's design philosophy:
 - [x] Adventure interface with location selection
 - [x] Mock data for development and testing
 
-### Phase 2: Backend Foundation 🔄
+### Phase 2: Backend Foundation ✅
 
-- [ ] Rust project setup with web framework
-- [ ] Database schema design and migrations
-- [ ] User authentication with JWT
-- [ ] Player data management APIs
-- [ ] Adventure system implementation
+- [x] Rust project setup with Axum framework
+- [x] DynamoDB schema design and implementation
+- [x] User authentication with JWT and Discord OAuth
+- [x] Player data management APIs
+- [x] Adventure system implementation
+- [x] Character creation and selection
+- [x] Equipment and inventory system
+- [x] Admin endpoints for user management
 
 ### Phase 3: Core Gameplay 📋
 
@@ -219,10 +246,10 @@ Contributions welcome! Areas where help is needed:
 
 ## 🎯 Next Steps
 
-1. **Implement Rust Backend** - Set up the server architecture
-2. **Database Schema** - Design tables for players, items, adventures
-3. **Authentication System** - Secure JWT-based auth
-4. **Adventure Engine** - Logic for processing adventures
-5. **Data Migration** - Move from mock data to real persistence
+1. **Frontend Integration** - Connect frontend to live backend API
+2. **Content Expansion** - Add more locations, adventures, and items
+3. **Game Balance** - Tune experience rates and adventure difficulty
+4. **Enhanced Features** - Implement guilds, PvP, and crafting systems
+5. **Deployment** - Deploy to production with proper CI/CD
 
-Ready to start building your own Kingdom of Loathing inspired game? Begin with the frontend in the `frontend/` directory!
+The full stack is now complete! Both frontend and backend are ready for integration and expansion.

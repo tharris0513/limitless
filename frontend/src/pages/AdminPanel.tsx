@@ -5,16 +5,17 @@ import styles from './AdminPanel.module.css';
 
 interface AdminPanelProps {
   onBack: () => void;
+  onLogout?: () => void;
 }
 
 type AdminView = 'menu' | 'users' | 'database' | 'permissions' | 'system';
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout }) => {
   const [currentView, setCurrentView] = useState<AdminView>('menu');
 
   // Render the appropriate view
   if (currentView === 'users') {
-    return <ManageUsers onBack={() => setCurrentView('menu')} />;
+    return <ManageUsers onBack={() => setCurrentView('menu')} onLogout={onLogout} />;
   }
 
   // Default menu view

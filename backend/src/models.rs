@@ -3,11 +3,15 @@ use serde::{Deserialize, Serialize};
 // User represents a Discord account holder
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
-    pub id: String,           // UUID
-    pub discord_id: String,   // Discord ID from OAuth
-    pub discord_name: String, // Discord username with discriminator
-    pub admin: bool,          // Admin flag
-    pub created_at: String,   // When user first logged in
+    pub id: String,              // UUID
+    pub discord_id: String,      // Discord ID from OAuth
+    pub discord_name: String,    // Discord username with discriminator
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>, // User's chosen username
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date_of_birth: Option<String>, // User's date of birth (YYYY-MM-DD)
+    pub admin: bool,             // Admin flag
+    pub created_at: String,      // When user first logged in
 }
 
 // Character stats structure

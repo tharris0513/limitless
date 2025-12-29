@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import type { Player, Location } from '../types/game';
+import type { Location, Character } from '../types/game';
 import GameAPI from '../services/api';
 import { Swords, MapPin } from 'lucide-react';
 import styles from './GamePage.module.css';
 
 interface GamePageProps {
-  player: Player;
-  onPlayerUpdate: (player: Player) => void;
+  character: Character;
+  onCharacterUpdate?: (character: Character) => void;
 }
 
-export const GamePage: React.FC<GamePageProps> = ({ }) => {
+export const GamePage: React.FC<GamePageProps> = ({ character }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [adventures] = useState<any[]>([]); // Will be used when adventure system is implemented
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadGameData();
@@ -21,14 +22,12 @@ export const GamePage: React.FC<GamePageProps> = ({ }) => {
   const loadGameData = async () => {
     try {
       setLoading(true);
-      const [locationsData] = await Promise.all([
-        GameAPI.getLocations(),
-        // GameAPI.getAdventures() - commented out since it doesn't exist yet
-      ]);
+      setError(null);
+      const locationsData = await GameAPI.getLocations();
       setLocations(locationsData);
-      // setAdventures(adventuresData);
     } catch (error) {
       console.error('Failed to load game data:', error);
+      setError('Failed to load game locations. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -58,10 +57,20 @@ export const GamePage: React.FC<GamePageProps> = ({ }) => {
   return (
     <div className={styles.gameContainer}>
       <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>⚔️ {character.name}</h2>
+        <div className={styles.characterInfo}>
+          <p>Level {character.level} | {character.location}</p>
+          <p>Adventures: {character.stats.adventures}/{character.stats.maxAdventures}</p>
+          <p>HP: {character.health}/{character.maxHealth} | MP: {character.mana}/{character.maxMana}</p>
+        </div>
+      </div>
+      
+      <div className={styles.section}>
         <h2 className={styles.sectionTitle}>🗺️ Locations</h2>
+        {error && <div className={styles.error}>{error}</div>}
         {loading ? (
-          <div>Loading...</div>
-        ) : (
+          <div>Loading locations...</div>
+        ) : locations.length > 0 ? (
           locations.map(location => (
             <div
               key={location.id}
@@ -74,6 +83,8 @@ export const GamePage: React.FC<GamePageProps> = ({ }) => {
               <div className={styles.locationDesc}>{location.description}</div>
             </div>
           ))
+        ) : (
+          <div className={styles.noContent}>No locations available yet.</div>
         )}
       </div>
 

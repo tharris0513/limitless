@@ -6,13 +6,16 @@ import { GameLayout } from './components/GameLayout';
 import { GlobalLoadingIndicator } from './components/GlobalLoadingIndicator';
 import { ErrorScreen, LoadingOverlay } from './components/LoadingStates';
 import { LoadingProvider } from './contexts/LoadingContext';
+import { AccountSetup } from './pages/AccountSetup';
 import { AdminPanel } from './pages/AdminPanel';
 import AuthCallback from './pages/AuthCallback';
 import { CharacterCreation } from './pages/CharacterCreation';
 import { CharacterSelection } from './pages/CharacterSelection';
 import { GamePage } from './pages/GamePage';
 import { LoginPage } from './pages/LoginPage';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { Settings } from './pages/Settings';
+import { TermsOfService } from './pages/TermsOfService';
 import GameAPI from './services/api';
 import { type Character, type User } from './types/game';
 
@@ -21,6 +24,7 @@ function App() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [needsAccountSetup, setNeedsAccountSetup] = useState(false);
   const [needsCharacterCreation, setNeedsCharacterCreation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMessage, setLoadingMessage] = useState('Initializing...');
@@ -109,6 +113,26 @@ function App() {
       setUser(userData);
       setCharacters(userCharacters);
       setIsAuthenticated(true);
+      
+      console.log('Checking account setup status:', {
+        username: userData.username,
+        dateOfBirth: userData.dateOfBirth,
+        hasUsername: !!userData.username,
+        hasDOB: !!userData.dateOfBirth
+      });
+      
+      // Check if user needs to complete account setup
+      // Only require setup if username is missing or empty
+      const hasValidUsername = userData.username && userData.username.trim().length > 0;
+      const hasValidDOB = userData.dateOfBirth && userData.dateOfBirth.trim().length > 0;
+      
+      if (!hasValidUsername || !hasValidDOB) {
+        console.log('User needs to complete account setup - redirecting');
+        setNeedsAccountSetup(true);
+        return;
+      }
+      
+      console.log('Account setup complete - proceeding to character check');
       
       // Determine next step based on characters
       if (userCharacters.length === 0) {
@@ -241,6 +265,35 @@ function App() {
     setSelectedCharacter(updatedCharacter);
   };
 
+  const handleAccountSetupComplete = async (setupData: {
+    username: string;
+    dateOfBirth: string;
+  }) => {
+    try {
+      setLoading(true);
+      setLoadingMessage('Completing account setup...');
+      
+      // Update user with account setup data
+      const updatedUser = await GameAPI.updateUser(setupData);
+      
+      setUser(updatedUser);
+      setNeedsAccountSetup(false);
+      
+      // After account setup, check if they need to create a character
+      if (characters.length === 0) {
+        setNeedsCharacterCreation(true);
+      }
+    } catch (error) {
+      console.error('Failed to complete account setup:', error);
+      setError({
+        title: 'Account Setup Failed',
+        message: 'Failed to save account information. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (error) {
     return (
       <ErrorScreen
@@ -282,13 +335,22 @@ function App() {
         <Route path="/" element={
           !isAuthenticated ? (
             <Navigate to="/login" replace />
+          ) : needsAccountSetup ? (
+            user ? (
+              <AccountSetup
+                user={user}
+                onSetupComplete={handleAccountSetupComplete}
+              />
+            ) : (
+              <div>Loading user data...</div>
+            )
           ) : showSettings ? (
             <GameLayout player={selectedCharacter} onLogout={handleLogout} isAdmin={user?.admin}>
               <Settings onBack={() => setShowSettings(false)} />
             </GameLayout>
           ) : showAdminPanel ? (
             <GameLayout player={selectedCharacter} onLogout={handleLogout} isAdmin={user?.admin}>
-              <AdminPanel onBack={() => setShowAdminPanel(false)} />
+              <AdminPanel onBack={() => setShowAdminPanel(false)} onLogout={handleLogout} />
             </GameLayout>
           ) : needsCharacterCreation || characters.length === 0 ? (
             user ? (
@@ -336,8 +398,8 @@ function App() {
               onAdminClick={() => setShowAdminPanel(true)}
             >
               <GamePage
-                player={selectedCharacter}
-                onPlayerUpdate={handleCharacterUpdate}
+                character={selectedCharacter}
+                onCharacterUpdate={handleCharacterUpdate}
               />
             </GameLayout>
           )
@@ -385,6 +447,8 @@ function App() {
             <div>Loading user data...</div>
           )
         } />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
       </Routes>
     </Router>
   </LoadingProvider>
