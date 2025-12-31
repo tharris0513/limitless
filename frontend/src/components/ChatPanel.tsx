@@ -39,10 +39,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
       const apiPort = new URL(apiUrl).port || '8080';
       wsUrl = `${protocol}//${apiHost}:${apiPort}/api/chat/ws`;
     } else {
-      // In production, use the same host as the frontend
+      // In production, use the same host as the frontend (no explicit port for standard 443/80)
       const host = window.location.hostname;
-      const port = window.location.port || '8080';
-      wsUrl = `${protocol}//${host}:${port}/api/chat/ws`;
+      const port = window.location.port; // Empty for standard ports
+      wsUrl = port 
+        ? `${protocol}//${host}:${port}/api/chat/ws`
+        : `${protocol}//${host}/api/chat/ws`;
     }
 
     console.log('Connecting to WebSocket:', wsUrl);
