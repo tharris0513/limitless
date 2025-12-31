@@ -6,6 +6,8 @@ use std::{net::SocketAddr, sync::Arc};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod config_export;
+mod damage_calculator;
 mod database;
 mod error;
 mod handlers;

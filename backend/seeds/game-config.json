@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "exported_at": "2025-12-30T00:00:00Z",
+  "classes": [
+    {
+      "id": "spellblade",
+      "name": "Spellblade",
+      "description": "A warrior who combines martial prowess with arcane magic, striking foes with enchanted blades and devastating spells.",
+      "starting_might": 12,
+      "starting_defense": 8,
+      "starting_magic": 12,
+      "starting_resistance": 8,
+      "starting_agility": 10,
+      "starting_health": 80,
+      "starting_mana": 20,
+      "abilities": [
+        {
+          "ability_id": "fire_strike",
+          "unlock_level": 1
+        },
+        {
+          "ability_id": "combo_strike",
+          "unlock_level": 3
+        }
+      ]
+    }
+  ],
+  "abilities": [
+    {
+      "id": "fire_strike",
+      "name": "Fire Strike",
+      "description": "Imbue your weapon with flames and strike your enemy, dealing physical and fire damage.",
+      "ability_type": "active",
+      "mana_cost": 5,
+      "cooldown": 0,
+      "damage_formula": "(might * 1.2) + (magic * 0.5) + 10"
+    },
+    {
+      "id": "combo_strike",
+      "name": "Combo Strike",
+      "description": "Execute a rapid series of strikes, hitting your enemy multiple times in quick succession.",
+      "ability_type": "active",
+      "mana_cost": 8,
+      "cooldown": 2,
+      "damage_formula": "(might * 1.8) + (agility * 0.3) + 15"
+    }
+  ]
+}

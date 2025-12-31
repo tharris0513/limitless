@@ -33,6 +33,7 @@ function App() {
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminView, setAdminView] = useState<'menu' | 'users' | 'classes'>('menu');
 
   useEffect(() => {
     // Check if user is already logged in
@@ -101,25 +102,13 @@ function App() {
   const loadUserData = async () => {
     setError(null); // Clear any previous errors
     try {
-      console.log('Loading user data...');
       // Load user and their characters
       const userData = await GameAPI.getUser();
       const userCharacters = await GameAPI.getUserCharacters();
 
-      console.log('User data loaded:', userData);
-      console.log('User admin status:', userData.admin);
-      console.log('Characters loaded:', userCharacters);
-
       setUser(userData);
       setCharacters(userCharacters);
       setIsAuthenticated(true);
-      
-      console.log('Checking account setup status:', {
-        username: userData.username,
-        dateOfBirth: userData.dateOfBirth,
-        hasUsername: !!userData.username,
-        hasDOB: !!userData.dateOfBirth
-      });
       
       // Check if user needs to complete account setup
       // Only require setup if username is missing or empty
@@ -127,26 +116,20 @@ function App() {
       const hasValidDOB = userData.dateOfBirth && userData.dateOfBirth.trim().length > 0;
       
       if (!hasValidUsername || !hasValidDOB) {
-        console.log('User needs to complete account setup - redirecting');
         setNeedsAccountSetup(true);
         return;
       }
       
-      console.log('Account setup complete - proceeding to character check');
-      
       // Determine next step based on characters
       if (userCharacters.length === 0) {
-        console.log('No characters found, setting needsCharacterCreation to true');
         setNeedsCharacterCreation(true);
       } else {
-        console.log('Characters found, auto-selecting last played');
         setNeedsCharacterCreation(false);
         // Auto-select last played character or show selection
         const lastPlayedCharacter = userCharacters.reduce((latest, char) => 
           new Date(char.lastPlayed) > new Date(latest.lastPlayed) ? char : latest
         );
         setSelectedCharacter(lastPlayedCharacter);
-        console.log('Selected character:', lastPlayedCharacter);
       }
     } catch (error) {
       console.error('Failed to load user data:', error);
@@ -165,11 +148,9 @@ function App() {
         // Check if it's an auth error (401/403) vs other errors
         if (error.response?.status === 401 || error.response?.status === 403) {
           // Auth token is invalid, clear it
-          console.log('Auth error, resetting auth state');
           resetAuthState();
         } else {
           // Other error (likely new user), show character creation
-          console.log('Other error, showing character creation');
           setNeedsCharacterCreation(true);
           setIsAuthenticated(true);
         }
@@ -307,18 +288,8 @@ function App() {
   }
 
   if (loading) {
-    console.log('App is in loading state');
     return <LoadingOverlay message={loadingMessage} />;
   }
-
-  console.log('App render state:', {
-    isAuthenticated,
-    user,
-    characters: characters.length,
-    selectedCharacter,
-    needsCharacterCreation,
-    loading
-  });
 
   return (
     <LoadingProvider>
@@ -328,7 +299,7 @@ function App() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/login" element={
             isAuthenticated ? <Navigate to="/" replace /> : 
-            <GameLayout player={null} onLogout={undefined}>
+            <GameLayout player={null} user={null} onLogout={undefined}>
               <LoginPage onLogin={handleLogin} />
             </GameLayout>
           } />
@@ -345,17 +316,33 @@ function App() {
               <div>Loading user data...</div>
             )
           ) : showSettings ? (
-            <GameLayout player={selectedCharacter} onLogout={handleLogout} isAdmin={user?.admin}>
+            <GameLayout player={selectedCharacter} user={user} onLogout={handleLogout} isAdmin={user?.admin}>
               <Settings onBack={() => setShowSettings(false)} />
             </GameLayout>
           ) : showAdminPanel ? (
-            <GameLayout player={selectedCharacter} onLogout={handleLogout} isAdmin={user?.admin}>
-              <AdminPanel onBack={() => setShowAdminPanel(false)} onLogout={handleLogout} />
+            <GameLayout 
+              key={adminView} // Force re-render when adminView changes
+              player={selectedCharacter}
+              user={user}
+              onLogout={handleLogout} 
+              isAdmin={user?.admin}
+              onAdminClick={() => {
+                // Always go to admin menu (or stay if already there)
+                setAdminView('menu');
+              }}
+            >
+              <AdminPanel 
+                onBack={() => setShowAdminPanel(false)} 
+                onLogout={handleLogout}
+                onViewChange={(view) => setAdminView(view as 'menu' | 'users' | 'classes')}
+                requestedView={adminView}
+              />
             </GameLayout>
           ) : needsCharacterCreation || characters.length === 0 ? (
             user ? (
               <GameLayout 
-                player={selectedCharacter} 
+                player={selectedCharacter}
+                user={user}
                 onLogout={handleLogout} 
                 onSettingsClick={() => setShowSettings(true)} 
                 isAdmin={user.admin}
@@ -372,7 +359,8 @@ function App() {
           ) : !selectedCharacter ? (
             user ? (
               <GameLayout 
-                player={null} 
+                player={null}
+                user={user}
                 onLogout={handleLogout} 
                 onSettingsClick={() => setShowSettings(true)} 
                 isAdmin={user.admin}
@@ -391,7 +379,8 @@ function App() {
             )
           ) : (
             <GameLayout 
-              player={selectedCharacter} 
+              player={selectedCharacter}
+              user={user}
               onLogout={handleLogout} 
               onSettingsClick={() => setShowSettings(true)} 
               isAdmin={user?.admin}
@@ -409,7 +398,8 @@ function App() {
             <Navigate to="/login" replace />
           ) : user ? (
             <GameLayout 
-              player={selectedCharacter} 
+              player={selectedCharacter}
+              user={user}
               onLogout={handleLogout} 
               onSettingsClick={() => setShowSettings(true)} 
               isAdmin={user.admin}
@@ -432,7 +422,8 @@ function App() {
             <Navigate to="/login" replace />
           ) : user ? (
             <GameLayout 
-              player={selectedCharacter} 
+              player={selectedCharacter}
+              user={user}
               onLogout={handleLogout} 
               onSettingsClick={() => setShowSettings(true)} 
               isAdmin={user.admin}

@@ -75,18 +75,12 @@
 }
 
 .headerContent {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-}
-
-.headerButtons {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
 }
 
 .gameTitle {
@@ -111,84 +105,6 @@
       0 0 10px #00ff00,
       0 0 20px #00ff00;
   }
-}
-
-.playerStats {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  font-size: 0.9rem;
-}
-
-.playerInfo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.playerName {
-  font-weight: bold;
-  color: #ffd700;
-  text-shadow: 0 0 10px #ffd700;
-}
-
-.playerLevel {
-  color: #00ff00;
-  text-shadow: 0 0 5px #00ff00;
-}
-
-.stats {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.stat {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid #00ff00;
-  border-radius: 3px;
-  text-shadow: 0 0 5px #00ff00;
-}
-
-.statIcon {
-  color: #00ff00;
-  text-shadow: 0 0 5px #00ff00;
-}
-
-.logoutButton {
-  background: transparent;
-  border: 2px solid #00ff00;
-  color: #00ff00;
-  padding: 0.5rem 1rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: all 0.3s ease;
-  text-shadow: 0 0 5px #00ff00;
-  border-radius: 4px;
-  position: relative;
-  overflow: hidden;
-}
-
-.logoutButton:hover {
-  background: rgba(0, 255, 0, 0.1);
-  box-shadow: 
-    0 0 10px #00ff00,
-    inset 0 0 10px rgba(0, 255, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.logoutButton:active {
-  transform: translateY(0);
-  box-shadow: 
-    0 0 5px #00ff00,
-    inset 0 0 5px rgba(0, 255, 0, 0.2);
 }
 
 .headerButtons {
@@ -268,23 +184,169 @@
   filter: drop-shadow(0 0 10px #00ff00);
 }
 
-.settingsButton:active {
-  transform: translateY(0);
+.logoutButton {
+  background: transparent;
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #00ff00;
+  border-radius: 4px;
+}
+
+.logoutButton:hover {
+  background: rgba(0, 255, 0, 0.1);
   box-shadow: 
-    0 0 10px rgba(0, 255, 0, 0.3),
-    inset 0 0 5px rgba(0, 255, 0, 0.2);
+    0 0 10px #00ff00,
+    inset 0 0 10px rgba(0, 255, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Layout Body with Sidebar */
+.layoutBody {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  position: relative;
+  z-index: 5;
+  height: calc(100vh - 80px);
+}
+
+.sidebar {
+  width: 280px;
+  background: rgba(0, 0, 0, 0.9);
+  border-right: 2px solid #00ff00;
+  box-shadow: 2px 0 20px rgba(0, 255, 0, 0.3);
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+  left: 0;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.sidebarContent {
+  padding: 1.5rem;
+}
+
+.characterHeader {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #00ff00;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.characterName {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 0 15px #ffd700;
+  margin: 0 0 0.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.characterLevel {
+  font-size: 1rem;
+  color: #00ff00;
+  text-shadow: 0 0 10px #00ff00;
+  font-weight: bold;
+}
+
+.characterStats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #00ff00;
+  padding: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.statItem:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+  border-color: #00ff00;
+}
+
+.statIcon {
+  color: #00ff00;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 5px #00ff00);
+}
+
+.statInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.statValue {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .mainContent {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  position: relative;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  position: relative;
-  z-index: 5;
+  width: 100%;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .layoutBody {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid #00ff00;
+  }
+
+  .sidebarContent {
+    padding: 1rem;
+  }
+
+  .characterStats {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .statItem {
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: 120px;
+  }
+
   .headerContent {
     flex-direction: column;
     gap: 1rem;
@@ -292,19 +354,6 @@
 
   .gameTitle {
     font-size: 1.5rem;
-  }
-
-  .playerStats {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .stats {
-    gap: 1rem;
-  }
-
-  .stat {
-    font-size: 0.8rem;
   }
 
   .mainContent {

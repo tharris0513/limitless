@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LoadingButton } from '../components/LoadingStates';
 import { useApiWithLoading } from '../hooks/useApiWithLoading';
-import type { Character, User } from '../types/game';
+import type { Character, User, Class } from '../types/game';
+import GameAPI from '../services/api';
 import styles from './CharacterCreation.module.css';
 
 interface CharacterCreationProps {
@@ -14,12 +15,33 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
   onCharacterCreated,
 }) => {
   const api = useApiWithLoading();
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    gender: 'Male',
+    classId: '',
+    gender: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadClasses();
+  }, []);
+
+  const loadClasses = async () => {
+    try {
+      const classesData = await GameAPI.getClasses();
+      setClasses(classesData);
+      if (classesData.length > 0) {
+        setSelectedClass(classesData[0]);
+        setFormData(prev => ({ ...prev, classId: classesData[0].id }));
+      }
+    } catch (err) {
+      console.error('Failed to load classes:', err);
+      setError('Failed to load character classes');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +56,11 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
       return;
     }
 
+    if (!formData.classId) {
+      setError('Please select a character class');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
@@ -43,6 +70,7 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
         userId: user.id,
         name: formData.name,
         gender: formData.gender,
+        classId: formData.classId,
       });
 
       console.log('Created character:', newCharacter);
@@ -59,10 +87,16 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
+
+    if (name === 'classId') {
+      const selected = classes.find(c => c.id === value);
+      setSelectedClass(selected || null);
+    }
   };
 
   return (
@@ -70,7 +104,7 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
       <h1 className={styles.title}>⚔️ Create Character</h1>
 
       <div className={styles.welcomeText}>
-        Welcome, <span className={styles.highlight}>adventurer</span>!<br />
+        Welcome, <span className={styles.highlight}>{user.username || user.discordName}</span>!<br />
         Before you begin your journey in the Limitless realm,
         <br />
         you must create your character.
@@ -96,43 +130,50 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="gender" className={styles.label}>
-            Gender
+          <label htmlFor="classId" className={styles.label}>
+            Character Class
           </label>
           <select
-            id="gender"
-            name="gender"
-            value={formData.gender}
+            id="classId"
+            name="classId"
+            value={formData.classId}
             onChange={handleChange}
             className={styles.select}
-            disabled={loading}
+            disabled={loading || classes.length === 0}
           >
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
+            {classes.map(classOption => (
+              <option key={classOption.id} value={classOption.id}>
+                {classOption.name}
+              </option>
+            ))}
           </select>
+          {selectedClass && (
+            <p className={styles.classDescription}>{selectedClass.description}</p>
+          )}
         </div>
 
-        <div className={styles.statsPreview}>
-          <div className={styles.statsTitle}>Starting Stats</div>
-          <div className={styles.statsList}>
-            ⚔️ Might: 10
-            <br />
-            🛡️ Defense: 10
-            <br />
-            🧙 Magic: 10
-            <br />
-            🔮 Resistance: 10
-            <br />
-            💨 Agility: 10
-            <br />
-            ❤️ Health: 100/100
-            <br />
-            ⚡ Mana: 50/50
-            <br />
-            🗡️ Adventures: 5/5
+        {selectedClass && (
+          <div className={styles.statsPreview}>
+            <div className={styles.statsTitle}>Starting Stats - {selectedClass.name}</div>
+            <div className={styles.statsList}>
+              ⚔️ Might: {selectedClass.startingMight}
+              <br />
+              🛡️ Defense: {selectedClass.startingDefense}
+              <br />
+              🧙 Magic: {selectedClass.startingMagic}
+              <br />
+              🔮 Resistance: {selectedClass.startingResistance}
+              <br />
+              💨 Agility: {selectedClass.startingAgility}
+              <br />
+              ❤️ Health: {selectedClass.startingHealth}/{selectedClass.startingHealth}
+              <br />
+              ⚡ Mana: {selectedClass.startingMana}/{selectedClass.startingMana}
+              <br />
+              🗡️ Adventures: 5
+            </div>
           </div>
-        </div>
+        )}
 
         <LoadingButton
           type="submit"

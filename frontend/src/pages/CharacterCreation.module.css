@@ -95,6 +95,16 @@
   composes: input;
 }
 
+.classDescription {
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  font-style: italic;
+  opacity: 0.8;
+  margin-top: 0.25rem;
+  text-shadow: 0 0 3px #00ff00;
+}
+
 .button {
   padding: 1rem 1.5rem;
   border: 2px solid #00ff00;

@@ -2,6 +2,7 @@ pub mod admin;
 pub mod adventure;
 pub mod auth;
 pub mod character;
+pub mod chat;
 pub mod health;
 pub mod location;
 pub mod player;

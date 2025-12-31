@@ -60,7 +60,7 @@ export const GamePage: React.FC<GamePageProps> = ({ character }) => {
         <h2 className={styles.sectionTitle}>⚔️ {character.name}</h2>
         <div className={styles.characterInfo}>
           <p>Level {character.level} | {character.location}</p>
-          <p>Adventures: {character.stats.adventures}/{character.stats.maxAdventures}</p>
+          <p>Adventures: {character.stats.adventures}</p>
           <p>HP: {character.health}/{character.maxHealth} | MP: {character.mana}/{character.maxMana}</p>
         </div>
       </div>

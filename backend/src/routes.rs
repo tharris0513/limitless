@@ -6,12 +6,15 @@ use axum::{
 use std::sync::Arc;
 
 use crate::{
-    handlers::{admin, adventure, auth, character, health, location, player, user},
+    handlers::{admin, adventure, auth, character, chat, health, location, player, user},
     middleware::{global_error_handler, jwt_auth_middleware},
     repository::UserRepository,
 };
 
 pub fn create_routes(repo: Arc<UserRepository>) -> Router {
+    // Create chat state
+    let chat_state = Arc::new(chat::ChatState::new());
+
     // Public routes (no authentication required)
     let public_routes = Router::new()
         .route("/auth/discord", get(auth::get_discord_auth_url))
@@ -26,10 +29,20 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/auth/status", get(auth::get_auth_status))
         .route("/health", get(health::health_check))
         .route("/user/check-username", post(user::check_username_available))
+        .route("/classes", get(character::get_classes))
+        .route(
+            "/classes/:class_id/abilities",
+            get(character::get_class_abilities),
+        )
         // Legacy routes for backward compatibility
         .route("/player", get(player::get_player))
         .route("/locations", get(location::get_locations))
-        .route("/adventures/:id/start", post(adventure::start_adventure));
+            .route("/adventures/:id/start", post(adventure::start_adventure));
+    
+        // WebSocket route for chat (separate router with chat_state)
+        let chat_routes = Router::new()
+            .route("/chat/ws", get(chat::websocket_handler))
+            .with_state(chat_state.clone());
 
     // Protected routes (require JWT authentication)
     let protected_routes = Router::new()
@@ -42,6 +55,10 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/last-played",
             patch(character::update_character_last_played),
         )
+        .route(
+            "/characters/:id/abilities",
+            get(character::get_character_abilities),
+        )
         .layer(middleware::from_fn(jwt_auth_middleware));
 
     // Admin-only routes
@@ -53,10 +70,31 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/admin/users", get(admin::get_all_users))
         .route("/admin/users/:id", patch(admin::update_user_username))
         .route("/admin/users/:id", delete(admin::delete_user))
+        // Class management
+        .route("/admin/classes", post(admin::create_class))
+        .route("/admin/classes/:id", patch(admin::update_class))
+        .route("/admin/classes/:id", delete(admin::delete_class))
+        .route(
+            "/admin/classes/:class_id/abilities",
+            post(admin::add_class_ability),
+        )
+        .route(
+            "/admin/classes/:class_id/abilities/:ability_id",
+            delete(admin::remove_class_ability),
+        )
+        // Ability management
+        .route("/admin/abilities", get(admin::get_all_abilities))
+        .route("/admin/abilities", post(admin::create_ability))
+        .route("/admin/abilities/:id", patch(admin::update_ability))
+        .route("/admin/abilities/:id", delete(admin::delete_ability))
+        // Config export/import
+        .route("/admin/config/export", get(admin::export_game_config))
+        .route("/admin/config/import", post(admin::import_game_config))
         .layer(middleware::from_fn(jwt_auth_middleware));
 
     Router::new()
         .merge(public_routes)
+        .merge(chat_routes)
         .merge(protected_routes)
         .merge(admin_routes)
         .layer(middleware::from_fn(global_error_handler))

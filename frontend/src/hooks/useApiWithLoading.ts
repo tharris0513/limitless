@@ -53,6 +53,7 @@ export const useApiWithLoading = () => {
       userId: string;
       name: string;
       gender: string;
+      classId: string;
     }) =>
       withLoading(LoadingKeys.CHARACTERS_CREATE, () =>
         GameAPI.createCharacter(characterData)

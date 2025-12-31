@@ -16,6 +16,7 @@ interface User {
 interface ManageUsersProps {
   onBack: () => void;
   onLogout?: () => void;
+  onAdminClick?: () => void;
 }
 
 export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) => {

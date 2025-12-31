@@ -30,10 +30,57 @@ pub async fn create_character(
         .and_then(|n| n.as_str())
         .ok_or_else(|| AppError::validation_error("Character name is required"))?;
 
-    match repo.create_character(&claims.sub, name).await {
+    let class_id = payload
+        .get("classId")
+        .and_then(|c| c.as_str())
+        .ok_or_else(|| AppError::validation_error("Class ID is required"))?;
+
+    match repo.create_character(&claims.sub, name, class_id).await {
         Ok(character) => Ok(Json(character)),
         Err(e) => {
             tracing::error!("Failed to create character: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Get all available classes
+pub async fn get_classes(
+    State(repo): State<Arc<UserRepository>>,
+) -> Result<Json<Vec<crate::models::Class>>, AppError> {
+    match repo.get_all_classes().await {
+        Ok(classes) => Ok(Json(classes)),
+        Err(e) => {
+            tracing::error!("Failed to get classes: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Get abilities for a class
+pub async fn get_class_abilities(
+    State(repo): State<Arc<UserRepository>>,
+    Path(class_id): Path<String>,
+) -> Result<Json<Vec<(crate::models::Ability, i64)>>, AppError> {
+    match repo.get_class_abilities(&class_id).await {
+        Ok(abilities) => Ok(Json(abilities)),
+        Err(e) => {
+            tracing::error!("Failed to get class abilities: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Get abilities for a character
+pub async fn get_character_abilities(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(_claims): AuthClaims,
+) -> Result<Json<Vec<crate::models::CharacterAbility>>, AppError> {
+    match repo.get_character_abilities(&character_id).await {
+        Ok(abilities) => Ok(Json(abilities)),
+        Err(e) => {
+            tracing::error!("Failed to get character abilities: {:?}", e);
             Err(AppError::from(e))
         }
     }

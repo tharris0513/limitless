@@ -1,21 +1,43 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Users, Database, Shield, Activity } from 'lucide-react';
+import { ArrowLeft, Users, Database, Shield, Activity, Swords } from 'lucide-react';
 import { ManageUsers } from './ManageUsers';
+import { ManageClasses } from './ManageClasses';
 import styles from './AdminPanel.module.css';
 
 interface AdminPanelProps {
   onBack: () => void;
   onLogout?: () => void;
+  onViewChange?: (view: AdminView) => void; // Notify parent when view changes
+  requestedView?: AdminView; // Allow parent to request a specific view
 }
 
-type AdminView = 'menu' | 'users' | 'database' | 'permissions' | 'system';
+type AdminView = 'menu' | 'users' | 'classes' | 'database' | 'permissions' | 'system';
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onViewChange, requestedView }) => {
   const [currentView, setCurrentView] = useState<AdminView>('menu');
+
+  // Respond to parent's requested view changes
+  React.useEffect(() => {
+    if (requestedView && requestedView !== currentView) {
+      setCurrentView(requestedView);
+    }
+  }, [requestedView]);
+
+  // Notify parent when view changes
+  const handleViewChange = (view: AdminView) => {
+    setCurrentView(view);
+    if (onViewChange) {
+      onViewChange(view);
+    }
+  };
 
   // Render the appropriate view
   if (currentView === 'users') {
-    return <ManageUsers onBack={() => setCurrentView('menu')} onLogout={onLogout} />;
+    return <ManageUsers onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
+  }
+
+  if (currentView === 'classes') {
+    return <ManageClasses onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
   }
 
   // Default menu view
@@ -31,10 +53,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout }) => {
       
       <div className={styles.adminContent}>
         <div className={styles.adminGrid}>
-          <button className={styles.adminActionButton} onClick={() => setCurrentView('users')}>
+          <button className={styles.adminActionButton} onClick={() => handleViewChange('users')}>
             <Users size={32} />
             <span className={styles.buttonLabel}>Manage Users</span>
             <span className={styles.buttonDescription}>View and edit user accounts</span>
+          </button>
+
+          <button className={styles.adminActionButton} onClick={() => handleViewChange('classes')}>
+            <Swords size={32} />
+            <span className={styles.buttonLabel}>Manage Classes</span>
+            <span className={styles.buttonDescription}>Create and edit character classes</span>
           </button>
 
           <button className={styles.adminActionButton}>

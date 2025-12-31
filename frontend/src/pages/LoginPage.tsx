@@ -50,6 +50,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       
       const { auth_url } = await GameAPI.getDiscordAuthUrl();
       
+      // Validate that the URL is from Discord to prevent open redirect
+      const url = new URL(auth_url);
+      if (url.hostname !== 'discord.com' && !url.hostname.endsWith('.discord.com')) {
+        throw new Error('Invalid authentication URL');
+      }
+      
       // Redirect to Discord OAuth
       window.location.href = auth_url;
     } catch (err: unknown) {

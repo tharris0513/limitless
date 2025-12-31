@@ -14,6 +14,7 @@ export interface Character {
   id: string; // Character UUID
   userId: string; // Foreign key to User
   name: string; // Character name (chosen by player)
+  classId: string; // Character's class
   level: number;
   health: number;
   maxHealth: number;
@@ -27,6 +28,43 @@ export interface Character {
   location: string;
   createdAt: string;
   lastPlayed: string;
+}
+
+// Class represents a character class with base stats
+export interface Class {
+  id: string;
+  name: string;
+  description: string;
+  startingMight: number;
+  startingDefense: number;
+  startingMagic: number;
+  startingResistance: number;
+  startingAgility: number;
+  startingHealth: number;
+  startingMana: number;
+}
+
+// Ability represents a skill or spell that characters can use
+export interface Ability {
+  id: string;
+  name: string;
+  description: string;
+  abilityType: 'active' | 'passive';
+  manaCost: number;
+  cooldown: number;
+
+  // Formula-based calculations
+  damageFormula?: string;
+  healFormula?: string;
+  effectFormula?: string;
+}
+
+// CharacterAbility tracks which abilities a character has unlocked
+export interface CharacterAbility {
+  characterId: string;
+  abilityId: string;
+  unlockedAtLevel: number;
+  ability?: Ability; // Joined ability data
 }
 
 // Auth response from backend
@@ -46,7 +84,6 @@ export interface CharacterStats {
   resistance: number; // Magical defense
   agility: number; // Speed
   adventures: number;
-  maxAdventures: number;
 }
 
 // Legacy PlayerStats type - alias for CharacterStats for backward compatibility

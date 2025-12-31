@@ -3,6 +3,9 @@ import type {
   Player,
   User,
   Character,
+  CharacterAbility,
+  Class,
+  Ability,
   Location,
   Adventure,
   Shop,
@@ -147,7 +150,7 @@ export class GameAPI {
   static async createCharacter(characterData: {
     userId: string;
     name: string;
-    gender: string;
+    classId: string;
   }): Promise<Character> {
     const response = await api.post('/characters', characterData);
     return response.data;
@@ -163,6 +166,30 @@ export class GameAPI {
 
   static async updateCharacterLastPlayed(characterId: string): Promise<void> {
     await api.patch(`/characters/${characterId}/last-played`);
+  }
+
+  static async getCharacterAbilities(
+    characterId: string
+  ): Promise<CharacterAbility[]> {
+    const response = await api.get(`/characters/${characterId}/abilities`);
+    return response.data;
+  }
+
+  // Class endpoints
+  static async getClasses(): Promise<Class[]> {
+    const response = await api.get('/classes');
+    return response.data;
+  }
+
+  static async getClassAbilities(
+    classId: string
+  ): Promise<Array<{ ability: Ability; unlockLevel: number }>> {
+    const response = await api.get(`/classes/${classId}/abilities`);
+    // Backend returns array of tuples [Ability, unlockLevel], transform to objects
+    return response.data.map((item: [Ability, number]) => ({
+      ability: item[0],
+      unlockLevel: item[1],
+    }));
   }
 
   // Legacy Player endpoints (for backward compatibility)
@@ -235,6 +262,79 @@ export class GameAPI {
   static async unequipItem(slot: string): Promise<Player> {
     const response = await api.post('/inventory/unequip', { slot });
     return response.data;
+  }
+
+  // Admin endpoints
+  static async adminGetAllAbilities(): Promise<Ability[]> {
+    const response = await api.get('/admin/abilities');
+    return response.data;
+  }
+
+  static async adminCreateClass(classData: Omit<Class, 'id'>): Promise<Class> {
+    const response = await api.post('/admin/classes', classData);
+    return response.data;
+  }
+
+  static async adminUpdateClass(
+    classId: string,
+    classData: Class
+  ): Promise<Class> {
+    const response = await api.patch(`/admin/classes/${classId}`, classData);
+    return response.data;
+  }
+
+  static async adminDeleteClass(classId: string): Promise<void> {
+    await api.delete(`/admin/classes/${classId}`);
+  }
+
+  static async adminCreateAbility(
+    abilityData: Omit<Ability, 'id'>
+  ): Promise<Ability> {
+    const response = await api.post('/admin/abilities', abilityData);
+    return response.data;
+  }
+
+  static async adminUpdateAbility(
+    abilityId: string,
+    abilityData: Ability
+  ): Promise<Ability> {
+    const response = await api.patch(
+      `/admin/abilities/${abilityId}`,
+      abilityData
+    );
+    return response.data;
+  }
+
+  static async adminDeleteAbility(abilityId: string): Promise<void> {
+    await api.delete(`/admin/abilities/${abilityId}`);
+  }
+
+  static async adminAddClassAbility(
+    classId: string,
+    abilityId: string,
+    unlockLevel: number
+  ): Promise<void> {
+    await api.post(`/admin/classes/${classId}/abilities`, {
+      abilityId,
+      unlockLevel,
+    });
+  }
+
+  static async adminRemoveClassAbility(
+    classId: string,
+    abilityId: string
+  ): Promise<void> {
+    await api.delete(`/admin/classes/${classId}/abilities/${abilityId}`);
+  }
+
+  // Admin export/import
+  static async adminExportConfig(): Promise<any> {
+    const response = await api.get('/admin/config/export');
+    return response.data;
+  }
+
+  static async adminImportConfig(configData: any): Promise<void> {
+    await api.post('/admin/config/import', configData);
   }
 }
 
