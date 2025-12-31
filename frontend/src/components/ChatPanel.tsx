@@ -43,10 +43,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
 
     // Connect to WebSocket
     const ws = new WebSocket(wsUrl);
+    let pingInterval: number | undefined;
 
     ws.onopen = () => {
       console.log('WebSocket connected');
       setIsConnected(true);
+
+      // Send ping every 30 seconds to keep connection alive
+      pingInterval = window.setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          console.log('Sending keepalive ping');
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000);
     };
 
     ws.onmessage = (event) => {
@@ -64,14 +73,20 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
     };
 
     ws.onclose = (event) => {
-      console.log('WebSocket disconnected', { code: event.code, reason: event.reason });
+      console.log('WebSocket disconnected', { code: event.code, reason: event.reason || 'No reason provided' });
       setIsConnected(false);
+      if (pingInterval) {
+        clearInterval(pingInterval);
+      }
     };
 
     wsRef.current = ws;
 
     // Cleanup on unmount
     return () => {
+      if (pingInterval) {
+        clearInterval(pingInterval);
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }

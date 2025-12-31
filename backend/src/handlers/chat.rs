@@ -59,10 +59,12 @@ async fn handle_socket(socket: WebSocket, state: Arc<ChatState>) {
             // Serialize message to JSON
             if let Ok(json) = serde_json::to_string(&msg) {
                 if sender.send(Message::Text(json)).await.is_err() {
+                    tracing::warn!("Failed to send message to client");
                     break;
                 }
             }
         }
+        tracing::debug!("Send task ended");
     });
 
     // Clone state for the receive task
@@ -70,40 +72,67 @@ async fn handle_socket(socket: WebSocket, state: Arc<ChatState>) {
 
     // Spawn task to receive messages from this client and broadcast
     let mut recv_task = tokio::spawn(async move {
-        while let Some(Ok(msg)) = receiver.next().await {
-            match msg {
-                Message::Text(text) => {
-                    // Try to parse as ChatMessage
-                    if let Ok(mut chat_msg) = serde_json::from_str::<ChatMessage>(&text) {
-                        // Store username for this connection
-                        if !chat_msg.username.is_empty() {
-                            username = chat_msg.username.clone();
-                        }
+        while let Some(msg_result) = receiver.next().await {
+            match msg_result {
+                Ok(msg) => match msg {
+                    Message::Text(text) => {
+                        tracing::debug!("Received text message: {}", text);
+                        // Try to parse as ChatMessage
+                        if let Ok(mut chat_msg) = serde_json::from_str::<ChatMessage>(&text) {
+                            // Store username for this connection
+                            if !chat_msg.username.is_empty() {
+                                username = chat_msg.username.clone();
+                            }
 
-                        // Add timestamp
-                        chat_msg.timestamp = chrono::Utc::now().to_rfc3339();
+                            // Add timestamp
+                            chat_msg.timestamp = chrono::Utc::now().to_rfc3339();
 
-                        // Broadcast to all connected clients
-                        if tx.send(chat_msg).is_err() {
-                            tracing::error!("Failed to broadcast message");
-                            break;
+                            // Broadcast to all connected clients
+                            if tx.send(chat_msg).is_err() {
+                                tracing::error!("Failed to broadcast message");
+                                break;
+                            }
                         }
                     }
-                }
-                Message::Close(_) => {
-                    tracing::info!("Client {} disconnected", username);
+                    Message::Ping(payload) => {
+                        tracing::debug!("Received ping");
+                        // Pong is automatically sent by axum
+                    }
+                    Message::Pong(_) => {
+                        tracing::debug!("Received pong");
+                    }
+                    Message::Close(frame) => {
+                        tracing::info!("Client {} requested close: {:?}", username, frame);
+                        break;
+                    }
+                    Message::Binary(_) => {
+                        tracing::warn!("Received unexpected binary message");
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("WebSocket error: {}", e);
                     break;
                 }
-                _ => {}
             }
         }
+        tracing::info!("Receive task ended for user: {}", username);
+        username
     });
 
     // Wait for either task to finish
     tokio::select! {
-        _ = (&mut send_task) => recv_task.abort(),
-        _ = (&mut recv_task) => send_task.abort(),
+        _ = (&mut send_task) => {
+            tracing::debug!("Send task completed first");
+            recv_task.abort();
+        },
+        result = (&mut recv_task) => {
+            tracing::debug!("Receive task completed first");
+            if let Ok(user) = result {
+                tracing::info!("User {} disconnected", user);
+            }
+            send_task.abort();
+        },
     };
 
-    tracing::info!("WebSocket connection closed");
+    tracing::info!("WebSocket connection fully closed");
 }
