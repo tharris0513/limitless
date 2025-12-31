@@ -28,24 +28,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
   }, [messages]);
 
   useEffect(() => {
-    // Determine WebSocket URL based on environment
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let wsUrl: string;
+    // Use the API URL from environment for both dev and prod
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    const apiHost = new URL(apiUrl).hostname;
+    const apiProtocol = new URL(apiUrl).protocol === 'https:' ? 'wss:' : 'ws:';
+    const apiPort = new URL(apiUrl).port;
     
-    // In development, use the API URL from environment or default to localhost:8080
-    if (import.meta.env.DEV) {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-      const apiHost = new URL(apiUrl).hostname;
-      const apiPort = new URL(apiUrl).port || '8080';
-      wsUrl = `${protocol}//${apiHost}:${apiPort}/api/chat/ws`;
-    } else {
-      // In production, use the same host as the frontend (no explicit port for standard 443/80)
-      const host = window.location.hostname;
-      const port = window.location.port; // Empty for standard ports
-      wsUrl = port 
-        ? `${protocol}//${host}:${port}/api/chat/ws`
-        : `${protocol}//${host}/api/chat/ws`;
-    }
+    // Build WebSocket URL using API domain
+    const wsUrl = apiPort 
+      ? `${apiProtocol}//${apiHost}:${apiPort}/api/chat/ws`
+      : `${apiProtocol}//${apiHost}/api/chat/ws`;
 
     console.log('Connecting to WebSocket:', wsUrl);
 
