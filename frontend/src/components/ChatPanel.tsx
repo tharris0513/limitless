@@ -28,11 +28,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
   }, [messages]);
 
   useEffect(() => {
-    // Determine WebSocket URL based on current location
+    // Determine WebSocket URL based on environment
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname;
-    const port = import.meta.env.VITE_API_PORT || '8080';
-    const wsUrl = `${protocol}//${host}:${port}/api/chat/ws`;
+    let wsUrl: string;
+    
+    // In development, use the API URL from environment or default to localhost:8080
+    if (import.meta.env.DEV) {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const apiHost = new URL(apiUrl).hostname;
+      const apiPort = new URL(apiUrl).port || '8080';
+      wsUrl = `${protocol}//${apiHost}:${apiPort}/api/chat/ws`;
+    } else {
+      // In production, use the same host as the frontend
+      const host = window.location.hostname;
+      const port = window.location.port || '8080';
+      wsUrl = `${protocol}//${host}:${port}/api/chat/ws`;
+    }
+
+    console.log('Connecting to WebSocket:', wsUrl);
 
     // Connect to WebSocket
     const ws = new WebSocket(wsUrl);
@@ -53,10 +66,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      console.error('Failed to connect to:', wsUrl);
     };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
+    ws.onclose = (event) => {
+      console.log('WebSocket disconnected', { code: event.code, reason: event.reason });
       setIsConnected(false);
     };
 
