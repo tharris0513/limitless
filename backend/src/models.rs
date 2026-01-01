@@ -28,20 +28,27 @@ pub struct CharacterStats {
 // Character represents a game character that belongs to a user
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Character {
-    pub id: String,       // Character UUID
-    pub user_id: String,  // Foreign key to User
-    pub name: String,     // Character name (chosen by player)
+    pub id: String, // Character UUID
+    #[serde(rename = "userId")]
+    pub user_id: String, // Foreign key to User
+    pub name: String, // Character name (chosen by player)
+    #[serde(rename = "classId")]
     pub class_id: String, // Character's class
     pub level: i64,
     pub health: i64,
+    #[serde(rename = "maxHealth")]
     pub max_health: i64,
     pub mana: i64,
+    #[serde(rename = "maxMana")]
     pub max_mana: i64,
     pub experience: i64,
+    #[serde(rename = "experienceToNext")]
     pub experience_to_next: i64,
     pub stats: CharacterStats, // Will be loaded from character_stats table
     pub location: String,
+    #[serde(rename = "createdAt")]
     pub created_at: String,
+    #[serde(rename = "lastPlayed")]
     pub last_played: String,
 }
 

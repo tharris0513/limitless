@@ -1,6 +1,6 @@
 import React from 'react';
 import { type Player, type User } from '../types/game';
-import { Heart, Zap, Star, Settings, Shield } from 'lucide-react';
+import { Heart, Zap, Star, Settings, Shield, Swords } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import styles from './GameLayout.module.css';
 
@@ -57,9 +57,24 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
               <div className={styles.characterHeader}>
                 <h2 className={styles.characterName}>{player.name}</h2>
                 <div className={styles.characterLevel}>Level {player.level}</div>
+                <div className={styles.characterClass}>{player.classId}</div>
               </div>
 
               <div className={styles.characterStats}>
+                <div className={styles.statItem}>
+                  <Heart size={16} className={styles.statIcon} />
+                  <div className={styles.statInfo}>
+                    <span className={styles.statValue}>{player.health}/{player.maxHealth}</span>
+                    <span className={styles.statLabel}>Health</span>
+                  </div>
+                </div>
+                <div className={styles.statItem}>
+                  <Star size={16} className={styles.statIcon} />
+                  <div className={styles.statInfo}>
+                    <span className={styles.statValue}>{player.mana}/{player.maxMana}</span>
+                    <span className={styles.statLabel}>Mana</span>
+                  </div>
+                </div>
                 <div className={styles.statItem}>
                   <Heart size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
@@ -93,6 +108,13 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                   <div className={styles.statInfo}>
                     <span className={styles.statValue}>{player.stats.agility}</span>
                     <span className={styles.statLabel}>Agility</span>
+                  </div>
+                </div>
+                <div className={styles.statItem}>
+                  <Swords size={16} className={styles.statIcon} />
+                  <div className={styles.statInfo}>
+                    <span className={styles.statValue}>{player.stats.adventures}</span>
+                    <span className={styles.statLabel}>Adventures</span>
                   </div>
                 </div>
               </div>
