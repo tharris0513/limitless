@@ -1,0 +1,261 @@
+.manageCharactersContainer {
+  background-color: #000;
+  color: #00ff00;
+  min-height: 100vh;
+  font-family: 'Courier New', monospace;
+  padding: 2rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #00ff00;
+}
+
+.backButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  transition: all 0.2s;
+}
+
+.backButton:hover {
+  background: #00ff00;
+  color: #000;
+  box-shadow: 0 0 10px #00ff00;
+}
+
+.title {
+  font-size: 1.8rem;
+  margin: 0;
+  text-shadow: 0 0 10px #00ff00;
+  flex: 1;
+}
+
+.content {
+  margin-top: 2rem;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem;
+}
+
+.loadingText {
+  font-size: 1.2rem;
+  color: #00ff00;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.error {
+  background: rgba(255, 0, 0, 0.1);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+  padding: 1rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+
+.errorIcon {
+  font-size: 1.5rem;
+}
+
+.tableContainer {
+  border: 2px solid #00ff00;
+  background: rgba(0, 255, 0, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tableHeader {
+  background: rgba(0, 255, 0, 0.1);
+  padding: 1rem;
+  border-bottom: 2px solid #00ff00;
+}
+
+.statsBar {
+  font-size: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.highlight {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.characterTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.characterTable thead {
+  background: rgba(0, 255, 0, 0.15);
+}
+
+.characterTable th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: bold;
+  border-bottom: 2px solid #00ff00;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.characterTable td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.3);
+  font-size: 0.95rem;
+}
+
+.characterTable tbody tr {
+  transition: background 0.2s;
+}
+
+.characterTable tbody tr:hover {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.classCell {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.levelBadge {
+  display: inline-block;
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid #00ff00;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.statCell {
+  font-family: 'Courier New', monospace;
+  color: #00ff00;
+}
+
+.dateCell {
+  color: rgba(0, 255, 0, 0.7);
+  font-size: 0.85rem;
+}
+
+.actionsHeader {
+  text-align: center;
+}
+
+.actionsCell {
+  text-align: center;
+}
+
+.actionsDropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.actionsButton {
+  background: transparent;
+  color: #00ff00;
+  border: 1px solid #00ff00;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s;
+}
+
+.actionsButton:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+.actionsButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dropdownMenu {
+  background: #000;
+  border: 2px solid #00ff00;
+  border-radius: 4px;
+  min-width: 180px;
+  box-shadow: 0 4px 20px rgba(0, 255, 0, 0.3);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdownItem {
+  width: 100%;
+  background: transparent;
+  color: #00ff00;
+  border: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.dropdownItem:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+}
+
+.dropdownItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deleteItem {
+  color: #ff4444;
+  border-top: 1px solid rgba(0, 255, 0, 0.3);
+}
+
+.deleteItem:hover:not(:disabled) {
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff6666;
+}
+
+.emptyState {
+  padding: 3rem;
+  text-align: center;
+  color: rgba(0, 255, 0, 0.7);
+  font-size: 1.1rem;
+}

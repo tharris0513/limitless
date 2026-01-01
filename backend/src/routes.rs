@@ -37,12 +37,12 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Legacy routes for backward compatibility
         .route("/player", get(player::get_player))
         .route("/locations", get(location::get_locations))
-            .route("/adventures/:id/start", post(adventure::start_adventure));
-    
-        // WebSocket route for chat (separate router with chat_state)
-        let chat_routes = Router::new()
-            .route("/chat/ws", get(chat::websocket_handler))
-            .with_state(chat_state.clone());
+        .route("/adventures/:id/start", post(adventure::start_adventure));
+
+    // WebSocket route for chat (separate router with chat_state)
+    let chat_routes = Router::new()
+        .route("/chat/ws", get(chat::websocket_handler))
+        .with_state(chat_state.clone());
 
     // Protected routes (require JWT authentication)
     let protected_routes = Router::new()
@@ -70,6 +70,10 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/admin/users", get(admin::get_all_users))
         .route("/admin/users/:id", patch(admin::update_user_username))
         .route("/admin/users/:id", delete(admin::delete_user))
+        // Character management
+        .route("/admin/characters", get(admin::get_all_characters))
+        .route("/admin/characters/:id", patch(admin::update_character_name))
+        .route("/admin/characters/:id", delete(admin::delete_character))
         // Class management
         .route("/admin/classes", post(admin::create_class))
         .route("/admin/classes/:id", patch(admin::update_class))

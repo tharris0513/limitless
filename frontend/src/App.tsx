@@ -330,6 +330,7 @@ function App() {
                 // Always go to admin menu (or stay if already there)
                 setAdminView('menu');
               }}
+              hideCharacterInfo={true}
             >
               <AdminPanel 
                 onBack={() => setShowAdminPanel(false)} 

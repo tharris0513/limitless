@@ -485,6 +485,113 @@ impl UserRepository {
         })
     }
 
+    // Admin only - get all characters from all users
+    pub async fn get_all_characters(&self) -> Result<Vec<Character>> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("entity_type = :entity_type")
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .send()
+            .await
+            .context("Failed to scan all characters")?;
+
+        let mut characters = Vec::new();
+        for item in result.items() {
+            characters.push(self.parse_character(item)?);
+        }
+
+        Ok(characters)
+    }
+
+    // Admin only - update character name
+    pub async fn update_character_name(&self, character_id: &str, name: &str) -> Result<Character> {
+        // Find the character first to get its user_id for the PK
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("id = :id AND entity_type = :entity_type")
+            .expression_attribute_values(":id", AttributeValue::S(character_id.to_string()))
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .send()
+            .await
+            .context("Failed to find character for update")?;
+
+        if let Some(item) = result.items().first() {
+            let user_id = item
+                .get("user_id")
+                .and_then(|v| v.as_s().ok())
+                .context("Missing user_id")?;
+
+            self.client
+                .update_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .update_expression("SET #name = :name")
+                .expression_attribute_names("#name", "name")
+                .expression_attribute_values(":name", AttributeValue::S(name.to_string()))
+                .send()
+                .await
+                .context("Failed to update character name")?;
+
+            // Fetch and return updated character
+            let updated_result = self
+                .client
+                .get_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .send()
+                .await
+                .context("Failed to fetch updated character")?;
+
+            if let Some(updated_item) = updated_result.item() {
+                return self.parse_character(updated_item);
+            }
+        }
+
+        Err(anyhow::anyhow!("Character not found"))
+    }
+
+    // Admin only - delete character
+    pub async fn delete_character(&self, character_id: &str) -> Result<()> {
+        // Find the character first to get its user_id for the PK
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("id = :id AND entity_type = :entity_type")
+            .expression_attribute_values(":id", AttributeValue::S(character_id.to_string()))
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .send()
+            .await
+            .context("Failed to find character for deletion")?;
+
+        if let Some(item) = result.items().first() {
+            let user_id = item
+                .get("user_id")
+                .and_then(|v| v.as_s().ok())
+                .context("Missing user_id")?;
+
+            self.client
+                .delete_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .send()
+                .await
+                .context("Failed to delete character")?;
+
+            tracing::info!("Deleted character {}", character_id);
+            return Ok(());
+        }
+
+        Err(anyhow::anyhow!("Character not found"))
+    }
+
     // Get a class by ID
     pub async fn get_class(&self, class_id: &str) -> Result<Class> {
         let result = self

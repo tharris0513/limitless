@@ -12,9 +12,10 @@ interface GameLayoutProps {
   onSettingsClick?: () => void;
   isAdmin?: boolean;
   onAdminClick?: () => void;
+  hideCharacterInfo?: boolean;
 }
 
-export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, onLogout, onSettingsClick, isAdmin, onAdminClick }) => {
+export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, onLogout, onSettingsClick, isAdmin, onAdminClick, hideCharacterInfo }) => {
   return (
     <div className={styles.layoutContainer}>
       <header className={styles.header}>
@@ -51,7 +52,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
       </header>
 
       <div className={styles.layoutBody}>
-        {player && player.stats && (
+        {player && player.stats && !hideCharacterInfo && (
           <aside className={styles.sidebar}>
             <div className={styles.sidebarContent}>
               <div className={styles.characterHeader}>
@@ -124,7 +125,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
 
         <main className={styles.mainContent}>{children}</main>
 
-        {player && player.stats && user && (
+        {player && player.stats && user && !hideCharacterInfo && (
           <ChatPanel username={user.username || user.discordName} />
         )}
       </div>

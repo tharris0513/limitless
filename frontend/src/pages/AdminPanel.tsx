@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Users, Database, Shield, Activity, Swords } from 'lucide-react';
+import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog } from 'lucide-react';
 import { ManageUsers } from './ManageUsers';
 import { ManageClasses } from './ManageClasses';
+import { ManageCharacters } from './ManageCharacters';
 import styles from './AdminPanel.module.css';
 
 interface AdminPanelProps {
@@ -11,7 +12,7 @@ interface AdminPanelProps {
   requestedView?: AdminView; // Allow parent to request a specific view
 }
 
-type AdminView = 'menu' | 'users' | 'classes' | 'database' | 'permissions' | 'system';
+type AdminView = 'menu' | 'users' | 'classes' | 'characters' | 'database' | 'permissions' | 'system';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onViewChange, requestedView }) => {
   const [currentView, setCurrentView] = useState<AdminView>('menu');
@@ -21,7 +22,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
     if (requestedView && requestedView !== currentView) {
       setCurrentView(requestedView);
     }
-  }, [requestedView]);
+  }, [requestedView, currentView]);
 
   // Notify parent when view changes
   const handleViewChange = (view: AdminView) => {
@@ -40,6 +41,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
     return <ManageClasses onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
   }
 
+  if (currentView === 'characters') {
+    return <ManageCharacters onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
+  }
+
   // Default menu view
   return (
     <div className={styles.adminContainer}>
@@ -52,36 +57,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
       </div>
       
       <div className={styles.adminContent}>
-        <div className={styles.adminGrid}>
-          <button className={styles.adminActionButton} onClick={() => handleViewChange('users')}>
-            <Users size={32} />
-            <span className={styles.buttonLabel}>Manage Users</span>
-            <span className={styles.buttonDescription}>View and edit user accounts</span>
-          </button>
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>📋 Manage Resources</h2>
+          <div className={styles.adminGrid}>
+            <button className={styles.adminActionButton} onClick={() => handleViewChange('users')}>
+              <Users size={32} />
+              <span className={styles.buttonLabel}>Manage Users</span>
+              <span className={styles.buttonDescription}>View and edit user accounts</span>
+            </button>
 
-          <button className={styles.adminActionButton} onClick={() => handleViewChange('classes')}>
-            <Swords size={32} />
-            <span className={styles.buttonLabel}>Manage Classes</span>
-            <span className={styles.buttonDescription}>Create and edit character classes</span>
-          </button>
+            <button className={styles.adminActionButton} onClick={() => handleViewChange('characters')}>
+              <UserCog size={32} />
+              <span className={styles.buttonLabel}>Manage Characters</span>
+              <span className={styles.buttonDescription}>View and manage all characters</span>
+            </button>
 
-          <button className={styles.adminActionButton}>
-            <Database size={32} />
-            <span className={styles.buttonLabel}>Database Tools</span>
-            <span className={styles.buttonDescription}>Query and manage database</span>
-          </button>
+            <button className={styles.adminActionButton}>
+              <Database size={32} />
+              <span className={styles.buttonLabel}>Database Tools</span>
+              <span className={styles.buttonDescription}>Query and manage database</span>
+            </button>
+          </div>
+        </div>
 
-          <button className={styles.adminActionButton}>
-            <Shield size={32} />
-            <span className={styles.buttonLabel}>Permissions</span>
-            <span className={styles.buttonDescription}>Manage admin roles</span>
-          </button>
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>⚙️ Create Resources</h2>
+          <div className={styles.adminGrid}>
+            <button className={styles.adminActionButton} onClick={() => handleViewChange('classes')}>
+              <Swords size={32} />
+              <span className={styles.buttonLabel}>Manage Classes</span>
+              <span className={styles.buttonDescription}>Create and edit character classes</span>
+            </button>
 
-          <button className={styles.adminActionButton}>
-            <Activity size={32} />
-            <span className={styles.buttonLabel}>System Status</span>
-            <span className={styles.buttonDescription}>View server metrics</span>
-          </button>
+            <button className={styles.adminActionButton}>
+              <Shield size={32} />
+              <span className={styles.buttonLabel}>Permissions</span>
+              <span className={styles.buttonDescription}>Manage admin roles</span>
+            </button>
+
+            <button className={styles.adminActionButton}>
+              <Activity size={32} />
+              <span className={styles.buttonLabel}>System Status</span>
+              <span className={styles.buttonDescription}>View server metrics</span>
+            </button>
+          </div>
         </div>
 
         <div className={styles.warningBox}>

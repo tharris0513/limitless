@@ -2,7 +2,7 @@ use crate::config_export::GameConfigExport;
 use crate::damage_calculator::DamageCalculator;
 use crate::error::AppError;
 use crate::middleware::AdminClaims;
-use crate::models::{Ability, Class, User};
+use crate::models::{Ability, Character, Class, User};
 use crate::repository::UserRepository;
 use axum::{
     extract::{Path, State},
@@ -152,13 +152,16 @@ pub async fn add_class_ability(
         .get("abilityId")
         .and_then(|v| v.as_str())
         .ok_or_else(|| AppError::validation_error("Ability ID is required"))?;
-    
+
     let unlock_level = payload
         .get("unlockLevel")
         .and_then(|v| v.as_i64())
         .ok_or_else(|| AppError::validation_error("Unlock level is required"))?;
 
-    match repo.add_class_ability(&class_id, ability_id, unlock_level).await {
+    match repo
+        .add_class_ability(&class_id, ability_id, unlock_level)
+        .await
+    {
         Ok(()) => Ok(Json(json!({
             "message": "Ability added to class",
             "class_id": class_id,
@@ -199,18 +202,15 @@ pub async fn create_ability(
 ) -> Result<Json<Ability>, AppError> {
     // Validate formulas if present
     if let Some(ref formula) = ability_data.damage_formula {
-        DamageCalculator::validate_formula(formula)
-            .map_err(|e| AppError::BadRequest(e))?;
+        DamageCalculator::validate_formula(formula).map_err(|e| AppError::BadRequest(e))?;
     }
     if let Some(ref formula) = ability_data.heal_formula {
-        DamageCalculator::validate_formula(formula)
-            .map_err(|e| AppError::BadRequest(e))?;
+        DamageCalculator::validate_formula(formula).map_err(|e| AppError::BadRequest(e))?;
     }
     if let Some(ref formula) = ability_data.effect_formula {
-        DamageCalculator::validate_formula(formula)
-            .map_err(|e| AppError::BadRequest(e))?;
+        DamageCalculator::validate_formula(formula).map_err(|e| AppError::BadRequest(e))?;
     }
-    
+
     match repo.create_ability(ability_data).await {
         Ok(ability) => Ok(Json(ability)),
         Err(e) => {
@@ -229,18 +229,15 @@ pub async fn update_ability(
 ) -> Result<Json<Ability>, AppError> {
     // Validate formulas if present
     if let Some(ref formula) = ability_data.damage_formula {
-        DamageCalculator::validate_formula(formula)
-            .map_err(|e| AppError::BadRequest(e))?;
+        DamageCalculator::validate_formula(formula).map_err(|e| AppError::BadRequest(e))?;
     }
     if let Some(ref formula) = ability_data.heal_formula {
-        DamageCalculator::validate_formula(formula)
-            .map_err(|e| AppError::BadRequest(e))?;
+        DamageCalculator::validate_formula(formula).map_err(|e| AppError::BadRequest(e))?;
     }
     if let Some(ref formula) = ability_data.effect_formula {
-        DamageCalculator::validate_formula(formula)
-            .map_err(|e| AppError::BadRequest(e))?;
+        DamageCalculator::validate_formula(formula).map_err(|e| AppError::BadRequest(e))?;
     }
-    
+
     match repo.update_ability(&ability_id, ability_data).await {
         Ok(ability) => Ok(Json(ability)),
         Err(e) => {
@@ -288,7 +285,7 @@ pub async fn export_game_config(
     AdminClaims(claims): AdminClaims,
 ) -> Result<Json<GameConfigExport>, AppError> {
     tracing::info!("Admin {} exporting game configuration", claims.sub);
-    
+
     match repo.export_game_config().await {
         Ok(config) => {
             tracing::info!(
@@ -327,6 +324,74 @@ pub async fn import_game_config(
         }
         Err(e) => {
             tracing::error!("Failed to import game config: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Admin only - get all characters from all users
+pub async fn get_all_characters(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(claims): AdminClaims,
+) -> Result<Json<Vec<Character>>, AppError> {
+    tracing::info!("Admin {} requested all characters", claims.sub);
+
+    match repo.get_all_characters().await {
+        Ok(characters) => {
+            tracing::info!("Returning {} characters to admin", characters.len());
+            Ok(Json(characters))
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch all characters: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Admin only - update character name
+pub async fn update_character_name(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+    Path(character_id): Path<String>,
+    Json(payload): Json<Value>,
+) -> Result<Json<Character>, AppError> {
+    let name = payload
+        .get("name")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::validation_error("Character name is required"))?;
+
+    // Validate name
+    if name.trim().is_empty() {
+        return Err(AppError::validation_error("Character name cannot be empty"));
+    }
+    if name.len() < 2 || name.len() > 30 {
+        return Err(AppError::validation_error(
+            "Character name must be between 2 and 30 characters",
+        ));
+    }
+
+    match repo.update_character_name(&character_id, name).await {
+        Ok(character) => Ok(Json(character)),
+        Err(e) => {
+            tracing::error!("Failed to update character name: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Admin only - delete character
+pub async fn delete_character(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+    Path(character_id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    match repo.delete_character(&character_id).await {
+        Ok(()) => Ok(Json(json!({
+            "message": "Character deleted successfully",
+            "character_id": character_id
+        }))),
+        Err(e) => {
+            tracing::error!("Failed to delete character: {:?}", e);
             Err(AppError::from(e))
         }
     }

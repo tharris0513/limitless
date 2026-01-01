@@ -21,22 +21,54 @@ body {
   padding: 0;
 }
 
-/* Custom scrollbar for CRT theme */
+/* Custom scrollbar for CRT theme - Auto-hide */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+*:hover,
+*:focus,
+*:active {
+  scrollbar-color: rgba(0, 255, 0, 0.3) rgba(0, 0, 0, 0.8);
+}
+
+/* Webkit browsers scrollbar */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid #00ff00;
+  background: transparent;
+  transition: background 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+/* Show scrollbar on hover or when scrolling */
+*:hover::-webkit-scrollbar-track,
+*:focus::-webkit-scrollbar-track,
+*:active::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 255, 0, 0.2);
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus::-webkit-scrollbar-thumb,
+*:active::-webkit-scrollbar-thumb {
   background: rgba(0, 255, 0, 0.3);
   border: 1px solid #00ff00;
 }
 
-::-webkit-scrollbar-thumb:hover {
+*:hover::-webkit-scrollbar-thumb:hover,
+*:focus::-webkit-scrollbar-thumb:hover,
+*:active::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 255, 0, 0.5);
 }
 
