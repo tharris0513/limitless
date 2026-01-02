@@ -45,28 +45,17 @@ export const GamePage: React.FC<GamePageProps> = () => {
         {loading ? (
           <div>Loading locations...</div>
         ) : locations.length > 0 ? (
-          locations.map((location, index) => (
+          locations.map((location) => (
             <div
               key={location.id}
               className={styles.locationCard}
               onClick={() => handleLocationVisit(location.id)}
             >
-              {index === 0 ? (
-                <>
-                  <div className={styles.tierLabel}>Tier 1</div>
-                  <div className={styles.locationTitle}>
-                    The Mistlands
-                  </div>
-                  <div className={styles.locationDesc}>...danger lurks between the trees...</div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.locationName}>
-                    {location.name}
-                  </div>
-                  <div className={styles.locationDesc}>{location.description}</div>
-                </>
-              )}
+              <div className={styles.tierLabel}>TIER {location.tier}</div>
+              <div className={styles.locationTitle}>
+                {location.name}
+              </div>
+              <div className={styles.locationDesc}>{location.description}</div>
             </div>
           ))
         ) : (

@@ -11,11 +11,13 @@ interface ManageLocationsProps {
 
 export default function ManageLocations({ onBack }: ManageLocationsProps) {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [_creatures, setCreatures] = useState<Creature[]>([]);
+  const [creatures, setCreatures] = useState<Creature[]>([]);
   const [_adventures, setAdventures] = useState<Adventure[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [managingCreatures, setManagingCreatures] = useState<string | null>(null);
+  const [locationCreatures, setLocationCreatures] = useState<{ [key: string]: string[] }>({});
   const [formData, setFormData] = useState<Partial<Location>>({
     name: '',
     description: '',
@@ -40,6 +42,18 @@ export default function ManageLocations({ onBack }: ManageLocationsProps) {
       setLocations(locData);
       setCreatures(creatData);
       setAdventures(advData);
+      
+      // Load creatures for each location
+      const creatureMap: { [key: string]: string[] } = {};
+      for (const loc of locData) {
+        try {
+          const { creatures: locCreatures } = await GameAPI.adminGetLocationCreatures(loc.id);
+          creatureMap[loc.id] = locCreatures.map(([id]) => id);
+        } catch {
+          creatureMap[loc.id] = [];
+        }
+      }
+      setLocationCreatures(creatureMap);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       alert('Failed to load data');
@@ -121,6 +135,34 @@ export default function ManageLocations({ onBack }: ManageLocationsProps) {
   const cancelEdit = () => {
     setEditing(null);
     resetForm();
+  };
+
+  const handleAddCreature = async (locationId: string, creatureId: string) => {
+    try {
+      await GameAPI.adminAddCreatureToLocation(locationId, creatureId, 1.0);
+      setLocationCreatures(prev => ({
+        ...prev,
+        [locationId]: [...(prev[locationId] || []), creatureId]
+      }));
+      alert('Creature added to location!');
+    } catch (error) {
+      console.error('Failed to add creature:', error);
+      alert('Failed to add creature');
+    }
+  };
+
+  const handleRemoveCreature = async (locationId: string, creatureId: string) => {
+    try {
+      await GameAPI.adminRemoveCreatureFromLocation(locationId, creatureId);
+      setLocationCreatures(prev => ({
+        ...prev,
+        [locationId]: (prev[locationId] || []).filter(id => id !== creatureId)
+      }));
+      alert('Creature removed from location!');
+    } catch (error) {
+      console.error('Failed to remove creature:', error);
+      alert('Failed to remove creature');
+    }
   };
 
   if (loading) {
@@ -312,9 +354,66 @@ export default function ManageLocations({ onBack }: ManageLocationsProps) {
                   </div>
                 </div>
                 <p className={styles.description}>{location.description}</p>
-                <div className={styles.info}>
-                  <span>📍 Manage creatures and adventures (coming soon)</span>
-                </div>
+                
+                {managingCreatures === location.id ? (
+                  <div className={styles.creatureManagement}>
+                    <h4 className={styles.managementTitle}>Manage Creatures</h4>
+                    
+                    <div className={styles.assignedCreatures}>
+                      <strong>Assigned Creatures:</strong>
+                      {(locationCreatures[location.id] || []).length > 0 ? (
+                        <ul className={styles.creatureList}>
+                          {(locationCreatures[location.id] || []).map(creatureId => {
+                            const creature = creatures.find(c => c.id === creatureId);
+                            return creature ? (
+                              <li key={creatureId} className={styles.creatureItem}>
+                                <span>{creature.name} (Lvl {creature.level})</span>
+                                <button 
+                                  onClick={() => handleRemoveCreature(location.id, creatureId)}
+                                  className={styles.removeCreatureBtn}
+                                >Remove</button>
+                              </li>
+                            ) : null;
+                          })}
+                        </ul>
+                      ) : (
+                        <p className={styles.noCreatures}>No creatures assigned</p>
+                      )}
+                    </div>
+
+                    <div className={styles.availableCreatures}>
+                      <strong>Add Creatures:</strong>
+                      <div className={styles.creatureGrid}>
+                        {creatures
+                          .filter(c => !(locationCreatures[location.id] || []).includes(c.id))
+                          .map(creature => (
+                            <button
+                              key={creature.id}
+                              onClick={() => handleAddCreature(location.id, creature.id)}
+                              className={styles.addCreatureBtn}
+                            >
+                              {creature.name} (Lvl {creature.level})
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setManagingCreatures(null)}
+                      className={styles.doneButton}
+                    >Done</button>
+                  </div>
+                ) : (
+                  <div className={styles.info}>
+                    <button 
+                      onClick={() => setManagingCreatures(location.id)}
+                      className={styles.manageButton}
+                    >
+                      📍 Manage Creatures ({(locationCreatures[location.id] || []).length} assigned)
+                    </button>
+                  </div>
+                )}
+                
                 <div className={styles.actions}>
                   <button onClick={() => startEdit(location)} className={styles.editButton}>Edit</button>
                   <button onClick={() => handleDelete(location.id)} className={styles.deleteButton}>Delete</button>

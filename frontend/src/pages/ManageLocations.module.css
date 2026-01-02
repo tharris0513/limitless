@@ -367,3 +367,150 @@
   padding: 4rem 2rem;
   color: #808080;
 }
+
+.creatureManagement {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(0, 255, 0, 0.3);
+  border-radius: 0;
+}
+
+.managementTitle {
+  margin: 0 0 1rem 0;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 1rem;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.assignedCreatures,
+.availableCreatures {
+  margin-bottom: 1rem;
+}
+
+.assignedCreatures strong,
+.availableCreatures strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  text-shadow: 0 0 3px #00ff00;
+}
+
+.creatureList {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.creatureItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  margin: 0.25rem 0;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #00ff00;
+  border-radius: 0;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+}
+
+.removeCreatureBtn {
+  padding: 0.25rem 0.75rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff0000;
+  border: 2px solid #ff0000;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #ff0000;
+}
+
+.removeCreatureBtn:hover {
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+  text-shadow: 0 0 10px #ff0000;
+}
+
+.noCreatures {
+  color: #888;
+  font-family: 'Courier New', monospace;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.creatureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.addCreatureBtn {
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.addCreatureBtn:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 10px #00ff00;
+}
+
+.doneButton {
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background: rgba(0, 255, 0, 0.1);
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.doneButton:hover {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 10px #00ff00;
+}
+
+.manageButton {
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 0 5px #00ff00;
+  width: 100%;
+}
+
+.manageButton:hover {
+  background: rgba(0, 255, 0, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 10px #00ff00;
+}
