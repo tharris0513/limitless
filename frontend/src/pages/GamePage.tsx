@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Location, Character } from '../types/game';
 import GameAPI from '../services/api';
-import { Swords, MapPin } from 'lucide-react';
 import styles from './GamePage.module.css';
 
 interface GamePageProps {
@@ -9,9 +8,9 @@ interface GamePageProps {
   onCharacterUpdate?: (character: Character) => void;
 }
 
-export const GamePage: React.FC<GamePageProps> = ({ character }) => {
+export const GamePage: React.FC<GamePageProps> = () => {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [adventures] = useState<any[]>([]); // Will be used when adventure system is implemented
+  const [_adventures] = useState<any[]>([]); // Will be used when adventure system is implemented
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,22 +27,6 @@ export const GamePage: React.FC<GamePageProps> = ({ character }) => {
     } catch (error) {
       console.error('Failed to load game data:', error);
       setError('Failed to load game locations. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdventure = async (adventureId: string) => {
-    try {
-      setLoading(true);
-      // const result = await GameAPI.completeAdventure(adventureId);
-      // onPlayerUpdate(result.player);
-      // alert(`Adventure completed! You gained ${result.rewards.experience} XP`);
-      console.log('Adventure:', adventureId);
-      alert('Adventure system coming soon!');
-    } catch (error) {
-      console.error('Adventure failed:', error);
-      alert('Adventure failed!');
     } finally {
       setLoading(false);
     }
