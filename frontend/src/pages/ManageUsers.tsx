@@ -204,8 +204,18 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
         }
       );
 
-      // Update local state
-      setUsers(users.map(u => u.id === user.id ? response.data : u));
+      // Transform backend response and update local state
+      const updatedUser = {
+        id: response.data.id,
+        discordId: response.data.discord_id,
+        discordName: response.data.discord_name,
+        username: response.data.username,
+        dateOfBirth: response.data.date_of_birth,
+        admin: response.data.admin,
+        banned: response.data.banned,
+        createdAt: response.data.created_at,
+      };
+      setUsers(users.map(u => u.id === user.id ? updatedUser : u));
       setOpenDropdown(null);
     } catch (err) {
       console.error('Failed to ban user:', err);
@@ -231,8 +241,18 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
         }
       );
 
-      // Update local state
-      setUsers(users.map(u => u.id === user.id ? response.data : u));
+      // Transform backend response and update local state
+      const updatedUser = {
+        id: response.data.id,
+        discordId: response.data.discord_id,
+        discordName: response.data.discord_name,
+        username: response.data.username,
+        dateOfBirth: response.data.date_of_birth,
+        admin: response.data.admin,
+        banned: response.data.banned,
+        createdAt: response.data.created_at,
+      };
+      setUsers(users.map(u => u.id === user.id ? updatedUser : u));
       setOpenDropdown(null);
     } catch (err) {
       console.error('Failed to unban user:', err);
