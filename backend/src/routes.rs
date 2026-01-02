@@ -56,6 +56,14 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             patch(character::update_character_last_played),
         )
         .route(
+            "/characters/:id/state",
+            post(character::save_character_game_state),
+        )
+        .route(
+            "/characters/:id/state",
+            delete(character::clear_character_game_state),
+        )
+        .route(
             "/characters/:id/abilities",
             get(character::get_character_abilities),
         )

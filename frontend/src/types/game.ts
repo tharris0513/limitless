@@ -27,6 +27,7 @@ export interface Character {
   inventory: InventoryItem[];
   equipment: Equipment;
   location: string;
+  gameState?: string; // JSON string storing current game state
   createdAt: string;
   lastPlayed: string;
 }

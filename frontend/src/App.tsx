@@ -6,6 +6,7 @@ import { GameLayout } from './components/GameLayout';
 import { GlobalLoadingIndicator } from './components/GlobalLoadingIndicator';
 import { ErrorScreen, LoadingOverlay } from './components/LoadingStates';
 import { LoadingProvider } from './contexts/LoadingContext';
+import { GameStateProvider } from './contexts/GameStateContext';
 import { AccountSetup } from './pages/AccountSetup';
 import { AdminPanel } from './pages/AdminPanel';
 import AuthCallback from './pages/AuthCallback';
@@ -398,10 +399,12 @@ function App() {
               isAdmin={user?.admin}
               onAdminClick={() => setShowAdminPanel(true)}
             >
-              <GamePage
-                character={selectedCharacter}
-                onCharacterUpdate={handleCharacterUpdate}
-              />
+              <GameStateProvider character={selectedCharacter}>
+                <GamePage
+                  character={selectedCharacter}
+                  onCharacterUpdate={handleCharacterUpdate}
+                />
+              </GameStateProvider>
             </GameLayout>
           )
         } />

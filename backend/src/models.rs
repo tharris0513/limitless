@@ -47,6 +47,9 @@ pub struct Character {
     pub experience_to_next: i64,
     pub stats: CharacterStats, // Will be loaded from character_stats table
     pub location: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "gameState")]
+    pub game_state: Option<String>, // JSON string storing current game state
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "lastPlayed")]
