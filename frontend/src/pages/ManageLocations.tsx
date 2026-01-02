@@ -11,8 +11,8 @@ interface ManageLocationsProps {
 
 export default function ManageLocations({ onBack }: ManageLocationsProps) {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [creatures, setCreatures] = useState<Creature[]>([]);
-  const [adventures, setAdventures] = useState<Adventure[]>([]);
+  const [_creatures, setCreatures] = useState<Creature[]>([]);
+  const [_adventures, setAdventures] = useState<Adventure[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
