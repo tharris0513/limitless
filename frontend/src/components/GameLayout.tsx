@@ -20,7 +20,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
     <div className={styles.layoutContainer}>
       <header className={styles.header}>
         <div className={styles.headerContent}>
-          <h1 className={styles.gameTitle}>🏰 Limitless</h1>
+          <h1 className={styles.gameTitle}>Limitless</h1>
           
           {onLogout && (
             <div className={styles.headerButtons}>
