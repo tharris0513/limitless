@@ -129,15 +129,70 @@ export const Rarity = {
 
 export type Rarity = (typeof Rarity)[keyof typeof Rarity];
 
+// Location represents a game location/area
 export interface Location {
   id: string;
   name: string;
   description: string;
-  adventures: Adventure[];
+  minLevel: number;
+  maxLevel: number;
+  tier: number;
+  enabled: boolean;
+  createdAt: string;
+}
+
+// Creature represents an enemy or NPC
+export interface Creature {
+  id: string;
+  name: string;
+  description: string;
+  level: number;
+  health: number;
+  might: number;
+  defense: number;
+  magic: number;
+  resistance: number;
+  agility: number;
+  experienceReward: number;
+  creatureType: string; // 'beast', 'undead', 'humanoid', 'elemental', 'dragon', 'demon', 'horror'
+  createdAt: string;
+}
+
+// Adventure represents a noncombat encounter/event
+export interface Adventure {
+  id: string;
+  name: string;
+  description: string;
+  requiredLevel: number;
+  adventureType: string; // 'puzzle', 'dialogue', 'exploration', etc.
+  experienceReward: number;
+  createdAt: string;
+}
+
+// LocationCreature associates creatures with locations
+export interface LocationCreature {
+  locationId: string;
+  creatureId: string;
+  spawnRate: number; // 1-100
+}
+
+// LocationAdventure associates adventures with locations
+export interface LocationAdventure {
+  locationId: string;
+  adventureId: string;
+  spawnRate: number; // 1-100
+}
+
+// Legacy types for backward compatibility
+export interface LegacyLocation {
+  id: string;
+  name: string;
+  description: string;
+  adventures: LegacyAdventure[];
   shops: Shop[];
 }
 
-export interface Adventure {
+export interface LegacyAdventure {
   id: string;
   name: string;
   description: string;

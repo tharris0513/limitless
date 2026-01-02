@@ -149,6 +149,110 @@ pub struct OAuthUrlResponse {
     pub state: String,
 }
 
+// Location represents a game location/area
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Location {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "minLevel")]
+    pub min_level: i64,
+    #[serde(rename = "maxLevel")]
+    pub max_level: i64,
+    pub tier: i64,
+    pub enabled: bool,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+}
+// DTO for creating a location (no id or createdAt)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateLocationRequest {
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "minLevel")]
+    pub min_level: i64,
+    #[serde(rename = "maxLevel")]
+    pub max_level: i64,
+    pub tier: i64,
+    pub enabled: bool,
+}
+// Creature represents an enemy or NPC that can be encountered
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Creature {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub level: i64,
+    pub health: i64,
+    pub might: i64,
+    pub defense: i64,
+    pub magic: i64,
+    pub resistance: i64,
+    pub agility: i64,
+    #[serde(rename = "experienceReward")]
+    pub experience_reward: i64,
+    #[serde(rename = "creatureType")]
+    pub creature_type: String, // 'beast', 'undead', 'humanoid', 'elemental', 'dragon', 'demon', 'horror'
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+}
+
+// Request DTO for creating a creature (without id and createdAt)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateCreatureRequest {
+    pub name: String,
+    pub description: String,
+    pub level: i64,
+    pub health: i64,
+    pub might: i64,
+    pub defense: i64,
+    pub magic: i64,
+    pub resistance: i64,
+    pub agility: i64,
+    #[serde(rename = "experienceReward")]
+    pub experience_reward: i64,
+    #[serde(rename = "creatureType")]
+    pub creature_type: String,
+}
+
+// Adventure represents a noncombat encounter/event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Adventure {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "requiredLevel")]
+    pub required_level: i64,
+    #[serde(rename = "adventureType")]
+    pub adventure_type: String, // 'puzzle', 'dialogue', 'exploration', etc.
+    #[serde(rename = "experienceReward")]
+    pub experience_reward: i64,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+}
+
+// LocationCreature associates creatures with locations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocationCreature {
+    #[serde(rename = "locationId")]
+    pub location_id: String,
+    #[serde(rename = "creatureId")]
+    pub creature_id: String,
+    #[serde(rename = "spawnRate")]
+    pub spawn_rate: i64, // 1-100, probability of encountering this creature
+}
+
+// LocationAdventure associates adventures with locations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LocationAdventure {
+    #[serde(rename = "locationId")]
+    pub location_id: String,
+    #[serde(rename = "adventureId")]
+    pub adventure_id: String,
+    #[serde(rename = "spawnRate")]
+    pub spawn_rate: i64, // 1-100, probability of encountering this adventure
+}
+
 #[derive(Debug, Serialize)]
 pub struct AuthResponse {
     pub token: String,

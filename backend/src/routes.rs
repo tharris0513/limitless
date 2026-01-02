@@ -108,6 +108,45 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Config export/import
         .route("/admin/config/export", get(admin::export_game_config))
         .route("/admin/config/import", post(admin::import_game_config))
+        // Location management
+        .route("/admin/locations", get(admin::get_all_locations))
+        .route("/admin/locations", post(admin::create_location))
+        .route("/admin/locations/:id", patch(admin::update_location))
+        .route("/admin/locations/:id", delete(admin::delete_location))
+        .route(
+            "/admin/locations/:location_id/creatures/:creature_id",
+            post(admin::add_creature_to_location),
+        )
+        .route(
+            "/admin/locations/:location_id/creatures/:creature_id",
+            delete(admin::remove_creature_from_location),
+        )
+        .route(
+            "/admin/locations/:location_id/adventures/:adventure_id",
+            post(admin::add_adventure_to_location),
+        )
+        .route(
+            "/admin/locations/:location_id/adventures/:adventure_id",
+            delete(admin::remove_adventure_from_location),
+        )
+        .route(
+            "/admin/locations/:location_id/creatures",
+            get(admin::get_location_creatures),
+        )
+        .route(
+            "/admin/locations/:location_id/adventures",
+            get(admin::get_location_adventures),
+        )
+        // Creature management
+        .route("/admin/creatures", get(admin::get_all_creatures))
+        .route("/admin/creatures", post(admin::create_creature))
+        .route("/admin/creatures/:id", patch(admin::update_creature))
+        .route("/admin/creatures/:id", delete(admin::delete_creature))
+        // Adventure management
+        .route("/admin/adventures", get(admin::get_all_adventures))
+        .route("/admin/adventures", post(admin::create_adventure))
+        .route("/admin/adventures/:id", patch(admin::update_adventure))
+        .route("/admin/adventures/:id", delete(admin::delete_adventure))
         .layer(middleware::from_fn(jwt_auth_middleware));
 
     Router::new()

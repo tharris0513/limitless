@@ -337,6 +337,136 @@ export class GameAPI {
   static async adminImportConfig(configData: any): Promise<void> {
     await api.post('/admin/config/import', configData);
   }
+
+  // ===== LOCATION MANAGEMENT =====
+  static async adminGetAllLocations(): Promise<Location[]> {
+    const response = await api.get('/admin/locations');
+    return response.data;
+  }
+
+  static async adminCreateLocation(
+    locationData: Partial<Location>
+  ): Promise<Location> {
+    const response = await api.post('/admin/locations', locationData);
+    return response.data;
+  }
+
+  static async adminUpdateLocation(
+    locationId: string,
+    locationData: Partial<Location>
+  ): Promise<Location> {
+    const response = await api.patch(
+      `/admin/locations/${locationId}`,
+      locationData
+    );
+    return response.data;
+  }
+
+  static async adminDeleteLocation(locationId: string): Promise<void> {
+    await api.delete(`/admin/locations/${locationId}`);
+  }
+
+  static async adminAddCreatureToLocation(
+    locationId: string,
+    creatureId: string,
+    spawnRate: number
+  ): Promise<void> {
+    await api.post(`/admin/locations/${locationId}/creatures/${creatureId}`, {
+      spawnRate,
+    });
+  }
+
+  static async adminRemoveCreatureFromLocation(
+    locationId: string,
+    creatureId: string
+  ): Promise<void> {
+    await api.delete(`/admin/locations/${locationId}/creatures/${creatureId}`);
+  }
+
+  static async adminAddAdventureToLocation(
+    locationId: string,
+    adventureId: string,
+    spawnRate: number
+  ): Promise<void> {
+    await api.post(`/admin/locations/${locationId}/adventures/${adventureId}`, {
+      spawnRate,
+    });
+  }
+
+  static async adminRemoveAdventureFromLocation(
+    locationId: string,
+    adventureId: string
+  ): Promise<void> {
+    await api.delete(
+      `/admin/locations/${locationId}/adventures/${adventureId}`
+    );
+  }
+
+  static async adminGetLocationCreatures(
+    locationId: string
+  ): Promise<{ creatures: [string, number][] }> {
+    const response = await api.get(`/admin/locations/${locationId}/creatures`);
+    return response.data;
+  }
+
+  static async adminGetLocationAdventures(
+    locationId: string
+  ): Promise<{ adventures: [string, number][] }> {
+    const response = await api.get(`/admin/locations/${locationId}/adventures`);
+    return response.data;
+  }
+
+  // ===== CREATURE MANAGEMENT =====
+  static async adminGetAllCreatures(): Promise<any[]> {
+    const response = await api.get('/admin/creatures');
+    return response.data;
+  }
+
+  static async adminCreateCreature(creatureData: any): Promise<any> {
+    const response = await api.post('/admin/creatures', creatureData);
+    return response.data;
+  }
+
+  static async adminUpdateCreature(
+    creatureId: string,
+    creatureData: any
+  ): Promise<any> {
+    const response = await api.patch(
+      `/admin/creatures/${creatureId}`,
+      creatureData
+    );
+    return response.data;
+  }
+
+  static async adminDeleteCreature(creatureId: string): Promise<void> {
+    await api.delete(`/admin/creatures/${creatureId}`);
+  }
+
+  // ===== ADVENTURE MANAGEMENT =====
+  static async adminGetAllAdventures(): Promise<any[]> {
+    const response = await api.get('/admin/adventures');
+    return response.data;
+  }
+
+  static async adminCreateAdventure(adventureData: any): Promise<any> {
+    const response = await api.post('/admin/adventures', adventureData);
+    return response.data;
+  }
+
+  static async adminUpdateAdventure(
+    adventureId: string,
+    adventureData: any
+  ): Promise<any> {
+    const response = await api.patch(
+      `/admin/adventures/${adventureId}`,
+      adventureData
+    );
+    return response.data;
+  }
+
+  static async adminDeleteAdventure(adventureId: string): Promise<void> {
+    await api.delete(`/admin/adventures/${adventureId}`);
+  }
 }
 
 export default GameAPI;

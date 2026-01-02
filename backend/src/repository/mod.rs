@@ -1,16 +1,22 @@
 use aws_sdk_dynamodb::Client as DynamoDbClient;
 
 // Include all the repository modules
-#[path = "user.rs"]
-mod user;
+#[path = "ability.rs"]
+mod ability;
+#[path = "adventure.rs"]
+mod adventure;
 #[path = "character.rs"]
 mod character;
 #[path = "class.rs"]
 mod class;
-#[path = "ability.rs"]
-mod ability;
 #[path = "config.rs"]
 mod config;
+#[path = "creature.rs"]
+mod creature;
+#[path = "location.rs"]
+mod location;
+#[path = "user.rs"]
+mod user;
 
 pub struct UserRepository {
     pub client: DynamoDbClient,
