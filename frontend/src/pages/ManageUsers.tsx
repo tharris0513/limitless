@@ -47,6 +47,7 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
           username: user.username,
           dateOfBirth: user.date_of_birth,
           admin: user.admin,
+          banned: user.banned || false,
           createdAt: user.created_at,
         }));
         setUsers(transformedUsers);
