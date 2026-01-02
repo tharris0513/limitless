@@ -556,6 +556,63 @@ impl UserRepository {
         Err(anyhow::anyhow!("Character not found"))
     }
 
+    // Admin only - update character adventures
+    pub async fn update_character_adventures(
+        &self,
+        character_id: &str,
+        adventures: i64,
+    ) -> Result<Character> {
+        // Find the character first to get its user_id for the PK
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("id = :id AND entity_type = :entity_type")
+            .expression_attribute_values(":id", AttributeValue::S(character_id.to_string()))
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .send()
+            .await
+            .context("Failed to find character for update")?;
+
+        if let Some(item) = result.items().first() {
+            let user_id = item
+                .get("user_id")
+                .and_then(|v| v.as_s().ok())
+                .context("Missing user_id")?;
+
+            self.client
+                .update_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .update_expression("SET adventures = :adventures")
+                .expression_attribute_values(
+                    ":adventures",
+                    AttributeValue::N(adventures.to_string()),
+                )
+                .send()
+                .await
+                .context("Failed to update character adventures")?;
+
+            // Fetch and return updated character
+            let updated_result = self
+                .client
+                .get_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .send()
+                .await
+                .context("Failed to fetch updated character")?;
+
+            if let Some(updated_item) = updated_result.item() {
+                return self.parse_character(updated_item);
+            }
+        }
+
+        Err(anyhow::anyhow!("Character not found"))
+    }
+
     // Admin only - delete character
     pub async fn delete_character(&self, character_id: &str) -> Result<()> {
         // Find the character first to get its user_id for the PK

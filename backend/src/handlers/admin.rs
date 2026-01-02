@@ -379,6 +379,32 @@ pub async fn update_character_name(
     }
 }
 
+// Admin only - update character adventures
+pub async fn update_character_adventures(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+    Path(character_id): Path<String>,
+    Json(payload): Json<Value>,
+) -> Result<Json<Character>, AppError> {
+    let adventures = payload
+        .get("adventures")
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| AppError::validation_error("Adventures count is required"))?;
+
+    // Validate adventures count
+    if adventures < 0 {
+        return Err(AppError::validation_error("Adventures count cannot be negative"));
+    }
+
+    match repo.update_character_adventures(&character_id, adventures).await {
+        Ok(character) => Ok(Json(character)),
+        Err(e) => {
+            tracing::error!("Failed to update character adventures: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
 // Admin only - delete character
 pub async fn delete_character(
     State(repo): State<Arc<UserRepository>>,

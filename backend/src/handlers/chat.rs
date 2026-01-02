@@ -94,7 +94,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<ChatState>) {
                             }
                         }
                     }
-                    Message::Ping(payload) => {
+                    Message::Ping(_) => {
                         tracing::debug!("Received ping");
                         // Pong is automatically sent by axum
                     }

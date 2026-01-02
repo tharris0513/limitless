@@ -1,6 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, User as UserIcon, ChevronDown, Edit, Trash2, Sword } from 'lucide-react';
+import {
+  ArrowLeft,
+  User as UserIcon,
+  ChevronDown,
+  Edit,
+  Trash2,
+  Sword,
+  Swords,
+} from 'lucide-react';
 import axios from 'axios';
 import styles from './ManageCharacters.module.css';
 
@@ -25,6 +33,7 @@ interface Character {
   };
   createdAt: string;
   lastPlayed: string;
+  adventures: number;
 }
 
 interface User {
@@ -38,14 +47,19 @@ interface ManageCharactersProps {
   onLogout?: () => void;
 }
 
-export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) => {
+export const ManageCharacters: React.FC<ManageCharactersProps> = ({
+  onBack,
+}) => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [users, setUsers] = useState<Map<string, User>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
@@ -54,7 +68,8 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
         setLoading(true);
         setError(null);
         const token = localStorage.getItem('authToken');
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+        const API_BASE_URL =
+          import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
         // First, get all users
         const usersResponse = await axios.get(`${API_BASE_URL}/admin/users`, {
@@ -75,25 +90,29 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
         setUsers(usersMap);
 
         // Get all characters
-        const charactersResponse = await axios.get(`${API_BASE_URL}/admin/characters`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        
-        const transformedCharacters = charactersResponse.data.map((char: any) => ({
-          id: char.id,
-          userId: char.userId || char.user_id,
-          name: char.name,
-          classId: char.classId || char.class_id,
-          level: char.level,
-          experience: char.experience,
-          experienceToNext: char.experienceToNext || char.experience_to_next,
-          stats: char.stats,
-          createdAt: char.createdAt || char.created_at,
-          lastPlayed: char.lastPlayed || char.last_played,
-        }));
+        const charactersResponse = await axios.get(
+          `${API_BASE_URL}/admin/characters`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        const transformedCharacters = charactersResponse.data.map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (char: any) => ({
+            id: char.id,
+            userId: char.userId || char.user_id,
+            name: char.name,
+            classId: char.classId || char.class_id,
+            level: char.level,
+            experience: char.experience,
+            experienceToNext: char.experienceToNext || char.experience_to_next,
+            stats: char.stats,
+            createdAt: char.createdAt || char.created_at,
+            lastPlayed: char.lastPlayed || char.last_played,
+          })
+        );
 
         setCharacters(transformedCharacters);
       } catch (err) {
@@ -112,7 +131,10 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
   }, []);
 
   // Handle dropdown toggle with positioning
-  const handleDropdownToggle = (characterId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleDropdownToggle = (
+    characterId: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
     if (openDropdown === characterId) {
       setOpenDropdown(null);
       setDropdownPosition(null);
@@ -151,14 +173,18 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
   }, [openDropdown]);
 
   const handleEditCharacter = async (character: Character) => {
-    const newName = prompt(`Enter new name for ${character.name}:`, character.name);
+    const newName = prompt(
+      `Enter new name for ${character.name}:`,
+      character.name
+    );
     if (!newName || newName === character.name) return;
 
     try {
       setActionLoading(true);
       const token = localStorage.getItem('authToken');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-      
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
       await axios.patch(
         `${API_BASE_URL}/admin/characters/${character.id}`,
         { name: newName },
@@ -169,7 +195,11 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
         }
       );
 
-      setCharacters(characters.map(c => c.id === character.id ? { ...c, name: newName } : c));
+      setCharacters(
+        characters.map(c =>
+          c.id === character.id ? { ...c, name: newName } : c
+        )
+      );
       setOpenDropdown(null);
     } catch (err) {
       console.error('Failed to update character:', err);
@@ -179,27 +209,79 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
     }
   };
 
-  const handleDeleteCharacter = async (character: Character) => {
-    const user = users.get(character.userId);
-    const userName = user?.username || user?.discordName || 'Unknown User';
-    
-    if (!confirm(`Are you sure you want to delete character "${character.name}" (owned by ${userName})? This action cannot be undone.`)) {
+  const handleSetAdventures = async (character: Character) => {
+    const adventuresInput = prompt(
+      `Enter number of adventures for ${character.name} (current: ${character.adventures}):`,
+      character.adventures.toString()
+    );
+
+    if (
+      !adventuresInput ||
+      adventuresInput === character.adventures.toString()
+    )
+      return;
+
+    const adventures = parseInt(adventuresInput, 10);
+    if (isNaN(adventures) || adventures < 0) {
+      alert('Please enter a valid positive number');
       return;
     }
 
     try {
       setActionLoading(true);
       const token = localStorage.getItem('authToken');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-      
-      await axios.delete(
-        `${API_BASE_URL}/admin/characters/${character.id}`,
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+      await axios.patch(
+        `${API_BASE_URL}/admin/characters/${character.id}/adventures`,
+        { adventures },
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
+
+      setCharacters(
+        characters.map(c =>
+          c.id === character.id
+            ? { ...c, stats: { ...c.stats, adventures } }
+            : c
+        )
+      );
+      setOpenDropdown(null);
+    } catch (err) {
+      console.error('Failed to update adventures:', err);
+      alert('Failed to update adventures count');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteCharacter = async (character: Character) => {
+    const user = users.get(character.userId);
+    const userName = user?.username || user?.discordName || 'Unknown User';
+
+    if (
+      !confirm(
+        `Are you sure you want to delete character "${character.name}" (owned by ${userName})? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+      await axios.delete(`${API_BASE_URL}/admin/characters/${character.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       setCharacters(characters.filter(c => c.id !== character.id));
       setOpenDropdown(null);
@@ -244,9 +326,11 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
           <div className={styles.tableContainer}>
             <div className={styles.tableHeader}>
               <div className={styles.statsBar}>
-                Total Characters: <span className={styles.highlight}>{characters.length}</span>
+                Total Characters:{' '}
+                <span className={styles.highlight}>{characters.length}</span>
                 {' | '}
-                Unique Users: <span className={styles.highlight}>{users.size}</span>
+                Unique Users:{' '}
+                <span className={styles.highlight}>{users.size}</span>
               </div>
             </div>
 
@@ -264,7 +348,7 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
                 </tr>
               </thead>
               <tbody>
-                {characters.map((character) => (
+                {characters.map(character => (
                   <tr key={character.id}>
                     <td>
                       <div className={styles.nameCell}>
@@ -280,7 +364,9 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
                     </td>
                     <td className={styles.classCell}>{character.classId}</td>
                     <td className={styles.levelCell}>
-                      <span className={styles.levelBadge}>Lv {character.level}</span>
+                      <span className={styles.levelBadge}>
+                        Lv {character.level}
+                      </span>
                     </td>
                     <td className={styles.statCell}>
                       {character.stats.health}/{character.stats.maxHealth}
@@ -290,18 +376,21 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
                     </td>
                     <td className={styles.dateCell}>
                       {character.lastPlayed
-                        ? new Date(character.lastPlayed).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })
+                        ? new Date(character.lastPlayed).toLocaleDateString(
+                            'en-US',
+                            {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            }
+                          )
                         : 'Never'}
                     </td>
                     <td className={styles.actionsCell}>
                       <div className={styles.actionsDropdown}>
                         <button
                           className={styles.actionsButton}
-                          onClick={(e) => handleDropdownToggle(character.id, e)}
+                          onClick={e => handleDropdownToggle(character.id, e)}
                           disabled={actionLoading}
                         >
                           Actions <ChevronDown size={14} />
@@ -323,41 +412,54 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({ onBack }) =>
       </div>
 
       {/* Render dropdown using portal */}
-      {openDropdown && dropdownPosition && createPortal(
-        <div
-          id="character-actions-dropdown"
-          className={styles.dropdownMenu}
-          style={{
-            position: 'fixed',
-            top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`,
-          }}
-        >
-          <button
-            className={styles.dropdownItem}
-            onClick={() => {
-              const character = characters.find(c => c.id === openDropdown);
-              if (character) handleEditCharacter(character);
+      {openDropdown &&
+        dropdownPosition &&
+        createPortal(
+          <div
+            id="character-actions-dropdown"
+            className={styles.dropdownMenu}
+            style={{
+              position: 'fixed',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
             }}
-            disabled={actionLoading}
           >
-            <Edit size={14} />
-            Change Name
-          </button>
-          <button
-            className={`${styles.dropdownItem} ${styles.deleteItem}`}
-            onClick={() => {
-              const character = characters.find(c => c.id === openDropdown);
-              if (character) handleDeleteCharacter(character);
-            }}
-            disabled={actionLoading}
-          >
-            <Trash2 size={14} />
-            Delete Character
-          </button>
-        </div>,
-        document.body
-      )}
+            <button
+              className={styles.dropdownItem}
+              onClick={() => {
+                const character = characters.find(c => c.id === openDropdown);
+                if (character) handleEditCharacter(character);
+              }}
+              disabled={actionLoading}
+            >
+              <Edit size={14} />
+              Change Name
+            </button>
+            <button
+              className={styles.dropdownItem}
+              onClick={() => {
+                const character = characters.find(c => c.id === openDropdown);
+                if (character) handleSetAdventures(character);
+              }}
+              disabled={actionLoading}
+            >
+              <Swords size={14} />
+              Set Adventures
+            </button>
+            <button
+              className={`${styles.dropdownItem} ${styles.deleteItem}`}
+              onClick={() => {
+                const character = characters.find(c => c.id === openDropdown);
+                if (character) handleDeleteCharacter(character);
+              }}
+              disabled={actionLoading}
+            >
+              <Trash2 size={14} />
+              Delete Character
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

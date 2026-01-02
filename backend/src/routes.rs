@@ -73,6 +73,10 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Character management
         .route("/admin/characters", get(admin::get_all_characters))
         .route("/admin/characters/:id", patch(admin::update_character_name))
+        .route(
+            "/admin/characters/:id/adventures",
+            patch(admin::update_character_adventures),
+        )
         .route("/admin/characters/:id", delete(admin::delete_character))
         // Class management
         .route("/admin/classes", post(admin::create_class))
