@@ -1,0 +1,136 @@
+.bannedContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0.1) 0%, transparent 70%);
+}
+
+.bannedBox {
+  max-width: 600px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ff0000;
+  padding: 3rem 2rem;
+  box-shadow: 
+    0 0 20px rgba(255, 0, 0, 0.5),
+    inset 0 0 40px rgba(255, 0, 0, 0.1);
+  text-align: center;
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.iconContainer {
+  margin-bottom: 1.5rem;
+}
+
+.banIcon {
+  font-size: 4rem;
+  animation: pulse 2s infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.title {
+  font-size: 2rem;
+  color: #ff0000;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+  margin-bottom: 1.5rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+}
+
+.message {
+  color: rgba(255, 0, 0, 0.9);
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.message p {
+  margin: 0.5rem 0;
+}
+
+.infoBox {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  padding: 1.5rem;
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.infoTitle {
+  color: #ff0000;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.infoList {
+  color: rgba(255, 0, 0, 0.8);
+  list-style-position: inside;
+  margin: 0;
+  padding: 0;
+}
+
+.infoList li {
+  margin: 0.5rem 0;
+  padding-left: 0.5rem;
+}
+
+.infoList li::marker {
+  color: #ff0000;
+}
+
+.contactInfo {
+  color: rgba(0, 255, 0, 0.6);
+  font-size: 0.9rem;
+  margin: 2rem 0 1rem;
+  font-style: italic;
+}
+
+.logoutButton {
+  background: rgba(255, 0, 0, 0.2);
+  border: 2px solid #ff0000;
+  color: #ff0000;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.logoutButton:hover {
+  background: rgba(255, 0, 0, 0.3);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.logoutButton:active {
+  transform: translateY(0);
+}

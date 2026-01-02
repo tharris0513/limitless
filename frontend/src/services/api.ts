@@ -46,6 +46,7 @@ function transformUserFromBackend(backendUser: any): User {
     username: backendUser.username,
     dateOfBirth: backendUser.date_of_birth, // Transform snake_case to camelCase
     admin: backendUser.admin,
+    banned: backendUser.banned || false, // Transform banned field
     createdAt: backendUser.created_at, // Transform snake_case to camelCase
   };
 }

@@ -9,6 +9,7 @@ import { LoadingProvider } from './contexts/LoadingContext';
 import { AccountSetup } from './pages/AccountSetup';
 import { AdminPanel } from './pages/AdminPanel';
 import AuthCallback from './pages/AuthCallback';
+import { BannedUser } from './pages/BannedUser';
 import { CharacterCreation } from './pages/CharacterCreation';
 import { CharacterSelection } from './pages/CharacterSelection';
 import { GamePage } from './pages/GamePage';
@@ -109,6 +110,13 @@ function App() {
       setUser(userData);
       setCharacters(userCharacters);
       setIsAuthenticated(true);
+      
+      // Check if user is banned
+      if (userData.banned) {
+        setNeedsAccountSetup(false);
+        setNeedsCharacterCreation(false);
+        return; // Will be redirected by route guard
+      }
       
       // Check if user needs to complete account setup
       // Only require setup if username is missing or empty
@@ -297,6 +305,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/banned" element={<BannedUser />} />
           <Route path="/login" element={
             isAuthenticated ? <Navigate to="/" replace /> : 
             <GameLayout player={null} user={null} onLogout={undefined}>
@@ -306,6 +315,8 @@ function App() {
         <Route path="/" element={
           !isAuthenticated ? (
             <Navigate to="/login" replace />
+          ) : user?.banned ? (
+            <Navigate to="/banned" replace />
           ) : needsAccountSetup ? (
             user ? (
               <AccountSetup
@@ -397,6 +408,8 @@ function App() {
         <Route path="/characters" element={
           !isAuthenticated ? (
             <Navigate to="/login" replace />
+          ) : user?.banned ? (
+            <Navigate to="/banned" replace />
           ) : user ? (
             <GameLayout 
               player={selectedCharacter}
@@ -421,6 +434,8 @@ function App() {
         <Route path="/create-character" element={
           !isAuthenticated ? (
             <Navigate to="/login" replace />
+          ) : user?.banned ? (
+            <Navigate to="/banned" replace />
           ) : user ? (
             <GameLayout 
               player={selectedCharacter}

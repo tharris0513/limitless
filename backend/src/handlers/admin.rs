@@ -92,6 +92,36 @@ pub async fn delete_user(
     }
 }
 
+// Admin only - ban user
+pub async fn ban_user(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+    Path(user_id): Path<String>,
+) -> Result<Json<User>, AppError> {
+    match repo.update_user_ban_status(&user_id, true).await {
+        Ok(user) => Ok(Json(user)),
+        Err(e) => {
+            tracing::error!("Failed to ban user: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Admin only - unban user
+pub async fn unban_user(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+    Path(user_id): Path<String>,
+) -> Result<Json<User>, AppError> {
+    match repo.update_user_ban_status(&user_id, false).await {
+        Ok(user) => Ok(Json(user)),
+        Err(e) => {
+            tracing::error!("Failed to unban user: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
 // Admin only - create a new class
 pub async fn create_class(
     State(repo): State<Arc<UserRepository>>,
@@ -393,10 +423,15 @@ pub async fn update_character_adventures(
 
     // Validate adventures count
     if adventures < 0 {
-        return Err(AppError::validation_error("Adventures count cannot be negative"));
+        return Err(AppError::validation_error(
+            "Adventures count cannot be negative",
+        ));
     }
 
-    match repo.update_character_adventures(&character_id, adventures).await {
+    match repo
+        .update_character_adventures(&character_id, adventures)
+        .await
+    {
         Ok(character) => Ok(Json(character)),
         Err(e) => {
             tracing::error!("Failed to update character adventures: {:?}", e);

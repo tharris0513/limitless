@@ -342,6 +342,17 @@
   font-size: 0.75rem;
 }
 
+.bannedBadge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255, 165, 0, 0.2);
+  border: 1px solid #ffa500;
+  color: #ffa500;
+  font-weight: bold;
+  font-size: 0.75rem;
+  text-shadow: 0 0 5px #ffa500;
+}
+
 .dateCell {
   font-size: 0.85rem;
   color: rgba(0, 255, 0, 0.8);

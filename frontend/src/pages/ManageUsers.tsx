@@ -9,8 +9,7 @@ interface User {
   discordId: string;
   discordName: string;
   username?: string;
-  admin: boolean;
-  createdAt: string;
+  admin: boolean;  banned: boolean;  createdAt: string;
 }
 
 interface ManageUsersProps {
@@ -182,6 +181,62 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
     }
   };
 
+  const handleBanUser = async (user: User) => {
+    if (!confirm(`Are you sure you want to ban ${user.username || user.discordName}?`)) return;
+
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+      const response = await axios.patch(
+        `${API_BASE_URL}/admin/users/${user.id}/ban`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update local state
+      setUsers(users.map(u => u.id === user.id ? response.data : u));
+      setOpenDropdown(null);
+    } catch (err) {
+      console.error('Failed to ban user:', err);
+      alert('Failed to ban user');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUnbanUser = async (user: User) => {
+    try {
+      setActionLoading(true);
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+      const response = await axios.patch(
+        `${API_BASE_URL}/admin/users/${user.id}/unban`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update local state
+      setUsers(users.map(u => u.id === user.id ? response.data : u));
+      setOpenDropdown(null);
+    } catch (err) {
+      console.error('Failed to unban user:', err);
+      alert('Failed to unban user');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className={styles.manageUsersContainer}>
       <div className={styles.header}>
@@ -248,6 +303,8 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
                           <Shield size={14} />
                           ADMIN
                         </span>
+                      ) : user.banned ? (
+                        <span className={styles.bannedBadge}>BANNED</span>
                       ) : (
                         <span className={styles.userBadge}>USER</span>
                       )}
@@ -307,6 +364,23 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
           >
             <Edit size={14} />
             Change Username
+          </button>
+          <button
+            className={styles.dropdownItem}
+            onClick={() => {
+              const user = users.find(u => u.id === openDropdown);
+              if (user) {
+                if (user.banned) {
+                  handleUnbanUser(user);
+                } else {
+                  handleBanUser(user);
+                }
+              }
+            }}
+            disabled={actionLoading}
+          >
+            <Shield size={14} />
+            {users.find(u => u.id === openDropdown)?.banned ? 'Unban User' : 'Ban User'}
           </button>
           <button
             className={`${styles.dropdownItem} ${styles.deleteItem}`}

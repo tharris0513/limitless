@@ -6,6 +6,7 @@ export interface User {
   username?: string; // User's chosen username (optional until account setup complete)
   dateOfBirth?: string; // User's date of birth (optional until account setup complete)
   admin: boolean; // Whether the user is an admin
+  banned: boolean; // Whether the user is banned from the game
   createdAt: string; // When user first logged in
 }
 

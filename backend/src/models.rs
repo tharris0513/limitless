@@ -11,6 +11,7 @@ pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_of_birth: Option<String>, // User's date of birth (YYYY-MM-DD)
     pub admin: bool,          // Admin flag
+    pub banned: bool,         // Banned flag
     pub created_at: String,   // When user first logged in
 }
 

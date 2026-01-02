@@ -310,6 +310,7 @@ pub async fn get_auth_from_cookie(
             username: None,
             date_of_birth: None,
             admin: claims.admin,
+            banned: false,
             created_at: chrono::Utc::now().to_rfc3339(),
         },
     };

@@ -113,6 +113,7 @@ impl UserRepository {
             AttributeValue::S(discord_name.to_string()),
         );
         item.insert("admin".to_string(), AttributeValue::Bool(false));
+        item.insert("banned".to_string(), AttributeValue::Bool(false));
         item.insert(
             "created_at".to_string(),
             AttributeValue::S(created_at.clone()),
@@ -133,6 +134,7 @@ impl UserRepository {
             username: None,
             date_of_birth: None,
             admin: false,
+            banned: false,
             created_at,
         })
     }
@@ -164,6 +166,11 @@ impl UserRepository {
                 .map(|s| s.to_string()),
             admin: item
                 .get("admin")
+                .and_then(|v| v.as_bool().ok())
+                .copied()
+                .unwrap_or(false),
+            banned: item
+                .get("banned")
                 .and_then(|v| v.as_bool().ok())
                 .copied()
                 .unwrap_or(false),
@@ -247,6 +254,23 @@ impl UserRepository {
 
         tracing::info!("Deleted user {} and their characters", user_id);
         Ok(())
+    }
+
+    pub async fn update_user_ban_status(&self, user_id: &str, banned: bool) -> Result<User> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S("PROFILE".to_string()))
+            .update_expression("SET banned = :banned")
+            .expression_attribute_values(":banned", AttributeValue::Bool(banned))
+            .return_values(aws_sdk_dynamodb::types::ReturnValue::AllNew)
+            .send()
+            .await
+            .context("Failed to update user ban status")?;
+
+        // Fetch and return updated user
+        self.find_by_id(user_id).await
     }
 
     pub async fn get_user_characters(&self, user_id: &str) -> Result<Vec<Character>> {
