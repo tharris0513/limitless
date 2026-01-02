@@ -40,16 +40,20 @@ export const ManageUsers: React.FC<ManageUsersProps> = ({ onBack, onLogout }) =>
           },
         });
         // Transform backend snake_case to frontend camelCase
-        const transformedUsers = response.data.map((user: any) => ({
-          id: user.id,
-          discordId: user.discord_id,
-          discordName: user.discord_name,
-          username: user.username,
-          dateOfBirth: user.date_of_birth,
-          admin: user.admin,
-          banned: user.banned || false,
-          createdAt: user.created_at,
-        }));
+        const transformedUsers = response.data.map((user: any) => {
+          console.log('Raw user data from backend:', user);
+          return {
+            id: user.id || 'unknown',
+            discordId: user.discord_id || '',
+            discordName: user.discord_name || '',
+            username: user.username,
+            dateOfBirth: user.date_of_birth,
+            admin: user.admin || false,
+            banned: user.banned || false,
+            createdAt: user.created_at || new Date().toISOString(),
+          };
+        });
+        console.log('Transformed users:', transformedUsers);
         setUsers(transformedUsers);
       } catch (err) {
         console.error('Failed to fetch users:', err);
