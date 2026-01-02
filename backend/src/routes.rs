@@ -37,6 +37,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Legacy routes for backward compatibility
         .route("/player", get(player::get_player))
         .route("/locations", get(location::get_locations))
+        .route("/locations/:id/visit", post(location::visit_location))
         .route("/adventures/:id/start", post(adventure::start_adventure));
 
     // WebSocket route for chat (separate router with chat_state)
@@ -140,6 +141,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Creature management
         .route("/admin/creatures", get(admin::get_all_creatures))
         .route("/admin/creatures", post(admin::create_creature))
+        .route("/admin/creatures/:id", get(admin::get_creature))
         .route("/admin/creatures/:id", patch(admin::update_creature))
         .route("/admin/creatures/:id", delete(admin::delete_creature))
         // Adventure management

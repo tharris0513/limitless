@@ -215,6 +215,13 @@ export class GameAPI {
     return response.data;
   }
 
+  static async visitLocation(
+    locationId: string
+  ): Promise<{ encounterType: string; encounterId: string }> {
+    const response = await api.post(`/locations/${locationId}/visit`);
+    return response.data;
+  }
+
   // Adventure endpoints
   static async startAdventure(adventureId: string): Promise<Adventure> {
     const response = await api.post(`/adventures/${adventureId}/start`);
@@ -419,6 +426,11 @@ export class GameAPI {
   // ===== CREATURE MANAGEMENT =====
   static async adminGetAllCreatures(): Promise<any[]> {
     const response = await api.get('/admin/creatures');
+    return response.data;
+  }
+
+  static async adminGetCreature(creatureId: string): Promise<any> {
+    const response = await api.get(`/admin/creatures/${creatureId}`);
     return response.data;
   }
 

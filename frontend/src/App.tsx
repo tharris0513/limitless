@@ -9,10 +9,12 @@ import { LoadingProvider } from './contexts/LoadingContext';
 import { GameStateProvider } from './contexts/GameStateContext';
 import { AccountSetup } from './pages/AccountSetup';
 import { AdminPanel } from './pages/AdminPanel';
+import { AdventurePage } from './pages/AdventurePage';
 import AuthCallback from './pages/AuthCallback';
 import { BannedUser } from './pages/BannedUser';
 import { CharacterCreation } from './pages/CharacterCreation';
 import { CharacterSelection } from './pages/CharacterSelection';
+import { CombatPage } from './pages/CombatPage';
 import { GamePage } from './pages/GamePage';
 import { LoginPage } from './pages/LoginPage';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
@@ -452,6 +454,54 @@ function App() {
                 user={user}
                 onCharacterCreated={handleCharacterCreated} 
               />
+            </GameLayout>
+          ) : (
+            <div>Loading user data...</div>
+          )
+        } />
+        <Route path="/combat" element={
+          !isAuthenticated ? (
+            <Navigate to="/login" replace />
+          ) : user?.banned ? (
+            <Navigate to="/banned" replace />
+          ) : !selectedCharacter ? (
+            <Navigate to="/" replace />
+          ) : user ? (
+            <GameLayout 
+              player={selectedCharacter}
+              user={user}
+              onLogout={handleLogout} 
+              onSettingsClick={() => setShowSettings(true)} 
+              isAdmin={user.admin}
+              onAdminClick={() => setShowAdminPanel(true)}
+            >
+              <GameStateProvider character={selectedCharacter}>
+                <CombatPage character={selectedCharacter} />
+              </GameStateProvider>
+            </GameLayout>
+          ) : (
+            <div>Loading user data...</div>
+          )
+        } />
+        <Route path="/adventure" element={
+          !isAuthenticated ? (
+            <Navigate to="/login" replace />
+          ) : user?.banned ? (
+            <Navigate to="/banned" replace />
+          ) : !selectedCharacter ? (
+            <Navigate to="/" replace />
+          ) : user ? (
+            <GameLayout 
+              player={selectedCharacter}
+              user={user}
+              onLogout={handleLogout} 
+              onSettingsClick={() => setShowSettings(true)} 
+              isAdmin={user.admin}
+              onAdminClick={() => setShowAdminPanel(true)}
+            >
+              <GameStateProvider character={selectedCharacter}>
+                <AdventurePage character={selectedCharacter} />
+              </GameStateProvider>
             </GameLayout>
           ) : (
             <div>Loading user data...</div>

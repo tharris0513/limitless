@@ -1,0 +1,195 @@
+.combatContainer {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  color: #00ff00;
+  font-family: 'Courier New', monospace;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #00ff00;
+  padding-bottom: 1rem;
+}
+
+.title {
+  font-size: 2rem;
+  margin: 0;
+  text-shadow: 0 0 10px #00ff00;
+}
+
+.turnInfo {
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.combatArea {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.playerSection,
+.enemySection {
+  background: rgba(0, 255, 0, 0.05);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  margin: 0 0 1rem 0;
+  text-align: center;
+  text-shadow: 0 0 8px #00ff00;
+}
+
+.statsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(0, 255, 0, 0.03);
+  border-radius: 4px;
+}
+
+.statLabel {
+  font-weight: bold;
+}
+
+.statValue {
+  font-family: monospace;
+}
+
+.healthBar {
+  width: 100%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid #00ff00;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.healthFill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff0000, #00ff00);
+  transition: width 0.3s ease;
+}
+
+.actionsSection {
+  margin-bottom: 2rem;
+}
+
+.actionsTitle {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 8px #00ff00;
+}
+
+.actionButtons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.actionButton {
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 1rem;
+  font-size: 1rem;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-shadow: 0 0 5px #00ff00;
+}
+
+.actionButton:hover {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.actionButton:active {
+  transform: translateY(0);
+}
+
+.combatLog {
+  background: rgba(0, 255, 0, 0.05);
+  border: 2px solid #00ff00;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.logTitle {
+  font-size: 1.2rem;
+  margin: 0 0 1rem 0;
+  text-shadow: 0 0 8px #00ff00;
+}
+
+.logEntries {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.logEntry {
+  padding: 0.5rem;
+  background: rgba(0, 255, 0, 0.03);
+  border-left: 3px solid #00ff00;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.logTurn {
+  font-weight: bold;
+  margin-right: 0.5rem;
+  opacity: 0.7;
+}
+
+.logMessage {
+  opacity: 0.9;
+}
+
+/* Scrollbar styling */
+.combatLog::-webkit-scrollbar {
+  width: 8px;
+}
+
+.combatLog::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.combatLog::-webkit-scrollbar-thumb {
+  background: #00ff00;
+  border-radius: 4px;
+}
+
+.combatLog::-webkit-scrollbar-thumb:hover {
+  background: #00cc00;
+}
+
+@media (max-width: 768px) {
+  .combatArea {
+    grid-template-columns: 1fr;
+  }
+  
+  .actionButtons {
+    grid-template-columns: 1fr;
+  }
+}

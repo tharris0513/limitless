@@ -741,6 +741,21 @@ pub async fn create_creature(
     }
 }
 
+// Admin only - get creature by ID
+pub async fn get_creature(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+    Path(creature_id): Path<String>,
+) -> Result<Json<Creature>, AppError> {
+    match repo.get_creature(&creature_id).await {
+        Ok(creature) => Ok(Json(creature)),
+        Err(e) => {
+            tracing::error!("Failed to get creature: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
 // Admin only - update creature
 pub async fn update_creature(
     State(repo): State<Arc<UserRepository>>,

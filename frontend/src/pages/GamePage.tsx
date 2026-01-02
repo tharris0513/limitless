@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Location, Character } from '../types/game';
 import GameAPI from '../services/api';
+import { useGameState } from '../hooks/useGameState';
+import { isCombatState, isChoiceState } from '../types/gameState';
 import styles from './GamePage.module.css';
 
 interface GamePageProps {
@@ -8,15 +11,25 @@ interface GamePageProps {
   onCharacterUpdate?: (character: Character) => void;
 }
 
-export const GamePage: React.FC<GamePageProps> = () => {
+export const GamePage: React.FC<GamePageProps> = ({ character }) => {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [_adventures] = useState<any[]>([]); // Will be used when adventure system is implemented
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { gameState, setGameState } = useGameState();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadGameData();
   }, []);
+
+  // Navigate to appropriate page when game state changes
+  useEffect(() => {
+    if (isCombatState(gameState)) {
+      navigate('/combat');
+    } else if (isChoiceState(gameState)) {
+      navigate('/adventure');
+    }
+  }, [gameState, navigate]);
 
   const loadGameData = async () => {
     try {
@@ -32,9 +45,64 @@ export const GamePage: React.FC<GamePageProps> = () => {
     }
   };
 
-  const handleLocationVisit = (locationId: string) => {
-    // Handle location visits
-    console.log('Visiting location:', locationId);
+  const handleLocationVisit = async (locationId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await GameAPI.visitLocation(locationId);
+      
+      if (response.encounterType === 'combat') {
+        // Fetch creature details and start combat
+        const creature = await GameAPI.adminGetCreature(response.encounterId);
+        
+        setGameState({
+          inCombat: true,
+          adventureId: locationId,
+          adventureName: locations.find(l => l.id === locationId)?.name || 'Unknown Location',
+          turnNumber: 1,
+          playerHealth: character.health,
+          playerMana: character.mana,
+          enemy: {
+            id: creature.id,
+            name: creature.name,
+            health: creature.health,
+            maxHealth: creature.health,
+            level: creature.level,
+            stats: {
+              might: creature.might,
+              defense: creature.defense,
+              magic: creature.magic,
+              resistance: creature.resistance,
+              agility: creature.agility,
+            },
+          },
+          combatLog: [],
+        });
+      } else if (response.encounterType === 'adventure') {
+        // Start adventure - TODO: Fetch actual adventure details
+        setGameState({
+          inChoice: true,
+          adventureId: response.encounterId,
+          adventureName: 'Adventure', // Will be fetched from adventure API
+          sceneId: 'scene-1',
+          sceneName: 'The Beginning',
+          sceneDescription: 'You embark on a new adventure...',
+          choices: [
+            {
+              id: 'choice-1',
+              text: 'Continue',
+              description: 'Proceed with the adventure',
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error('Failed to visit location:', error);
+      setError('Failed to visit location. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
