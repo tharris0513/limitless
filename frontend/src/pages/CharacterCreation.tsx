@@ -3,6 +3,7 @@ import { LoadingButton } from '../components/LoadingStates';
 import { useApiWithLoading } from '../hooks/useApiWithLoading';
 import type { Character, User, Class } from '../types/game';
 import GameAPI from '../services/api';
+import { containsProfanity, getProfanityErrorMessage } from '../utils/profanityFilter';
 import styles from './CharacterCreation.module.css';
 
 interface CharacterCreationProps {
@@ -53,6 +54,17 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
 
     if (formData.name.length < 3) {
       setError('Character name must be at least 3 characters long');
+      return;
+    }
+
+    if (formData.name.length > 30) {
+      setError('Character name must be no more than 30 characters');
+      return;
+    }
+
+    // Check for profanity in character name
+    if (containsProfanity(formData.name)) {
+      setError(getProfanityErrorMessage());
       return;
     }
 

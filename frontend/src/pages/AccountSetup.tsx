@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LoadingButton } from '../components/LoadingStates';
 import type { User } from '../types/game';
 import GameAPI from '../services/api';
+import { validateUsername } from '../utils/profanityFilter';
 import styles from './AccountSetup.module.css';
 
 interface AccountSetupProps {
@@ -68,18 +69,10 @@ export const AccountSetup: React.FC<AccountSetupProps> = ({
       return;
     }
 
-    if (formData.username.length < 3) {
-      setError('Username must be at least 3 characters long');
-      return;
-    }
-
-    if (formData.username.length > 20) {
-      setError('Username must be no more than 20 characters');
-      return;
-    }
-
-    if (!/^[a-zA-Z0-9_-]+$/.test(formData.username)) {
-      setError('Username can only contain letters, numbers, underscores, and hyphens');
+    // Use the comprehensive validation function
+    const usernameValidation = validateUsername(formData.username);
+    if (!usernameValidation.isValid) {
+      setError(usernameValidation.error || 'Invalid username');
       return;
     }
 
