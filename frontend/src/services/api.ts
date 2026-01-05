@@ -116,6 +116,23 @@ export class GameAPI {
     localStorage.removeItem('authToken');
   }
 
+  // Maintenance mode endpoints
+  static async checkMaintenanceMode(): Promise<{ maintenanceMode: boolean }> {
+    const response = await api.get('/maintenance');
+    return {
+      maintenanceMode: response.data.maintenance_mode,
+    };
+  }
+
+  static async getMaintenanceMode(): Promise<{ enabled: boolean }> {
+    const response = await api.get('/admin/maintenance');
+    return response.data;
+  }
+
+  static async setMaintenanceMode(enabled: boolean): Promise<void> {
+    await api.post('/admin/maintenance', { enabled });
+  }
+
   // User endpoints
   static async getUser(): Promise<User> {
     const response = await api.get('/user');

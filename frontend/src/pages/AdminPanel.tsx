@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass, Power } from 'lucide-react';
 import { ManageUsers } from './ManageUsers';
 import { ManageClasses } from './ManageClasses';
 import { ManageCharacters } from './ManageCharacters';
 import ManageCreatures from './ManageCreatures';
 import ManageAdventures from './ManageAdventures';
 import ManageLocations from './ManageLocations';
+import GameAPI from '../services/api';
 import styles from './AdminPanel.module.css';
 
 interface AdminPanelProps {
@@ -19,6 +20,46 @@ type AdminView = 'menu' | 'users' | 'classes' | 'characters' | 'creatures' | 'ad
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onViewChange, requestedView }) => {
   const [currentView, setCurrentView] = useState<AdminView>('menu');
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+
+  // Load maintenance mode status on mount
+  useEffect(() => {
+    loadMaintenanceStatus();
+  }, []);
+
+  const loadMaintenanceStatus = async () => {
+    try {
+      const status = await GameAPI.getMaintenanceMode();
+      setMaintenanceMode(status.enabled);
+    } catch (error) {
+      console.error('Failed to load maintenance status:', error);
+    }
+  };
+
+  const toggleMaintenanceMode = async () => {
+    if (maintenanceLoading) return;
+    
+    const confirmed = window.confirm(
+      maintenanceMode
+        ? 'Are you sure you want to disable maintenance mode? All users will be able to access the game.'
+        : 'Are you sure you want to enable maintenance mode? Only admins will be able to access the game.'
+    );
+    
+    if (!confirmed) return;
+    
+    setMaintenanceLoading(true);
+    try {
+      await GameAPI.setMaintenanceMode(!maintenanceMode);
+      setMaintenanceMode(!maintenanceMode);
+      alert(`Maintenance mode ${!maintenanceMode ? 'enabled' : 'disabled'} successfully.`);
+    } catch (error) {
+      console.error('Failed to toggle maintenance mode:', error);
+      alert('Failed to update maintenance mode. Please try again.');
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
 
   // Respond to parent's requested view changes
   React.useEffect(() => {
@@ -130,6 +171,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
               <Activity size={32} />
               <span className={styles.buttonLabel}>System Status</span>
               <span className={styles.buttonDescription}>View server metrics</span>
+            </button>
+
+            <button 
+              className={`${styles.adminActionButton} ${maintenanceMode ? styles.maintenanceActive : ''}`}
+              onClick={toggleMaintenanceMode}
+              disabled={maintenanceLoading}
+            >
+              <Power size={32} />
+              <span className={styles.buttonLabel}>
+                {maintenanceLoading ? 'Updating...' : maintenanceMode ? 'Disable Maintenance' : 'Enable Maintenance'}
+              </span>
+              <span className={styles.buttonDescription}>
+                {maintenanceMode ? 'Maintenance mode is ACTIVE' : 'Maintenance mode is OFF'}
+              </span>
             </button>
           </div>
         </div>

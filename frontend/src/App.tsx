@@ -17,6 +17,7 @@ import { CharacterSelection } from './pages/CharacterSelection';
 import { CombatPage } from './pages/CombatPage';
 import { GamePage } from './pages/GamePage';
 import { LoginPage } from './pages/LoginPage';
+import { MaintenancePage } from './pages/MaintenancePage';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { Settings } from './pages/Settings';
 import { TermsOfService } from './pages/TermsOfService';
@@ -38,6 +39,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminView, setAdminView] = useState<'menu' | 'users' | 'classes'>('menu');
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -49,6 +51,15 @@ function App() {
     setLoading(true);
     setLoadingMessage('Checking authentication...');
     setError(null); // Clear any previous errors
+    
+    // First check maintenance mode
+    try {
+      const maintenanceStatus = await GameAPI.checkMaintenanceMode();
+      setMaintenanceMode(maintenanceStatus.maintenanceMode);
+    } catch (error) {
+      console.error('Failed to check maintenance mode:', error);
+      // Continue with authentication even if maintenance check fails
+    }
     
     try {
       // First check localStorage for existing token
@@ -300,6 +311,11 @@ function App() {
 
   if (loading) {
     return <LoadingOverlay message={loadingMessage} />;
+  }
+
+  // If in maintenance mode and user is not an admin, show maintenance page
+  if (maintenanceMode && (!user || !user.admin)) {
+    return <MaintenancePage />;
   }
 
   return (

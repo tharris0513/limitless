@@ -2,7 +2,7 @@ use crate::jwt::JwtService;
 use crate::models::Claims;
 use crate::repository::UserRepository;
 use axum::{extract::State, http::StatusCode, Json};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{env, sync::Arc};
 
 // Health check models
@@ -25,6 +25,28 @@ pub struct ComponentHealth {
     status: String,
     response_time_ms: u64,
     details: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MaintenanceStatus {
+    pub maintenance_mode: bool,
+}
+
+// Public endpoint to check maintenance mode
+pub async fn check_maintenance_mode(
+    State(repo): State<Arc<UserRepository>>,
+) -> Result<Json<MaintenanceStatus>, StatusCode> {
+    match repo.get_maintenance_mode().await {
+        Ok(enabled) => Ok(Json(MaintenanceStatus {
+            maintenance_mode: enabled,
+        })),
+        Err(_) => {
+            // If we can't read maintenance mode, assume not in maintenance
+            Ok(Json(MaintenanceStatus {
+                maintenance_mode: false,
+            }))
+        }
+    }
 }
 
 // Health check endpoint
@@ -54,7 +76,7 @@ pub async fn health_check(
         admin: false,
         exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
     };
-    
+
     let auth_status = match JwtService::generate_token_for_claims(&test_claims) {
         Ok(token) => match JwtService::verify_token(&token) {
             Ok(_) => ComponentHealth {

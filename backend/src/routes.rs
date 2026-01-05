@@ -28,6 +28,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/auth/verify", get(auth::verify_token))
         .route("/auth/status", get(auth::get_auth_status))
         .route("/health", get(health::health_check))
+        .route("/maintenance", get(health::check_maintenance_mode))
         .route("/user/check-username", post(user::check_username_available))
         .route("/classes", get(character::get_classes))
         .route(
@@ -144,6 +145,9 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/admin/adventures", post(admin::create_adventure))
         .route("/admin/adventures/:id", patch(admin::update_adventure))
         .route("/admin/adventures/:id", delete(admin::delete_adventure))
+        // Maintenance mode
+        .route("/admin/maintenance", get(admin::get_maintenance_mode))
+        .route("/admin/maintenance", post(admin::set_maintenance_mode))
         .layer(middleware::from_fn(jwt_auth_middleware));
 
     Router::new()

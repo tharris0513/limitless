@@ -872,3 +872,45 @@ pub async fn delete_adventure(
         }
     }
 }
+
+// Admin only - get maintenance mode status
+pub async fn get_maintenance_mode(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(_claims): AdminClaims,
+) -> Result<Json<Value>, AppError> {
+    match repo.get_maintenance_mode().await {
+        Ok(enabled) => Ok(Json(json!({
+            "enabled": enabled
+        }))),
+        Err(e) => {
+            tracing::error!("Failed to get maintenance mode: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Admin only - set maintenance mode status
+pub async fn set_maintenance_mode(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(claims): AdminClaims,
+    Json(payload): Json<Value>,
+) -> Result<Json<Value>, AppError> {
+    let enabled = payload
+        .get("enabled")
+        .and_then(|v| v.as_bool())
+        .ok_or_else(|| AppError::validation_error("enabled field is required"))?;
+
+    match repo.set_maintenance_mode(enabled).await {
+        Ok(()) => {
+            tracing::info!("Admin {} set maintenance mode to {}", claims.sub, enabled);
+            Ok(Json(json!({
+                "message": "Maintenance mode updated",
+                "enabled": enabled
+            })))
+        }
+        Err(e) => {
+            tracing::error!("Failed to set maintenance mode: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
