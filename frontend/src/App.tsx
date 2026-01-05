@@ -459,54 +459,8 @@ function App() {
             <div>Loading user data...</div>
           )
         } />
-        <Route path="/combat" element={
-          !isAuthenticated ? (
-            <Navigate to="/login" replace />
-          ) : user?.banned ? (
-            <Navigate to="/banned" replace />
-          ) : !selectedCharacter ? (
-            <Navigate to="/" replace />
-          ) : user ? (
-            <GameLayout 
-              player={selectedCharacter}
-              user={user}
-              onLogout={handleLogout} 
-              onSettingsClick={() => setShowSettings(true)} 
-              isAdmin={user.admin}
-              onAdminClick={() => setShowAdminPanel(true)}
-            >
-              <GameStateProvider character={selectedCharacter}>
-                <CombatPage character={selectedCharacter} />
-              </GameStateProvider>
-            </GameLayout>
-          ) : (
-            <div>Loading user data...</div>
-          )
-        } />
-        <Route path="/adventure" element={
-          !isAuthenticated ? (
-            <Navigate to="/login" replace />
-          ) : user?.banned ? (
-            <Navigate to="/banned" replace />
-          ) : !selectedCharacter ? (
-            <Navigate to="/" replace />
-          ) : user ? (
-            <GameLayout 
-              player={selectedCharacter}
-              user={user}
-              onLogout={handleLogout} 
-              onSettingsClick={() => setShowSettings(true)} 
-              isAdmin={user.admin}
-              onAdminClick={() => setShowAdminPanel(true)}
-            >
-              <GameStateProvider character={selectedCharacter}>
-                <AdventurePage character={selectedCharacter} />
-              </GameStateProvider>
-            </GameLayout>
-          ) : (
-            <div>Loading user data...</div>
-          )
-        } />
+        <Route path="/combat" element={<Navigate to="/" replace />} />
+        <Route path="/adventure" element={<Navigate to="/" replace />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
       </Routes>

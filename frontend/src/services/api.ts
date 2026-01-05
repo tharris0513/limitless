@@ -169,6 +169,11 @@ export class GameAPI {
     await api.patch(`/characters/${characterId}/last-played`);
   }
 
+  static async fleeCombat(characterId: string): Promise<Character> {
+    const response = await api.post(`/characters/${characterId}/flee`);
+    return response.data;
+  }
+
   static async getCharacterAbilities(
     characterId: string
   ): Promise<CharacterAbility[]> {

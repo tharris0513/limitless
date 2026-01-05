@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import type { Location, Character } from '../types/game';
 import GameAPI from '../services/api';
 import { useGameState } from '../hooks/useGameState';
 import { isCombatState, isChoiceState } from '../types/gameState';
+import { CombatPage } from './CombatPage';
+import { AdventurePage } from './AdventurePage';
 import styles from './GamePage.module.css';
 
 interface GamePageProps {
@@ -11,25 +12,15 @@ interface GamePageProps {
   onCharacterUpdate?: (character: Character) => void;
 }
 
-export const GamePage: React.FC<GamePageProps> = ({ character }) => {
+export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { gameState, setGameState } = useGameState();
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadGameData();
   }, []);
-
-  // Navigate to appropriate page when game state changes
-  useEffect(() => {
-    if (isCombatState(gameState)) {
-      navigate('/combat');
-    } else if (isChoiceState(gameState)) {
-      navigate('/adventure');
-    }
-  }, [gameState, navigate]);
 
   const loadGameData = async () => {
     try {
@@ -66,6 +57,7 @@ export const GamePage: React.FC<GamePageProps> = ({ character }) => {
           enemy: {
             id: creature.id,
             name: creature.name,
+            introductionText: creature.introductionText,
             health: creature.health,
             maxHealth: creature.health,
             level: creature.level,
@@ -104,6 +96,15 @@ export const GamePage: React.FC<GamePageProps> = ({ character }) => {
       setLoading(false);
     }
   };
+
+  // Render combat or adventure page if in that state
+  if (isCombatState(gameState)) {
+    return <CombatPage character={character} onCharacterUpdate={onCharacterUpdate} />;
+  }
+
+  if (isChoiceState(gameState)) {
+    return <AdventurePage character={character} />;
+  }
 
   return (
     <div className={styles.gameContainer}>

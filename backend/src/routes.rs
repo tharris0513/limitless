@@ -6,7 +6,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::{
-    handlers::{admin, adventure, auth, character, chat, health, location, player, user},
+    handlers::{admin, adventure, auth, character, chat, combat, health, location, player, user},
     middleware::{global_error_handler, jwt_auth_middleware},
     repository::UserRepository,
 };
@@ -56,14 +56,9 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/last-played",
             patch(character::update_character_last_played),
         )
-        .route(
-            "/characters/:id/state",
-            post(character::save_character_game_state),
-        )
-        .route(
-            "/characters/:id/state",
-            delete(character::clear_character_game_state),
-        )
+        .route("/characters/:id/state", post(combat::save_game_state))
+        .route("/characters/:id/state", delete(combat::clear_game_state))
+        .route("/characters/:id/flee", post(combat::flee_combat))
         .route(
             "/characters/:id/abilities",
             get(character::get_character_abilities),

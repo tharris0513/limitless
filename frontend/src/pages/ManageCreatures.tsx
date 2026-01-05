@@ -16,7 +16,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState<Partial<Creature>>({
     name: '',
-    description: '',
+    introductionText: '',
     level: 1,
     health: 100,
     might: 10,
@@ -52,7 +52,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
       setCreating(false);
       setFormData({
         name: '',
-        description: '',
+        introductionText: '',
         level: 1,
         health: 100,
         might: 10,
@@ -102,7 +102,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
     setEditing(null);
     setFormData({
       name: '',
-      description: '',
+      introductionText: '',
       level: 1,
       health: 100,
       might: 10,
@@ -188,10 +188,10 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
                 </div>
 
                 <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                  <label>Description *</label>
+                  <label>Introduction Text *</label>
                   <textarea
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    value={formData.introductionText}
+                    onChange={e => setFormData({ ...formData, introductionText: e.target.value })}
                     rows={3}
                     required
                   />
@@ -332,10 +332,10 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
                   </div>
 
                   <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                    <label>Description</label>
+                    <label>Introduction Text</label>
                     <textarea
-                      value={formData.description}
-                      onChange={e => setFormData({ ...formData, description: e.target.value })}
+                      value={formData.introductionText}
+                      onChange={e => setFormData({ ...formData, introductionText: e.target.value })}
                       rows={2}
                       required
                     />
@@ -379,7 +379,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
                   <span className={styles.badge}>{creature.creatureType}</span>
                   <span className={styles.level}>Lvl {creature.level}</span>
                 </div>
-                <p className={styles.description}>{creature.description}</p>
+                <p className={styles.description}>{creature.introductionText}</p>
                 <div className={styles.stats}>
                   <div className={styles.statRow}>
                     <span>HP: {creature.health}</span>

@@ -181,7 +181,8 @@ pub struct CreateLocationRequest {
 pub struct Creature {
     pub id: String,
     pub name: String,
-    pub description: String,
+    #[serde(rename = "introductionText")]
+    pub introduction_text: String,
     pub level: i64,
     pub health: i64,
     pub might: i64,
@@ -201,7 +202,8 @@ pub struct Creature {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateCreatureRequest {
     pub name: String,
-    pub description: String,
+    #[serde(rename = "introductionText")]
+    pub introduction_text: String,
     pub level: i64,
     pub health: i64,
     pub might: i64,

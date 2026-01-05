@@ -23,8 +23,8 @@ impl UserRepository {
         item.insert("id".to_string(), AttributeValue::S(creature.id.clone()));
         item.insert("name".to_string(), AttributeValue::S(creature.name.clone()));
         item.insert(
-            "description".to_string(),
-            AttributeValue::S(creature.description.clone()),
+            "introduction_text".to_string(),
+            AttributeValue::S(creature.introduction_text.clone()),
         );
         item.insert(
             "level".to_string(),
@@ -158,7 +158,8 @@ impl UserRepository {
         Ok(Creature {
             id: get_string("id")?,
             name: get_string("name")?,
-            description: get_string("description")?,
+            introduction_text: get_string("introduction_text")
+                .or_else(|_| get_string("description"))?, // Backward compatibility with old field name
             level: get_i64("level")?,
             health: get_i64("health")?,
             might: get_i64("might")?,

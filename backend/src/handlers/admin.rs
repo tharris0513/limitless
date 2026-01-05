@@ -716,7 +716,7 @@ pub async fn create_creature(
     let creature = Creature {
         id: Uuid::new_v4().to_string(),
         name: request.name,
-        description: request.description,
+        introduction_text: request.introduction_text,
         level: request.level,
         health: request.health,
         might: request.might,

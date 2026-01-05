@@ -3,6 +3,7 @@
 export interface EnemyState {
   id: string;
   name: string;
+  introductionText?: string;
   health: number;
   maxHealth: number;
   mana?: number;

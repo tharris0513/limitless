@@ -145,7 +145,7 @@ export interface Location {
 export interface Creature {
   id: string;
   name: string;
-  description: string;
+  introductionText: string;
   level: number;
   health: number;
   might: number;
