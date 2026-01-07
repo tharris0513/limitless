@@ -55,10 +55,19 @@ export interface Ability {
   manaCost: number;
   cooldown: number;
 
-  // Formula-based calculations
+  // Formula-based calculations (for active abilities)
   damageFormula?: string;
   healFormula?: string;
   effectFormula?: string;
+
+  // Passive ability effect tag (for passive abilities)
+  passiveEffect?: string;
+}
+
+// Passive effect option
+export interface PassiveEffect {
+  id: string;
+  description: string;
 }
 
 // CharacterAbility tracks which abilities a character has unlocked

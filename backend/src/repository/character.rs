@@ -634,4 +634,198 @@ impl UserRepository {
 
         Err(anyhow::anyhow!("Character not found"))
     }
+
+    // Get all characters of a specific class
+    pub async fn get_characters_by_class(&self, class_id: &str) -> Result<Vec<Character>> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("entity_type = :entity_type AND class_id = :class_id")
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .expression_attribute_values(":class_id", AttributeValue::S(class_id.to_string()))
+            .send()
+            .await
+            .context("Failed to scan characters by class")?;
+
+        let mut characters = Vec::new();
+        for item in result.items() {
+            characters.push(self.parse_character(item)?);
+        }
+
+        Ok(characters)
+    }
+
+    // Sync character abilities based on their class and level
+    // This grants/removes abilities to match what the character should have at their current level
+    pub async fn sync_character_abilities(&self, character_id: &str) -> Result<()> {
+        // Get the character to know their class and level
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("entity_type = :entity_type AND id = :character_id")
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .expression_attribute_values(
+                ":character_id",
+                AttributeValue::S(character_id.to_string()),
+            )
+            .send()
+            .await
+            .context("Failed to find character")?;
+
+        let character = result
+            .items()
+            .first()
+            .map(|item| self.parse_character(item))
+            .transpose()?
+            .ok_or_else(|| anyhow::anyhow!("Character not found"))?;
+
+        // Get all class abilities
+        let class_abilities = self.get_class_abilities(&character.class_id).await?;
+
+        // Get current character abilities
+        let current_abilities_result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .expression_attribute_values(":sk", AttributeValue::S("ABILITY#".to_string()))
+            .send()
+            .await
+            .context("Failed to query character abilities")?;
+
+        let current_ability_ids: std::collections::HashSet<String> = current_abilities_result
+            .items()
+            .iter()
+            .filter_map(|item| {
+                item.get("ability_id")
+                    .and_then(|v| v.as_s().ok())
+                    .map(|s| s.to_string())
+            })
+            .collect();
+
+        // Determine which abilities the character should have based on their level
+        for (ability, unlock_level) in &class_abilities {
+            if character.level >= *unlock_level {
+                // Character should have this ability
+                if !current_ability_ids.contains(&ability.id) {
+                    // Grant the ability
+                    let mut item = HashMap::new();
+                    item.insert(
+                        "PK".to_string(),
+                        AttributeValue::S(format!("CHAR#{}", character_id)),
+                    );
+                    item.insert(
+                        "SK".to_string(),
+                        AttributeValue::S(format!("ABILITY#{}", ability.id)),
+                    );
+                    item.insert(
+                        "entity_type".to_string(),
+                        AttributeValue::S("CHARACTER_ABILITY".to_string()),
+                    );
+                    item.insert(
+                        "character_id".to_string(),
+                        AttributeValue::S(character_id.to_string()),
+                    );
+                    item.insert(
+                        "ability_id".to_string(),
+                        AttributeValue::S(ability.id.clone()),
+                    );
+                    item.insert(
+                        "unlocked_at_level".to_string(),
+                        AttributeValue::N(character.level.to_string()),
+                    );
+
+                    self.client
+                        .put_item()
+                        .table_name(&self.table_name)
+                        .set_item(Some(item))
+                        .send()
+                        .await
+                        .context("Failed to grant ability to character")?;
+
+                    tracing::info!(
+                        "Granted ability {} to character {} (level {})",
+                        ability.id,
+                        character_id,
+                        character.level
+                    );
+                }
+            } else {
+                // Character should NOT have this ability (level too low)
+                if current_ability_ids.contains(&ability.id) {
+                    // Remove the ability
+                    self.client
+                        .delete_item()
+                        .table_name(&self.table_name)
+                        .key("PK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                        .key("SK", AttributeValue::S(format!("ABILITY#{}", ability.id)))
+                        .send()
+                        .await
+                        .context("Failed to remove ability from character")?;
+
+                    tracing::info!(
+                        "Removed ability {} from character {} (level too low)",
+                        ability.id,
+                        character_id
+                    );
+                }
+            }
+        }
+
+        // Remove abilities that are no longer in the class ability list
+        for current_ability_id in current_ability_ids {
+            let still_in_class = class_abilities
+                .iter()
+                .any(|(ability, _)| ability.id == current_ability_id);
+
+            if !still_in_class {
+                self.client
+                    .delete_item()
+                    .table_name(&self.table_name)
+                    .key("PK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                    .key(
+                        "SK",
+                        AttributeValue::S(format!("ABILITY#{}", current_ability_id)),
+                    )
+                    .send()
+                    .await
+                    .context("Failed to remove obsolete ability from character")?;
+
+                tracing::info!(
+                    "Removed obsolete ability {} from character {}",
+                    current_ability_id,
+                    character_id
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    // Sync abilities for all characters of a specific class
+    pub async fn sync_class_abilities(&self, class_id: &str) -> Result<usize> {
+        let characters = self.get_characters_by_class(class_id).await?;
+        let count = characters.len();
+
+        for character in characters {
+            if let Err(e) = self.sync_character_abilities(&character.id).await {
+                tracing::error!(
+                    "Failed to sync abilities for character {}: {:?}",
+                    character.id,
+                    e
+                );
+            }
+        }
+
+        tracing::info!(
+            "Synced abilities for {} characters of class {}",
+            count,
+            class_id
+        );
+
+        Ok(count)
+    }
 }

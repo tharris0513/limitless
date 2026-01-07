@@ -329,3 +329,18 @@
   flex: 1;
   margin-bottom: 0;
 }
+
+.formulaDisplay {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 255, 0, 0.05);
+  border-left: 2px solid #00ff00;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #00ff00;
+}
+
+.formulaDisplay strong {
+  color: #00ff00;
+  margin-right: 0.5rem;
+}

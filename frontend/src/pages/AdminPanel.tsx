@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass, Power } from 'lucide-react';
+import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass, Power, Sparkles } from 'lucide-react';
 import { ManageUsers } from './ManageUsers';
 import { ManageClasses } from './ManageClasses';
+import { ManageAbilities } from './ManageAbilities';
 import { ManageCharacters } from './ManageCharacters';
 import ManageCreatures from './ManageCreatures';
 import ManageAdventures from './ManageAdventures';
@@ -16,7 +17,7 @@ interface AdminPanelProps {
   requestedView?: AdminView; // Allow parent to request a specific view
 }
 
-type AdminView = 'menu' | 'users' | 'classes' | 'characters' | 'creatures' | 'adventures' | 'locations' | 'database' | 'permissions' | 'system';
+type AdminView = 'menu' | 'users' | 'classes' | 'abilities' | 'characters' | 'creatures' | 'adventures' | 'locations' | 'database' | 'permissions' | 'system';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onViewChange, requestedView }) => {
   const [currentView, setCurrentView] = useState<AdminView>('menu');
@@ -85,6 +86,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
     return <ManageClasses onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
   }
 
+  if (currentView === 'abilities') {
+    return <ManageAbilities onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
+  }
+
   if (currentView === 'characters') {
     return <ManageCharacters onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
   }
@@ -122,10 +127,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
               <span className={styles.buttonDescription}>View and edit user accounts</span>
             </button>
 
+            <button className={styles.adminActionButton} onClick={() => handleViewChange('users')}>
+              <Users size={32} />
+              <span className={styles.buttonLabel}>Manage Users</span>
+              <span className={styles.buttonDescription}>View and edit user accounts</span>
+            </button>
+
             <button className={styles.adminActionButton} onClick={() => handleViewChange('characters')}>
               <UserCog size={32} />
               <span className={styles.buttonLabel}>Manage Characters</span>
               <span className={styles.buttonDescription}>View and manage all characters</span>
+            </button>
+
+            <button className={styles.adminActionButton} onClick={() => handleViewChange('classes')}>
+              <Shield size={32} />
+              <span className={styles.buttonLabel}>Manage Classes</span>
+              <span className={styles.buttonDescription}>Configure character classes</span>
+            </button>
+
+            <button className={styles.adminActionButton} onClick={() => handleViewChange('abilities')}>
+              <Sparkles size={32} />
+              <span className={styles.buttonLabel}>Manage Abilities</span>
+              <span className={styles.buttonDescription}>Create skills and spells</span>
             </button>
 
             <button className={styles.adminActionButton}>
@@ -133,11 +156,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
               <span className={styles.buttonLabel}>Database Tools</span>
               <span className={styles.buttonDescription}>Query and manage database</span>
             </button>
+            
             <button className={styles.adminActionButton} onClick={() => handleViewChange('creatures')}>
               <Ghost size={32} />
               <span className={styles.buttonLabel}>Manage Creatures</span>
               <span className={styles.buttonDescription}>Create enemies and NPCs</span>
             </button>
+            
             <button className={styles.adminActionButton} onClick={() => handleViewChange('adventures')}>
               <Compass size={32} />
               <span className={styles.buttonLabel}>Manage Adventures</span>

@@ -55,6 +55,12 @@ impl UserRepository {
                 AttributeValue::S(effect_formula.clone()),
             );
         }
+        if let Some(passive_effect) = &ability.passive_effect {
+            item.insert(
+                "passive_effect".to_string(),
+                AttributeValue::S(passive_effect.clone()),
+            );
+        }
 
         self.client
             .put_item()
@@ -158,6 +164,10 @@ impl UserRepository {
                 .map(|s| s.to_string()),
             effect_formula: item
                 .get("effect_formula")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
+            passive_effect: item
+                .get("passive_effect")
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
         })
@@ -300,6 +310,10 @@ impl UserRepository {
                 .get("effect_formula")
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
+            passive_effect: item
+                .get("passive_effect")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
         })
     }
 
@@ -337,7 +351,10 @@ impl UserRepository {
     }
 
     // Get class abilities with their full data (helper for export)
-    pub(crate) async fn get_class_abilities_full(&self, class_id: &str) -> Result<Vec<(String, i64)>> {
+    pub(crate) async fn get_class_abilities_full(
+        &self,
+        class_id: &str,
+    ) -> Result<Vec<(String, i64)>> {
         let result = self
             .client
             .query()

@@ -6,6 +6,7 @@ import type {
   CharacterAbility,
   Class,
   Ability,
+  PassiveEffect,
   Location,
   Adventure,
   Shop,
@@ -297,6 +298,11 @@ export class GameAPI {
   // Admin endpoints
   static async adminGetAllAbilities(): Promise<Ability[]> {
     const response = await api.get('/admin/abilities');
+    return response.data;
+  }
+
+  static async adminGetPassiveEffects(): Promise<PassiveEffect[]> {
+    const response = await api.get('/admin/abilities/passive-effects');
     return response.data;
   }
 

@@ -104,6 +104,10 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Ability management
         .route("/admin/abilities", get(admin::get_all_abilities))
         .route("/admin/abilities", post(admin::create_ability))
+        .route(
+            "/admin/abilities/passive-effects",
+            get(admin::get_passive_effects),
+        )
         .route("/admin/abilities/:id", patch(admin::update_ability))
         .route("/admin/abilities/:id", delete(admin::delete_ability))
         // Config export/import

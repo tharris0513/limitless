@@ -197,12 +197,29 @@ pub async fn add_class_ability(
         .add_class_ability(&class_id, ability_id, unlock_level)
         .await
     {
-        Ok(()) => Ok(Json(json!({
-            "message": "Ability added to class",
-            "class_id": class_id,
-            "ability_id": ability_id,
-            "unlock_level": unlock_level
-        }))),
+        Ok(()) => {
+            // Sync abilities for all characters of this class
+            match repo.sync_class_abilities(&class_id).await {
+                Ok(count) => {
+                    tracing::info!(
+                        "Synced abilities for {} characters after adding {} to class {}",
+                        count,
+                        ability_id,
+                        class_id
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("Failed to sync class abilities: {:?}", e);
+                }
+            }
+
+            Ok(Json(json!({
+                "message": "Ability added to class",
+                "class_id": class_id,
+                "ability_id": ability_id,
+                "unlock_level": unlock_level
+            })))
+        }
         Err(e) => {
             tracing::error!("Failed to add ability to class: {:?}", e);
             Err(AppError::from(e))
@@ -217,11 +234,28 @@ pub async fn remove_class_ability(
     Path((class_id, ability_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, AppError> {
     match repo.remove_class_ability(&class_id, &ability_id).await {
-        Ok(()) => Ok(Json(json!({
-            "message": "Ability removed from class",
-            "class_id": class_id,
-            "ability_id": ability_id
-        }))),
+        Ok(()) => {
+            // Sync abilities for all characters of this class
+            match repo.sync_class_abilities(&class_id).await {
+                Ok(count) => {
+                    tracing::info!(
+                        "Synced abilities for {} characters after removing {} from class {}",
+                        count,
+                        ability_id,
+                        class_id
+                    );
+                }
+                Err(e) => {
+                    tracing::error!("Failed to sync class abilities: {:?}", e);
+                }
+            }
+
+            Ok(Json(json!({
+                "message": "Ability removed from class",
+                "class_id": class_id,
+                "ability_id": ability_id
+            })))
+        }
         Err(e) => {
             tracing::error!("Failed to remove ability from class: {:?}", e);
             Err(AppError::from(e))
@@ -312,6 +346,25 @@ pub async fn get_all_abilities(
             Err(AppError::from(e))
         }
     }
+}
+
+// Admin only - get available passive effects
+pub async fn get_passive_effects(
+    AdminClaims(_claims): AdminClaims,
+) -> Result<Json<Vec<Value>>, AppError> {
+    use crate::models::PASSIVE_EFFECTS;
+
+    let effects: Vec<Value> = PASSIVE_EFFECTS
+        .iter()
+        .map(|(id, description)| {
+            json!({
+                "id": id,
+                "description": description
+            })
+        })
+        .collect();
+
+    Ok(Json(effects))
 }
 
 // Admin only - export game configuration (classes and abilities)

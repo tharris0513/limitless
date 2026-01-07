@@ -75,14 +75,55 @@ pub struct Ability {
     pub mana_cost: i64,
     pub cooldown: i64,
 
-    // Formula-based calculations
+    // Formula-based calculations (for active abilities)
     #[serde(rename = "damageFormula", skip_serializing_if = "Option::is_none")]
     pub damage_formula: Option<String>, // e.g., "(might * 0.8) + 15"
     #[serde(rename = "healFormula", skip_serializing_if = "Option::is_none")]
     pub heal_formula: Option<String>, // e.g., "(magic * 1.2) + 20"
     #[serde(rename = "effectFormula", skip_serializing_if = "Option::is_none")]
     pub effect_formula: Option<String>, // For complex status effects
+
+    // Passive ability effect tag (for passive abilities)
+    #[serde(rename = "passiveEffect", skip_serializing_if = "Option::is_none")]
+    pub passive_effect: Option<String>, // e.g., "dual_wield", "increased_crit", etc.
 }
+
+/// Available passive ability effects
+pub const PASSIVE_EFFECTS: &[(&str, &str)] = &[
+    ("dual_wield", "Dual Wield - Attack with both weapons"),
+    (
+        "increased_crit",
+        "Increased Critical - +10% critical hit chance",
+    ),
+    ("lifesteal", "Lifesteal - Heal for 15% of damage dealt"),
+    ("thorns", "Thorns - Reflect 20% of damage taken"),
+    ("mana_regen", "Mana Regeneration - Restore 5 mana per turn"),
+    (
+        "health_regen",
+        "Health Regeneration - Restore 10 health per turn",
+    ),
+    ("dodge_bonus", "Dodge Bonus - +15% chance to dodge attacks"),
+    (
+        "armor_pierce",
+        "Armor Piercing - Ignore 25% of enemy defense",
+    ),
+    ("spell_amp", "Spell Amplification - +20% magic damage"),
+    ("iron_skin", "Iron Skin - +15% physical damage reduction"),
+    (
+        "arcane_shield",
+        "Arcane Shield - +15% magical damage reduction",
+    ),
+    ("berserker", "Berserker - +5% damage per 10% missing health"),
+    (
+        "first_strike",
+        "First Strike - Always attack first in combat",
+    ),
+    (
+        "counter_attack",
+        "Counter Attack - 30% chance to attack when hit",
+    ),
+    ("vampiric_aura", "Vampiric Aura - Restore health on kill"),
+];
 
 /// ClassAbility maps abilities to classes with unlock levels
 #[derive(Debug, Clone, Serialize, Deserialize)]
