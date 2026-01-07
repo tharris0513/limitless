@@ -6,6 +6,7 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 // Get all characters for the current user
@@ -116,6 +117,72 @@ pub async fn update_character_last_played(
         }
         Err(e) => {
             tracing::error!("Failed to update character last played: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GrantExperienceRequest {
+    pub amount: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GrantExperienceResponse {
+    pub character: Character,
+    #[serde(rename = "levelsGained")]
+    pub levels_gained: Vec<i64>,
+    #[serde(rename = "experienceGranted")]
+    pub experience_granted: i64,
+}
+
+/// Grant experience to a character
+/// This will automatically handle level-ups and stat increases
+pub async fn grant_experience(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+    Json(payload): Json<GrantExperienceRequest>,
+) -> Result<Json<GrantExperienceResponse>, AppError> {
+    // Verify character belongs to authenticated user
+    let characters = repo
+        .get_user_characters(&claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    let _character = characters
+        .iter()
+        .find(|c| c.id == character_id)
+        .ok_or_else(|| AppError::character_not_found(&character_id))?;
+
+    // Validate experience amount
+    if payload.amount <= 0 {
+        return Err(AppError::validation_error(
+            "Experience amount must be positive",
+        ));
+    }
+
+    // Grant experience and get updated character + levels gained
+    match repo.grant_experience(&character_id, payload.amount).await {
+        Ok((updated_character, levels_gained)) => {
+            let response = GrantExperienceResponse {
+                character: updated_character,
+                levels_gained: levels_gained.clone(),
+                experience_granted: payload.amount,
+            };
+
+            if !levels_gained.is_empty() {
+                tracing::info!(
+                    "Character {} leveled up to level(s): {:?}",
+                    character_id,
+                    levels_gained
+                );
+            }
+
+            Ok(Json(response))
+        }
+        Err(e) => {
+            tracing::error!("Failed to grant experience: {:?}", e);
             Err(AppError::from(e))
         }
     }

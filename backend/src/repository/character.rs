@@ -1,3 +1,4 @@
+use crate::level_system::{calculate_level_from_experience, calculate_stat_increases_for_level};
 use crate::models::{Character, CharacterStats};
 use anyhow::{Context, Result};
 use aws_sdk_dynamodb::types::AttributeValue;
@@ -443,6 +444,192 @@ impl UserRepository {
 
             tracing::info!("Deleted character {}", character_id);
             return Ok(());
+        }
+
+        Err(anyhow::anyhow!("Character not found"))
+    }
+
+    /// Grant experience to a character and handle level-ups automatically.
+    /// Returns the updated character and a list of levels gained (for notification purposes).
+    pub async fn grant_experience(
+        &self,
+        character_id: &str,
+        experience_gain: i64,
+    ) -> Result<(Character, Vec<i64>)> {
+        // Find the character first
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .index_name("character-id-index")
+            .key_condition_expression("id = :id AND entity_type = :entity_type")
+            .expression_attribute_values(":id", AttributeValue::S(character_id.to_string()))
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .send()
+            .await
+            .context("Failed to find character")?;
+
+        if let Some(item) = result.items().first() {
+            let character = self.parse_character(item)?;
+            let user_id = &character.user_id;
+
+            // Calculate new total experience
+            let new_total_experience = character.experience + experience_gain;
+
+            // Determine new level and experience progress
+            let (new_level, exp_into_level, exp_for_next_level) =
+                calculate_level_from_experience(new_total_experience);
+
+            let old_level = character.level;
+            let levels_gained: Vec<i64> = ((old_level + 1)..=new_level).collect();
+
+            // Calculate stat increases for all levels gained
+            let mut total_might = 0;
+            let mut total_defense = 0;
+            let mut total_magic = 0;
+            let mut total_resistance = 0;
+            let mut total_agility = 0;
+            let mut total_max_health = 0;
+            let mut total_max_mana = 0;
+
+            for level in &levels_gained {
+                let (m, d, mag, r, a, hp, mp) =
+                    calculate_stat_increases_for_level(&character.class_id, *level);
+                total_might += m;
+                total_defense += d;
+                total_magic += mag;
+                total_resistance += r;
+                total_agility += a;
+                total_max_health += hp;
+                total_max_mana += mp;
+            }
+
+            // Build update expression
+            let mut update_parts = vec![
+                "experience = :experience".to_string(),
+                "experience_to_next = :experience_to_next".to_string(),
+            ];
+
+            let mut attr_values = HashMap::new();
+            attr_values.insert(
+                ":experience".to_string(),
+                AttributeValue::N(exp_into_level.to_string()),
+            );
+            attr_values.insert(
+                ":experience_to_next".to_string(),
+                AttributeValue::N(exp_for_next_level.to_string()),
+            );
+
+            // If leveled up, update level and stats
+            if new_level > old_level {
+                update_parts.push("level = :level".to_string());
+                attr_values.insert(
+                    ":level".to_string(),
+                    AttributeValue::N(new_level.to_string()),
+                );
+
+                // Update stats
+                let new_might = character.stats.might + total_might;
+                let new_defense = character.stats.defense + total_defense;
+                let new_magic = character.stats.magic + total_magic;
+                let new_resistance = character.stats.resistance + total_resistance;
+                let new_agility = character.stats.agility + total_agility;
+                let new_max_health = character.max_health + total_max_health;
+                let new_max_mana = character.max_mana + total_max_mana;
+
+                // Also increase current health and mana by the same amount (heal on level up)
+                let new_health = character.health + total_max_health;
+                let new_mana = character.mana + total_max_mana;
+
+                update_parts.extend([
+                    "might = :might".to_string(),
+                    "defense = :defense".to_string(),
+                    "magic = :magic".to_string(),
+                    "resistance = :resistance".to_string(),
+                    "agility = :agility".to_string(),
+                    "max_health = :max_health".to_string(),
+                    "max_mana = :max_mana".to_string(),
+                    "health = :health".to_string(),
+                    "mana = :mana".to_string(),
+                ]);
+
+                attr_values.insert(
+                    ":might".to_string(),
+                    AttributeValue::N(new_might.to_string()),
+                );
+                attr_values.insert(
+                    ":defense".to_string(),
+                    AttributeValue::N(new_defense.to_string()),
+                );
+                attr_values.insert(
+                    ":magic".to_string(),
+                    AttributeValue::N(new_magic.to_string()),
+                );
+                attr_values.insert(
+                    ":resistance".to_string(),
+                    AttributeValue::N(new_resistance.to_string()),
+                );
+                attr_values.insert(
+                    ":agility".to_string(),
+                    AttributeValue::N(new_agility.to_string()),
+                );
+                attr_values.insert(
+                    ":max_health".to_string(),
+                    AttributeValue::N(new_max_health.to_string()),
+                );
+                attr_values.insert(
+                    ":max_mana".to_string(),
+                    AttributeValue::N(new_max_mana.to_string()),
+                );
+                attr_values.insert(
+                    ":health".to_string(),
+                    AttributeValue::N(new_health.to_string()),
+                );
+                attr_values.insert(":mana".to_string(), AttributeValue::N(new_mana.to_string()));
+
+                // Unlock abilities for newly gained levels
+                for level in &levels_gained {
+                    self.unlock_character_abilities(character_id, &character.class_id, *level)
+                        .await?;
+                }
+            }
+
+            let update_expression = format!("SET {}", update_parts.join(", "));
+
+            // Perform the update
+            self.client
+                .update_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .update_expression(update_expression)
+                .set_expression_attribute_values(Some(attr_values))
+                .send()
+                .await
+                .context("Failed to update character with experience")?;
+
+            // Fetch and return updated character
+            let updated_result = self
+                .client
+                .get_item()
+                .table_name(&self.table_name)
+                .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+                .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+                .send()
+                .await
+                .context("Failed to fetch updated character")?;
+
+            if let Some(updated_item) = updated_result.item() {
+                let updated_character = self.parse_character(updated_item)?;
+                tracing::info!(
+                    "Granted {} XP to character {}. Level {} -> {}",
+                    experience_gain,
+                    character_id,
+                    old_level,
+                    new_level
+                );
+                return Ok((updated_character, levels_gained));
+            }
         }
 
         Err(anyhow::anyhow!("Character not found"))

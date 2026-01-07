@@ -501,6 +501,21 @@ export class GameAPI {
   static async adminDeleteAdventure(adventureId: string): Promise<void> {
     await api.delete(`/admin/adventures/${adventureId}`);
   }
+
+  // ===== EXPERIENCE & LEVELING =====
+  static async grantExperience(
+    characterId: string,
+    amount: number
+  ): Promise<{
+    character: any;
+    levelsGained: number[];
+    experienceGranted: number;
+  }> {
+    const response = await api.post(`/characters/${characterId}/experience`, {
+      amount,
+    });
+    return response.data;
+  }
 }
 
 export default GameAPI;

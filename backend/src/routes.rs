@@ -64,6 +64,10 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/abilities",
             get(character::get_character_abilities),
         )
+        .route(
+            "/characters/:id/experience",
+            post(character::grant_experience),
+        )
         .layer(middleware::from_fn(jwt_auth_middleware));
 
     // Admin-only routes

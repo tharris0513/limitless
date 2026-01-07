@@ -12,6 +12,7 @@ mod database;
 mod error;
 mod handlers;
 mod jwt;
+mod level_system;
 mod middleware;
 mod models;
 mod repository;
