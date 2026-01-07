@@ -11,6 +11,7 @@ import type {
   Adventure,
   Shop,
   ItemType,
+  AttackResult,
 } from '../types/game';
 
 // Configure axios instance
@@ -166,13 +167,19 @@ export class GameAPI {
     return response.data;
   }
 
+  static async getCharacter(characterId: string): Promise<Character> {
+    const response = await api.get(`/characters/${characterId}`);
+    return response.data;
+  }
+
   static async createCharacter(characterData: {
     userId: string;
     name: string;
     classId: string;
   }): Promise<Character> {
     const response = await api.post('/characters', characterData);
-    return response.data;
+    // Ensure response data is properly typed as Character
+    return response.data as Character;
   }
 
   static async updateCharacter(
@@ -189,6 +196,11 @@ export class GameAPI {
 
   static async fleeCombat(characterId: string): Promise<Character> {
     const response = await api.post(`/characters/${characterId}/flee`);
+    return response.data;
+  }
+
+  static async performAttack(characterId: string): Promise<AttackResult> {
+    const response = await api.post(`/characters/${characterId}/attack`);
     return response.data;
   }
 

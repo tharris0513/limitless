@@ -52,6 +52,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/user", patch(user::update_user))
         .route("/characters", get(character::get_user_characters))
         .route("/characters", post(character::create_character))
+        .route("/characters/:id", get(character::get_character))
         .route("/characters/:id", patch(character::update_character))
         .route(
             "/characters/:id/last-played",
@@ -60,6 +61,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/characters/:id/state", post(combat::save_game_state))
         .route("/characters/:id/state", delete(combat::clear_game_state))
         .route("/characters/:id/flee", post(combat::flee_combat))
+        .route("/characters/:id/attack", post(combat::perform_attack))
         .route(
             "/characters/:id/abilities",
             get(character::get_character_abilities),

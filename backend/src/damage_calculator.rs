@@ -43,6 +43,15 @@ impl DamageCalculator {
         }
     }
 
+    /// Calculate melee attack damage based on might with variance
+    pub fn calculate_melee_attack(might: i64) -> i32 {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let variance = rng.gen_range(-0.1..=0.1);
+        let damage = ((might as f64) * (1.0 + variance)).round() as i32;
+        damage.max(1) // Minimum 1 damage
+    }
+
     /// Validate a formula by testing it with sample stats
     pub fn validate_formula(formula: &str) -> Result<(), String> {
         // Create sample stats for validation

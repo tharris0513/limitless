@@ -70,6 +70,38 @@ export interface PassiveEffect {
   description: string;
 }
 
+// Combat attack result
+export interface AttackResult {
+  attacks: SingleAttack[];
+  totalDamage: number;
+  enemyHealth: number;
+  victory: boolean;
+  experienceGained?: number;
+  victoryMessage?: string;
+  levelUp?: LevelUpInfo;
+}
+
+export interface LevelUpInfo {
+  newLevel: number;
+  statIncreases: StatIncreases;
+}
+
+export interface StatIncreases {
+  might: number;
+  defense: number;
+  magic: number;
+  resistance: number;
+  agility: number;
+  maxHealth: number;
+  maxMana: number;
+}
+
+export interface SingleAttack {
+  damage: number;
+  description: string;
+  isDualWield: boolean;
+}
+
 // CharacterAbility tracks which abilities a character has unlocked
 export interface CharacterAbility {
   characterId: string;

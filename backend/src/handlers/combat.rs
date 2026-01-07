@@ -1,11 +1,14 @@
+use crate::damage_calculator::DamageCalculator;
 use crate::error::AppError;
+use crate::level_system::{calculate_level_from_experience, calculate_stat_increases_for_level};
 use crate::middleware::AuthClaims;
-use crate::models::Character;
+use crate::models::{Character, CharacterAbility};
 use crate::repository::UserRepository;
 use axum::{
     extract::{Path, State},
     Json,
 };
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 // Save character's game state
@@ -105,4 +108,255 @@ pub async fn flee_combat(
 
     tracing::info!("Character {} fled from combat", character_id);
     Ok(Json(updated_character))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttackResult {
+    pub attacks: Vec<SingleAttack>,
+    pub total_damage: i32,
+    pub enemy_health: i32,
+    pub victory: bool,
+    pub experience_gained: Option<i32>,
+    pub victory_message: Option<String>,
+    pub level_up: Option<LevelUpInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelUpInfo {
+    pub new_level: i64,
+    pub stat_increases: StatIncreases,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatIncreases {
+    pub might: i64,
+    pub defense: i64,
+    pub magic: i64,
+    pub resistance: i64,
+    pub agility: i64,
+    pub max_health: i64,
+    pub max_mana: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SingleAttack {
+    pub damage: i32,
+    pub description: String,
+    pub is_dual_wield: bool,
+}
+
+// Perform a melee attack
+pub async fn perform_attack(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<AttackResult>, AppError> {
+    // Get character directly to ensure we have the latest game_state
+    let character = repo
+        .get_character(&character_id, &claims.sub)
+        .await
+        .map_err(|_| AppError::character_not_found(&character_id))?;
+
+    // Get character abilities to check for dual_wield passive
+    let abilities: Vec<CharacterAbility> = repo
+        .get_character_abilities(&character_id)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    let has_dual_wield = abilities.iter().any(|char_ability| {
+        if let Some(ref ability) = char_ability.ability {
+            ability.ability_type == "passive"
+                && ability.passive_effect.as_deref() == Some("dual_wield")
+        } else {
+            false
+        }
+    });
+
+    let mut attacks = Vec::new();
+
+    // Calculate base damage from might with ±10% variance
+    let base_damage = character.stats.might;
+
+    // First attack (main hand) - use DamageCalculator
+    let damage = DamageCalculator::calculate_melee_attack(base_damage);
+
+    attacks.push(SingleAttack {
+        damage,
+        description: format!(
+            "You swing your weapon at the enemy, dealing {} damage!",
+            damage
+        ),
+        is_dual_wield: false,
+    });
+
+    // Second attack if dual wielding
+    if has_dual_wield {
+        let damage = DamageCalculator::calculate_melee_attack(base_damage);
+
+        attacks.push(SingleAttack {
+            damage,
+            description: format!(
+                "Your off-hand weapon strikes true, dealing {} damage!",
+                damage
+            ),
+            is_dual_wield: true,
+        });
+    }
+
+    let total_damage: i32 = attacks.iter().map(|a| a.damage).sum();
+
+    // Get current game state to update enemy health
+    let game_state_str = character
+        .game_state
+        .as_ref()
+        .ok_or_else(|| AppError::validation_error("No active combat"))?;
+
+    let mut game_state: serde_json::Value = serde_json::from_str(game_state_str)
+        .map_err(|e| AppError::validation_error(&format!("Invalid game state: {}", e)))?;
+
+    // Update enemy health
+    let enemy = game_state
+        .get_mut("enemy")
+        .ok_or_else(|| AppError::validation_error("No enemy in game state"))?;
+
+    let current_health = enemy
+        .get("health")
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| AppError::validation_error("Invalid enemy health"))?
+        as i32;
+
+    let new_health = (current_health - total_damage).max(0);
+    enemy["health"] = serde_json::json!(new_health);
+
+    // Check for victory
+    let victory = new_health <= 0;
+    let mut experience_gained = None;
+    let mut victory_message = None;
+    let mut level_up = None;
+
+    if victory {
+        // Get enemy details for experience calculation
+        let enemy_level = enemy.get("level").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
+
+        let enemy_name = enemy
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("enemy");
+
+        // Calculate experience reward (base 50 + 25 per enemy level)
+        let exp_reward = 50 + (enemy_level * 25);
+        experience_gained = Some(exp_reward);
+
+        // Award experience to character
+        let new_total_experience = character.experience + exp_reward as i64;
+
+        // Check for level up
+        let old_level = character.level;
+        let (new_level, exp_into_level, exp_for_next) =
+            calculate_level_from_experience(new_total_experience);
+
+        // Update experience (store TOTAL cumulative XP) and experience_to_next (for XP bar)
+        repo.update_character_experience_progress(
+            &character_id,
+            &claims.sub,
+            new_total_experience, // Store total XP, not progress
+            exp_for_next,
+        )
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+        // Update level if it changed
+        if new_level > old_level {
+            repo.update_character_level(&character_id, &claims.sub, new_level)
+                .await
+                .map_err(|e| AppError::from(e))?;
+
+            // Calculate stat increases
+            let (might, defense, magic, resistance, agility, max_health, max_mana) =
+                calculate_stat_increases_for_level(&character.class_id, new_level);
+
+            // Apply stat increases to character
+            repo.apply_stat_increases(
+                &character_id,
+                &claims.sub,
+                might,
+                defense,
+                magic,
+                resistance,
+                agility,
+                max_health,
+                max_mana,
+            )
+            .await
+            .map_err(|e| AppError::from(e))?;
+
+            level_up = Some(LevelUpInfo {
+                new_level,
+                stat_increases: StatIncreases {
+                    might,
+                    defense,
+                    magic,
+                    resistance,
+                    agility,
+                    max_health,
+                    max_mana,
+                },
+            });
+        }
+
+        // Subtract one adventure
+        let new_adventures = (character.stats.adventures - 1).max(0);
+        repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
+            .await
+            .map_err(|e| AppError::from(e))?;
+
+        // Clear game state (combat is over)
+        repo.update_character_game_state(&character_id, &claims.sub, None)
+            .await
+            .map_err(|e| AppError::from(e))?;
+
+        victory_message = Some(format!(
+            "Victory! You have defeated {}! You gained {} experience.",
+            enemy_name, exp_reward
+        ));
+
+        tracing::info!(
+            "Character {} defeated {} and gained {} experience",
+            character_id,
+            enemy_name,
+            exp_reward
+        );
+    } else {
+        // Save updated game state
+        let updated_game_state_str = serde_json::to_string(&game_state).map_err(|e| {
+            AppError::validation_error(&format!("Failed to serialize game state: {}", e))
+        })?;
+
+        repo.update_character_game_state(&character_id, &claims.sub, Some(updated_game_state_str))
+            .await
+            .map_err(|e| AppError::from(e))?;
+
+        tracing::info!(
+            "Character {} attacked for {} total damage (dual_wield: {}), enemy health: {} -> {}",
+            character_id,
+            total_damage,
+            has_dual_wield,
+            current_health,
+            new_health
+        );
+    }
+
+    Ok(Json(AttackResult {
+        attacks,
+        total_damage,
+        enemy_health: new_health,
+        victory,
+        experience_gained,
+        victory_message,
+        level_up,
+    }))
 }

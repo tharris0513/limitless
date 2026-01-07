@@ -9,6 +9,23 @@ use uuid::Uuid;
 use super::UserRepository;
 
 impl UserRepository {
+    /// Get a single character by ID and user_id
+    pub async fn get_character(&self, character_id: &str, user_id: &str) -> Result<Character> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .send()
+            .await
+            .context("Failed to get character")?;
+
+        let item = result.item().context("Character not found")?;
+
+        self.parse_character(item)
+    }
+
     pub async fn get_user_characters(&self, user_id: &str) -> Result<Vec<Character>> {
         let result = self
             .client
@@ -411,6 +428,157 @@ impl UserRepository {
         }
 
         Err(anyhow::anyhow!("Character not found"))
+    }
+
+    // Update character experience
+    pub async fn update_character_experience(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        experience: i64,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression("SET experience = :experience")
+            .expression_attribute_values(":experience", AttributeValue::N(experience.to_string()))
+            .send()
+            .await
+            .context("Failed to update character experience")?;
+
+        Ok(())
+    }
+
+    // Update character experience and experience_to_next (for proper XP bar display)
+    pub async fn update_character_experience_progress(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        experience: i64,
+        experience_to_next: i64,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression(
+                "SET experience = :experience, experience_to_next = :experience_to_next",
+            )
+            .expression_attribute_values(":experience", AttributeValue::N(experience.to_string()))
+            .expression_attribute_values(
+                ":experience_to_next",
+                AttributeValue::N(experience_to_next.to_string()),
+            )
+            .send()
+            .await
+            .context("Failed to update character experience progress")?;
+
+        Ok(())
+    }
+
+    // Update character level
+    pub async fn update_character_level(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        level: i64,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression("SET #level = :level")
+            .expression_attribute_names("#level", "level")
+            .expression_attribute_values(":level", AttributeValue::N(level.to_string()))
+            .send()
+            .await
+            .context("Failed to update character level")?;
+
+        Ok(())
+    }
+
+    // Update character adventures (with user_id for consistency)
+    pub async fn update_character_adventures_with_user(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        adventures: i64,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression("SET adventures = :adventures")
+            .expression_attribute_values(":adventures", AttributeValue::N(adventures.to_string()))
+            .send()
+            .await
+            .context("Failed to update character adventures")?;
+
+        Ok(())
+    }
+
+    // Apply stat increases to character (for level-ups)
+    pub async fn apply_stat_increases(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        might: i64,
+        defense: i64,
+        magic: i64,
+        resistance: i64,
+        agility: i64,
+        max_health: i64,
+        max_mana: i64,
+    ) -> Result<()> {
+        // First get current stats
+        let character = self.get_character(character_id, user_id).await?;
+
+        let new_might = character.stats.might + might;
+        let new_defense = character.stats.defense + defense;
+        let new_magic = character.stats.magic + magic;
+        let new_resistance = character.stats.resistance + resistance;
+        let new_agility = character.stats.agility + agility;
+        let new_max_health = character.max_health + max_health;
+        let new_max_mana = character.max_mana + max_mana;
+        let new_health = character.health + max_health; // Heal on level up
+        let new_mana = character.mana + max_mana; // Restore mana on level up
+
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression(
+                "SET might = :might, defense = :defense, magic = :magic, \
+                 resistance = :resistance, agility = :agility, \
+                 max_health = :max_health, max_mana = :max_mana, \
+                 health = :health, mana = :mana",
+            )
+            .expression_attribute_values(":might", AttributeValue::N(new_might.to_string()))
+            .expression_attribute_values(":defense", AttributeValue::N(new_defense.to_string()))
+            .expression_attribute_values(":magic", AttributeValue::N(new_magic.to_string()))
+            .expression_attribute_values(
+                ":resistance",
+                AttributeValue::N(new_resistance.to_string()),
+            )
+            .expression_attribute_values(":agility", AttributeValue::N(new_agility.to_string()))
+            .expression_attribute_values(
+                ":max_health",
+                AttributeValue::N(new_max_health.to_string()),
+            )
+            .expression_attribute_values(":max_mana", AttributeValue::N(new_max_mana.to_string()))
+            .expression_attribute_values(":health", AttributeValue::N(new_health.to_string()))
+            .expression_attribute_values(":mana", AttributeValue::N(new_mana.to_string()))
+            .send()
+            .await
+            .context("Failed to apply stat increases")?;
+
+        Ok(())
     }
 
     // Admin only - delete character

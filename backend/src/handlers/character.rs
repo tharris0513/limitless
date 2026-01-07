@@ -20,6 +20,18 @@ pub async fn get_user_characters(
     }
 }
 
+// Get a single character by ID
+pub async fn get_character(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<Character>, AppError> {
+    match repo.get_character(&character_id, &claims.sub).await {
+        Ok(character) => Ok(Json(character)),
+        Err(_) => Err(AppError::character_not_found(&character_id)),
+    }
+}
+
 // Create a new character for the current user
 pub async fn create_character(
     State(repo): State<Arc<UserRepository>>,

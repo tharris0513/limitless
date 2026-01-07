@@ -26,38 +26,13 @@
   opacity: 0.8;
 }
 
-.introductionBox {
-  background: rgba(0, 255, 0, 0.08);
-  border: 2px solid #00ff00;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  text-align: center;
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-}
-
-.introductionText {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  margin: 0;
-  font-style: italic;
-  text-shadow: 0 0 5px #00ff00;
-  opacity: 0.95;
-}
-
-.combatArea {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.playerSection,
 .enemySection {
   background: rgba(0, 255, 0, 0.05);
   border: 2px solid #00ff00;
   border-radius: 8px;
   padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
 }
 
 .sectionTitle {
@@ -150,28 +125,35 @@
   border: 2px solid #00ff00;
   border-radius: 8px;
   padding: 1.5rem;
-  max-height: 300px;
+  height: 400px;
   overflow-y: auto;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
 }
 
-.logTitle {
-  font-size: 1.2rem;
-  margin: 0 0 1rem 0;
-  text-shadow: 0 0 8px #00ff00;
+.introductionText {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+  text-shadow: 0 0 5px #00ff00;
+  opacity: 0.95;
 }
 
 .logEntries {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .logEntry {
-  padding: 0.5rem;
+  padding: 0.75rem;
   background: rgba(0, 255, 0, 0.03);
   border-left: 3px solid #00ff00;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .logTurn {
@@ -204,10 +186,6 @@
 }
 
 @media (max-width: 768px) {
-  .combatArea {
-    grid-template-columns: 1fr;
-  }
-  
   .actionButtons {
     grid-template-columns: 1fr;
   }

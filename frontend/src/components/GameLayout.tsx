@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { type Player, type User } from '../types/game';
 import { Heart, Zap, Star, Settings, Shield, Swords } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
+import { calculateLevelFromExperience } from '../utils/experienceCalculator';
 import styles from './GameLayout.module.css';
 
 interface GameLayoutProps {
@@ -16,6 +17,13 @@ interface GameLayoutProps {
 }
 
 export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, onLogout, onSettingsClick, isAdmin, onAdminClick, hideCharacterInfo }) => {
+  // Calculate experience progress from total experience
+  const expProgress = useMemo(() => {
+    if (!player) return { current: 0, needed: 100 };
+    const [_, expIntoLevel, expForNext] = calculateLevelFromExperience(player.experience);
+    return { current: expIntoLevel, needed: expForNext };
+  }, [player?.experience]);
+
   return (
     <div className={styles.layoutContainer}>
       <header className={styles.header}>
@@ -62,12 +70,12 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                 
                 <div className={styles.experienceSection}>
                   <div className={styles.experienceLabel}>
-                    <span>XP: {player.experience.toLocaleString()} / {player.experienceToNext.toLocaleString()}</span>
+                    <span>XP: {expProgress.current.toLocaleString()} / {expProgress.needed.toLocaleString()}</span>
                   </div>
                   <div className={styles.experienceBar}>
                     <div 
                       className={styles.experienceProgress}
-                      style={{ width: `${(player.experience / player.experienceToNext) * 100}%` }}
+                      style={{ width: `${(expProgress.current / expProgress.needed) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -91,42 +99,42 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                 <div className={styles.statItem}>
                   <Heart size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats.might}</span>
+                    <span className={styles.statValue}>{player.stats?.might || 0}</span>
                     <span className={styles.statLabel}>Might</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Shield size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats.defense}</span>
+                    <span className={styles.statValue}>{player.stats?.defense || 0}</span>
                     <span className={styles.statLabel}>Defense</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Star size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats.magic}</span>
+                    <span className={styles.statValue}>{player.stats?.magic || 0}</span>
                     <span className={styles.statLabel}>Magic</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Heart size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats.resistance}</span>
+                    <span className={styles.statValue}>{player.stats?.resistance || 0}</span>
                     <span className={styles.statLabel}>Resistance</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Zap size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats.agility}</span>
+                    <span className={styles.statValue}>{player.stats?.agility || 0}</span>
                     <span className={styles.statLabel}>Agility</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Swords size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats.adventures}</span>
+                    <span className={styles.statValue}>{player.stats?.adventures || 0}</span>
                     <span className={styles.statLabel}>Adventures</span>
                   </div>
                 </div>
