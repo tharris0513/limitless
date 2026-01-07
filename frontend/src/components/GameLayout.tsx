@@ -59,6 +59,18 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                 <h2 className={styles.characterName}>{player.name}</h2>
                 <div className={styles.characterLevel}>Level {player.level}</div>
                 <div className={styles.characterClass}>{player.classId}</div>
+                
+                <div className={styles.experienceSection}>
+                  <div className={styles.experienceLabel}>
+                    <span>XP: {player.experience.toLocaleString()} / {player.experienceToNext.toLocaleString()}</span>
+                  </div>
+                  <div className={styles.experienceBar}>
+                    <div 
+                      className={styles.experienceProgress}
+                      style={{ width: `${(player.experience / player.experienceToNext) * 100}%` }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className={styles.characterStats}>
