@@ -60,6 +60,19 @@ function transformUserToBackend(frontendUser: any): any {
   };
 }
 
+function transformCharacterFromBackend(backendChar: any): Character {
+  return {
+    ...backendChar,
+    // Flatten health/mana from stats to top level for backward compatibility
+    health: backendChar.stats?.health ?? backendChar.health ?? 0,
+    maxHealth: backendChar.stats?.maxHealth ?? backendChar.maxHealth ?? 0,
+    mana: backendChar.stats?.mana ?? backendChar.mana ?? 0,
+    maxMana: backendChar.stats?.maxMana ?? backendChar.maxMana ?? 0,
+    inventory: backendChar.inventory || [],
+    equipment: backendChar.equipment || {},
+  };
+}
+
 export class GameAPI {
   // Check if user is authenticated via cookie
   static async getAuthFromCookie(): Promise<{ token: string; user: User }> {
@@ -164,12 +177,14 @@ export class GameAPI {
   // Character endpoints
   static async getUserCharacters(): Promise<Character[]> {
     const response = await api.get('/characters');
-    return response.data;
+    return response.data.map((char: any) =>
+      transformCharacterFromBackend(char)
+    );
   }
 
   static async getCharacter(characterId: string): Promise<Character> {
     const response = await api.get(`/characters/${characterId}`);
-    return response.data;
+    return transformCharacterFromBackend(response.data);
   }
 
   static async createCharacter(characterData: {
@@ -178,8 +193,7 @@ export class GameAPI {
     classId: string;
   }): Promise<Character> {
     const response = await api.post('/characters', characterData);
-    // Ensure response data is properly typed as Character
-    return response.data as Character;
+    return transformCharacterFromBackend(response.data);
   }
 
   static async updateCharacter(
@@ -187,7 +201,7 @@ export class GameAPI {
     updates: Partial<Character>
   ): Promise<Character> {
     const response = await api.patch(`/characters/${characterId}`, updates);
-    return response.data;
+    return transformCharacterFromBackend(response.data);
   }
 
   static async updateCharacterLastPlayed(characterId: string): Promise<void> {
@@ -196,7 +210,7 @@ export class GameAPI {
 
   static async fleeCombat(characterId: string): Promise<Character> {
     const response = await api.post(`/characters/${characterId}/flee`);
-    return response.data;
+    return transformCharacterFromBackend(response.data);
   }
 
   static async performAttack(characterId: string): Promise<AttackResult> {

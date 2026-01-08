@@ -62,6 +62,10 @@ impl DamageCalculator {
             resistance: 10,
             agility: 10,
             adventures: 0,
+            health: 100,
+            max_health: 100,
+            mana: 50,
+            max_mana: 50,
         };
 
         // Try to evaluate the formula with sample data
@@ -181,10 +185,13 @@ impl DamageCalculator {
                 .set_value("target_level".into(), Value::from(target.level))
                 .unwrap();
             context
-                .set_value("target_health".into(), Value::from(target.health))
+                .set_value("target_health".into(), Value::from(target.stats.health))
                 .unwrap();
             context
-                .set_value("target_max_health".into(), Value::from(target.max_health))
+                .set_value(
+                    "target_max_health".into(),
+                    Value::from(target.stats.max_health),
+                )
                 .unwrap();
         }
 
@@ -198,6 +205,10 @@ mod tests {
 
     fn create_test_stats() -> CharacterStats {
         CharacterStats {
+            health: 80,
+            max_health: 100,
+            mana: 30,
+            max_mana: 50,
             might: 12,
             defense: 8,
             magic: 10,

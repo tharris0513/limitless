@@ -1,4 +1,6 @@
-use crate::level_system::{calculate_level_from_experience, calculate_stat_increases_for_level};
+use crate::level_system::{
+    calculate_level_from_experience, calculate_stat_increases_for_level, experience_for_level,
+};
 use crate::models::{Character, CharacterStats};
 use anyhow::{Context, Result};
 use aws_sdk_dynamodb::types::AttributeValue;
@@ -67,6 +69,10 @@ impl UserRepository {
             resistance: class.starting_resistance,
             agility: class.starting_agility,
             adventures: 50,
+            health: class.starting_health,
+            max_health: class.starting_health,
+            mana: class.starting_mana,
+            max_mana: class.starting_mana,
         };
 
         let mut item = HashMap::new();
@@ -93,40 +99,6 @@ impl UserRepository {
             AttributeValue::S(class_id.to_string()),
         );
         item.insert("level".to_string(), AttributeValue::N("1".to_string()));
-        item.insert(
-            "health".to_string(),
-            AttributeValue::N(class.starting_health.to_string()),
-        );
-        item.insert(
-            "max_health".to_string(),
-            AttributeValue::N(class.starting_health.to_string()),
-        );
-        item.insert(
-            "mana".to_string(),
-            AttributeValue::N(class.starting_mana.to_string()),
-        );
-        item.insert(
-            "max_mana".to_string(),
-            AttributeValue::N(class.starting_mana.to_string()),
-        );
-        item.insert("experience".to_string(), AttributeValue::N("0".to_string()));
-        item.insert(
-            "experience_to_next".to_string(),
-            AttributeValue::N("100".to_string()),
-        );
-        item.insert(
-            "location".to_string(),
-            AttributeValue::S("starting_area".to_string()),
-        );
-        item.insert(
-            "created_at".to_string(),
-            AttributeValue::S(created_at.clone()),
-        );
-        item.insert(
-            "last_played".to_string(),
-            AttributeValue::S(last_played.clone()),
-        );
-
         // Embed stats in the same item
         item.insert(
             "might".to_string(),
@@ -152,6 +124,41 @@ impl UserRepository {
             "adventures".to_string(),
             AttributeValue::N(stats.adventures.to_string()),
         );
+        item.insert(
+            "health".to_string(),
+            AttributeValue::N(stats.health.to_string()),
+        );
+        item.insert(
+            "max_health".to_string(),
+            AttributeValue::N(stats.max_health.to_string()),
+        );
+        item.insert(
+            "mana".to_string(),
+            AttributeValue::N(stats.mana.to_string()),
+        );
+        item.insert(
+            "max_mana".to_string(),
+            AttributeValue::N(stats.max_mana.to_string()),
+        );
+        item.insert("experience".to_string(), AttributeValue::N("0".to_string()));
+        item.insert(
+            "experience_to_next".to_string(),
+            AttributeValue::N("100".to_string()),
+        );
+        item.insert(
+            "location".to_string(),
+            AttributeValue::S("starting_area".to_string()),
+        );
+        item.insert(
+            "created_at".to_string(),
+            AttributeValue::S(created_at.clone()),
+        );
+        item.insert(
+            "last_played".to_string(),
+            AttributeValue::S(last_played.clone()),
+        );
+
+        tracing::info!("Creating character with experience: 0, experience_to_next: 100");
 
         self.client
             .put_item()
@@ -160,6 +167,8 @@ impl UserRepository {
             .send()
             .await
             .context("Failed to create character")?;
+
+        tracing::info!("Character created successfully in DynamoDB");
 
         // Unlock level 1 abilities for this class
         self.unlock_character_abilities(&character_id, class_id, 1)
@@ -171,10 +180,6 @@ impl UserRepository {
             name: name.to_string(),
             class_id: class_id.to_string(),
             level: 1,
-            health: class.starting_health,
-            max_health: class.starting_health,
-            mana: class.starting_mana,
-            max_mana: class.starting_mana,
             experience: 0,
             experience_to_next: 100,
             stats,
@@ -272,18 +277,23 @@ impl UserRepository {
                 .context(format!("Missing {}", key))
         };
 
-        Ok(Character {
+        let experience = get_i64("experience")?;
+        let experience_to_next = get_i64("experience_to_next")?;
+
+        tracing::debug!(
+            "Parsing character - experience: {}, experience_to_next: {}",
+            experience,
+            experience_to_next
+        );
+
+        let character = Character {
             id: get_string("id")?,
             user_id: get_string("user_id")?,
             name: get_string("name")?,
             class_id: get_string("class_id")?,
             level: get_i64("level")?,
-            health: get_i64("health")?,
-            max_health: get_i64("max_health")?,
-            mana: get_i64("mana")?,
-            max_mana: get_i64("max_mana")?,
-            experience: get_i64("experience")?,
-            experience_to_next: get_i64("experience_to_next")?,
+            experience,
+            experience_to_next,
             stats: CharacterStats {
                 might: get_i64("might")?,
                 defense: get_i64("defense")?,
@@ -291,6 +301,10 @@ impl UserRepository {
                 resistance: get_i64("resistance")?,
                 agility: get_i64("agility")?,
                 adventures: get_i64("adventures")?,
+                health: get_i64("health")?,
+                max_health: get_i64("max_health")?,
+                mana: get_i64("mana")?,
+                max_mana: get_i64("max_mana")?,
             },
             location: get_string("location")?,
             game_state: item
@@ -299,7 +313,18 @@ impl UserRepository {
                 .map(|s| s.to_string()),
             created_at: get_string("created_at")?,
             last_played: get_string("last_played")?,
-        })
+        };
+
+        tracing::info!(
+            "Returning character {} - level: {}, exp: {}/{}, stats.health: {}",
+            character.name,
+            character.level,
+            character.experience,
+            character.experience_to_next,
+            character.stats.health
+        );
+
+        Ok(character)
     }
 
     // Admin only - get all characters from all users
@@ -320,6 +345,26 @@ impl UserRepository {
         }
 
         Ok(characters)
+    }
+
+    // Admin only - get a single character by ID (scans all users)
+    pub async fn get_character_by_id(&self, character_id: &str) -> Result<Character> {
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("id = :id AND entity_type = :entity_type")
+            .expression_attribute_values(":id", AttributeValue::S(character_id.to_string()))
+            .expression_attribute_values(":entity_type", AttributeValue::S("CHARACTER".to_string()))
+            .send()
+            .await
+            .context("Failed to find character by ID")?;
+
+        result
+            .items()
+            .first()
+            .context("Character not found")
+            .and_then(|item| self.parse_character(item))
     }
 
     // Admin only - update character name
@@ -543,10 +588,10 @@ impl UserRepository {
         let new_magic = character.stats.magic + magic;
         let new_resistance = character.stats.resistance + resistance;
         let new_agility = character.stats.agility + agility;
-        let new_max_health = character.max_health + max_health;
-        let new_max_mana = character.max_mana + max_mana;
-        let new_health = character.health + max_health; // Heal on level up
-        let new_mana = character.mana + max_mana; // Restore mana on level up
+        let new_max_health = character.stats.max_health + max_health;
+        let new_max_mana = character.stats.max_mana + max_mana;
+        let new_health = character.stats.health + max_health; // Heal on level up
+        let new_mana = character.stats.mana + max_mana; // Restore mana on level up
 
         self.client
             .update_item()
@@ -641,12 +686,26 @@ impl UserRepository {
             let character = self.parse_character(item)?;
             let user_id = &character.user_id;
 
-            // Calculate new total experience
-            let new_total_experience = character.experience + experience_gain;
+            // Calculate total accumulated experience
+            // Need to reconstruct total from current level + experience into level
+            let mut total_accumulated_exp = 0;
+            for lvl in 2..=character.level {
+                total_accumulated_exp += experience_for_level(lvl);
+            }
+            total_accumulated_exp += character.experience; // Add current progress into level
+
+            // Calculate new total experience after gaining XP
+            let new_total_experience = total_accumulated_exp + experience_gain;
 
             // Determine new level and experience progress
             let (new_level, exp_into_level, exp_for_next_level) =
                 calculate_level_from_experience(new_total_experience);
+
+            tracing::info!(
+                "grant_experience: char {} level {}, gained {} XP. total_accumulated_exp: {}, new_total: {}, new_level: {}, exp_into_level: {}, exp_for_next: {}",
+                character.name, character.level, experience_gain, total_accumulated_exp, new_total_experience,
+                new_level, exp_into_level, exp_for_next_level
+            );
 
             let old_level = character.level;
             let levels_gained: Vec<i64> = ((old_level + 1)..=new_level).collect();
@@ -702,12 +761,12 @@ impl UserRepository {
                 let new_magic = character.stats.magic + total_magic;
                 let new_resistance = character.stats.resistance + total_resistance;
                 let new_agility = character.stats.agility + total_agility;
-                let new_max_health = character.max_health + total_max_health;
-                let new_max_mana = character.max_mana + total_max_mana;
+                let new_max_health = character.stats.max_health + total_max_health;
+                let new_max_mana = character.stats.max_mana + total_max_mana;
 
                 // Also increase current health and mana by the same amount (heal on level up)
-                let new_health = character.health + total_max_health;
-                let new_mana = character.mana + total_max_mana;
+                let new_health = character.stats.health + total_max_health;
+                let new_mana = character.stats.mana + total_max_mana;
 
                 update_parts.extend([
                     "might = :might".to_string(),

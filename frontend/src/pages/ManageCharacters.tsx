@@ -12,6 +12,18 @@ import {
 import axios from 'axios';
 import styles from './ManageCharacters.module.css';
 
+interface Ability {
+  id: string;
+  name: string;
+  description?: string;
+  ability_type?: string;
+  mana_cost?: number;
+  cooldown?: number;
+  damage_formula?: string;
+  heal_formula?: string;
+  effect_formula?: string;
+}
+
 interface Character {
   id: string;
   userId: string;
@@ -34,6 +46,19 @@ interface Character {
   createdAt: string;
   lastPlayed: string;
   adventures: number;
+  abilities?: Ability[];
+}
+
+interface AbilitySummary {
+  id: string;
+  name: string;
+  description?: string;
+  ability_type?: string;
+  mana_cost?: number;
+  cooldown?: number;
+  damage_formula?: string;
+  heal_formula?: string;
+  effect_formula?: string;
 }
 
 interface User {
@@ -60,6 +85,12 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
     top: number;
     left: number;
   } | null>(null);
+  const [detailModalId, setDetailModalId] = useState<string | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<
+    Character | null
+  >(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   useEffect(() => {
@@ -111,6 +142,7 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
             stats: char.stats,
             createdAt: char.createdAt || char.created_at,
             lastPlayed: char.lastPlayed || char.last_played,
+            adventures: char.stats?.adventures || 0,
           })
         );
 
@@ -246,7 +278,7 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
       setCharacters(
         characters.map(c =>
           c.id === character.id
-            ? { ...c, stats: { ...c.stats, adventures } }
+            ? { ...c, stats: { ...c.stats, adventures }, adventures }
             : c
         )
       );
@@ -290,6 +322,44 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
       alert('Failed to delete character');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleExamineCharacter = async (character: Character) => {
+    setDetailModalId(character.id);
+    setDetailLoading(true);
+    setDetailError(null);
+    setSelectedCharacter(character);
+    setOpenDropdown(null);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+      const response = await axios.get(
+        `${API_BASE_URL}/admin/characters/${character.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = response.data;
+      const abilities: AbilitySummary[] =
+        data.abilities || data.characterAbilities || data.ability || [];
+
+      setSelectedCharacter({
+        ...character,
+        ...data,
+        abilities,
+      });
+    } catch (err) {
+      console.error('Failed to load character details:', err);
+      setDetailError('Failed to load character details');
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -341,8 +411,6 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
                   <th>Owner</th>
                   <th>Class</th>
                   <th>Level</th>
-                  <th>HP</th>
-                  <th>Mana</th>
                   <th>Last Played</th>
                   <th className={styles.actionsHeader}>Actions</th>
                 </tr>
@@ -367,12 +435,6 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
                       <span className={styles.levelBadge}>
                         Lv {character.level}
                       </span>
-                    </td>
-                    <td className={styles.statCell}>
-                      {character.stats.health}/{character.stats.maxHealth}
-                    </td>
-                    <td className={styles.statCell}>
-                      {character.stats.mana}/{character.stats.maxMana}
                     </td>
                     <td className={styles.dateCell}>
                       {character.lastPlayed
@@ -428,6 +490,17 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
               className={styles.dropdownItem}
               onClick={() => {
                 const character = characters.find(c => c.id === openDropdown);
+                if (character) handleExamineCharacter(character);
+              }}
+              disabled={actionLoading}
+            >
+              <Swords size={14} />
+              Examine
+            </button>
+            <button
+              className={styles.dropdownItem}
+              onClick={() => {
+                const character = characters.find(c => c.id === openDropdown);
                 if (character) handleEditCharacter(character);
               }}
               disabled={actionLoading}
@@ -460,6 +533,218 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
           </div>,
           document.body
         )}
+
+      {detailModalId && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <div>
+                <div className={styles.modalTitle}>Character Details</div>
+                <div className={styles.modalSubtitle}>
+                  {selectedCharacter?.name || 'Loading...'}
+                </div>
+              </div>
+              <button
+                className={styles.closeButton}
+                onClick={() => {
+                  setDetailModalId(null);
+                  setSelectedCharacter(null);
+                  setDetailError(null);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {detailLoading && (
+              <div className={styles.modalLoading}>Loading details...</div>
+            )}
+
+            {detailError && !detailLoading && (
+              <div className={styles.modalError}>{detailError}</div>
+            )}
+
+            {selectedCharacter && !detailLoading && (
+              <div className={styles.modalBody}>
+                <div className={styles.detailGrid}>
+                  <div>
+                    <div className={styles.detailLabel}>Owner</div>
+                    <div className={styles.detailValue}>
+                      {getUserDisplay(selectedCharacter.userId)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Class</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.classId}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Level</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.level}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Adventures</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.adventures}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Health</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.health}/
+                      {selectedCharacter.stats?.maxHealth}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Mana</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.mana}/
+                      {selectedCharacter.stats?.maxMana}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Might</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.might}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Defense</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.defense}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Magic</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.magic}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Resistance</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.resistance}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Agility</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.stats?.agility}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Experience</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.experience}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Experience to Next</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.experienceToNext}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Created</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.createdAt
+                        ? new Date(
+                            selectedCharacter.createdAt
+                          ).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : 'Unknown'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.detailLabel}>Last Played</div>
+                    <div className={styles.detailValue}>
+                      {selectedCharacter.lastPlayed
+                        ? new Date(
+                            selectedCharacter.lastPlayed
+                          ).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : 'Never'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.abilitiesSection}>
+                  <div className={styles.sectionTitle}>Abilities</div>
+                  {selectedCharacter.abilities &&
+                  selectedCharacter.abilities.length > 0 ? (
+                    <div className={styles.abilityList}>
+                      {selectedCharacter.abilities.map(ability => (
+                        <div className={styles.abilityCard} key={ability.id}>
+                          <div className={styles.abilityHeader}>
+                            <div className={styles.abilityName}>
+                              {ability.name}
+                            </div>
+                            <div className={styles.abilityMeta}>
+                              {ability.ability_type && (
+                                <span>{ability.ability_type}</span>
+                              )}
+                              {typeof ability.mana_cost === 'number' && (
+                                <span>Mana: {ability.mana_cost}</span>
+                              )}
+                              {typeof ability.cooldown === 'number' && (
+                                <span>CD: {ability.cooldown}</span>
+                              )}
+                            </div>
+                          </div>
+                          {ability.description && (
+                            <div className={styles.abilityDescription}>
+                              {ability.description}
+                            </div>
+                          )}
+                          <div className={styles.formulasGrid}>
+                            {ability.damage_formula && (
+                              <div>
+                                <div className={styles.detailLabel}>Damage</div>
+                                <div className={styles.formulaValue}>
+                                  {ability.damage_formula}
+                                </div>
+                              </div>
+                            )}
+                            {ability.heal_formula && (
+                              <div>
+                                <div className={styles.detailLabel}>Heal</div>
+                                <div className={styles.formulaValue}>
+                                  {ability.heal_formula}
+                                </div>
+                              </div>
+                            )}
+                            {ability.effect_formula && (
+                              <div>
+                                <div className={styles.detailLabel}>Effect</div>
+                                <div className={styles.formulaValue}>
+                                  {ability.effect_formula}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyAbilities}>
+                      No abilities found for this character.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

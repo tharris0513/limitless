@@ -9,6 +9,12 @@ pub struct CharacterStats {
     pub resistance: i64, // Magical defense
     pub agility: i64,    // Speed
     pub adventures: i64,
+    pub health: i64,
+    #[serde(rename = "maxHealth")]
+    pub max_health: i64,
+    pub mana: i64,
+    #[serde(rename = "maxMana")]
+    pub max_mana: i64,
 }
 
 /// Character represents a game character that belongs to a user
@@ -21,12 +27,6 @@ pub struct Character {
     #[serde(rename = "classId")]
     pub class_id: String, // Character's class
     pub level: i64,
-    pub health: i64,
-    #[serde(rename = "maxHealth")]
-    pub max_health: i64,
-    pub mana: i64,
-    #[serde(rename = "maxMana")]
-    pub max_mana: i64,
     pub experience: i64,
     #[serde(rename = "experienceToNext")]
     pub experience_to_next: i64,

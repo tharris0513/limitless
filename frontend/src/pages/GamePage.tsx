@@ -10,13 +10,34 @@ import styles from './GamePage.module.css';
 interface GamePageProps {
   character: Character;
   onCharacterUpdate?: (character: Character) => void;
+  onCharacterDeleted?: () => void;
 }
 
-export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate }) => {
+export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate, onCharacterDeleted }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [characterExists, setCharacterExists] = useState(true);
   const { gameState, setGameState } = useGameState();
+
+  // Validate character exists before rendering
+  useEffect(() => {
+    const validateCharacterExists = async () => {
+      try {
+        // Try to fetch the character to verify it still exists
+        await GameAPI.getCharacter(character.id);
+        setCharacterExists(true);
+      } catch (err) {
+        // Character doesn't exist (likely deleted from admin panel)
+        console.warn('Character no longer exists:', character.id);
+        setCharacterExists(false);
+        // Clear selected character to show character selection on main route
+        onCharacterDeleted?.();
+      }
+    };
+
+    validateCharacterExists();
+  }, [character.id]);
 
   useEffect(() => {
     loadGameData();
@@ -104,6 +125,11 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
 
   if (isChoiceState(gameState)) {
     return <AdventurePage character={character} />;
+  }
+
+  // Prevent rendering game page if character doesn't exist
+  if (!characterExists) {
+    return null;
   }
 
   return (

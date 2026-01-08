@@ -1,6 +1,8 @@
 use crate::damage_calculator::DamageCalculator;
 use crate::error::AppError;
-use crate::level_system::{calculate_level_from_experience, calculate_stat_increases_for_level};
+use crate::level_system::{
+    calculate_level_from_experience, calculate_stat_increases_for_level, experience_for_level,
+};
 use crate::middleware::AuthClaims;
 use crate::models::{Character, CharacterAbility};
 use crate::repository::UserRepository;
@@ -252,18 +254,25 @@ pub async fn perform_attack(
         experience_gained = Some(exp_reward);
 
         // Award experience to character
-        let new_total_experience = character.experience + exp_reward as i64;
+        // First reconstruct total accumulated experience from current level + experience into level
+        let mut total_accumulated_exp = 0;
+        for lvl in 2..=character.level {
+            total_accumulated_exp += experience_for_level(lvl);
+        }
+        total_accumulated_exp += character.experience; // Add current progress into level
+
+        let new_total_experience = total_accumulated_exp + exp_reward as i64;
 
         // Check for level up
         let old_level = character.level;
         let (new_level, exp_into_level, exp_for_next) =
             calculate_level_from_experience(new_total_experience);
 
-        // Update experience (store TOTAL cumulative XP) and experience_to_next (for XP bar)
+        // Update experience (store experience into level) and experience_to_next (for XP bar)
         repo.update_character_experience_progress(
             &character_id,
             &claims.sub,
-            new_total_experience, // Store total XP, not progress
+            exp_into_level, // Store XP into current level, not total
             exp_for_next,
         )
         .await

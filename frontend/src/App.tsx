@@ -112,6 +112,27 @@ function App() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [isAuthenticated]);
 
+  // Refresh character list when returning from admin panel
+  useEffect(() => {
+    if (!showAdminPanel && isAuthenticated && user) {
+      // Refresh characters when closing admin panel
+      const refreshCharacters = async () => {
+        try {
+          const userCharacters = await GameAPI.getUserCharacters();
+          setCharacters(userCharacters);
+          
+          // If the selected character was deleted, clear selection
+          if (selectedCharacter && !userCharacters.find(c => c.id === selectedCharacter.id)) {
+            setSelectedCharacter(null);
+          }
+        } catch (error) {
+          console.error('Failed to refresh characters:', error);
+        }
+      };
+      refreshCharacters();
+    }
+  }, [showAdminPanel, isAuthenticated]);
+
   const loadUserData = async () => {
     setError(null); // Clear any previous errors
     try {
@@ -419,6 +440,7 @@ function App() {
                 <GamePage
                   character={selectedCharacter}
                   onCharacterUpdate={handleCharacterUpdate}
+                  onCharacterDeleted={() => setSelectedCharacter(null)}
                 />
               </GameStateProvider>
             </GameLayout>
@@ -431,7 +453,7 @@ function App() {
             <Navigate to="/banned" replace />
           ) : user ? (
             <GameLayout 
-              player={selectedCharacter}
+              player={null}
               user={user}
               onLogout={handleLogout} 
               onSettingsClick={() => setShowSettings(true)} 

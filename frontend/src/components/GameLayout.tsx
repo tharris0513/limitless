@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { type Player, type User } from '../types/game';
 import { Heart, Zap, Star, Settings, Shield, Swords } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
-import { calculateLevelFromExperience } from '../utils/experienceCalculator';
 import styles from './GameLayout.module.css';
 
 interface GameLayoutProps {
@@ -17,12 +16,14 @@ interface GameLayoutProps {
 }
 
 export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, onLogout, onSettingsClick, isAdmin, onAdminClick, hideCharacterInfo }) => {
-  // Calculate experience progress from total experience
+  // Use experience and experienceToNext directly from the character
   const expProgress = useMemo(() => {
     if (!player) return { current: 0, needed: 100 };
-    const [_, expIntoLevel, expForNext] = calculateLevelFromExperience(player.experience);
-    return { current: expIntoLevel, needed: expForNext };
-  }, [player?.experience]);
+    return { 
+      current: player.experience, 
+      needed: player.experienceToNext 
+    };
+  }, [player]);
 
   return (
     <div className={styles.layoutContainer}>

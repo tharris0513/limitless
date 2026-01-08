@@ -5,7 +5,7 @@
 
 /// Calculate the experience required to reach a specific level.
 ///
-/// Uses a slow exponential curve: base_exp * (level^1.5)
+/// Uses a slow exponential curve: base_exp * ((level-1)^1.5)
 /// This creates a progression where early levels are quick but later levels
 /// take significantly more experience.
 ///
@@ -23,7 +23,7 @@ pub fn experience_for_level(level: i64) -> i64 {
     let base_exp = 100.0;
     let exponent = 1.5;
 
-    (base_exp * (level as f64).powf(exponent)).round() as i64
+    (base_exp * ((level - 1) as f64).powf(exponent)).round() as i64
 }
 
 /// Calculate the total experience needed to reach a level from level 1.

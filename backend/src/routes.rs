@@ -85,6 +85,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/admin/users/:id/unban", patch(admin::unban_user))
         // Character management
         .route("/admin/characters", get(admin::get_all_characters))
+        .route("/admin/characters/:id", get(admin::get_character_detail))
         .route("/admin/characters/:id", patch(admin::update_character_name))
         .route(
             "/admin/characters/:id/adventures",

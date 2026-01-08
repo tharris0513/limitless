@@ -436,6 +436,54 @@ pub async fn get_all_characters(
     }
 }
 
+// Admin only - get a single character with abilities
+pub async fn get_character_detail(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(claims): AdminClaims,
+    Path(character_id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    tracing::info!(
+        "Admin {} requested character details for {}",
+        claims.sub,
+        character_id
+    );
+
+    match repo.get_character_by_id(&character_id).await {
+        Ok(character) => {
+            // Also fetch the character's abilities
+            let abilities = match repo.get_character_abilities(&character_id).await {
+                Ok(abs) => abs,
+                Err(e) => {
+                    tracing::warn!("Failed to fetch character abilities: {:?}", e);
+                    Vec::new()
+                }
+            };
+
+            let response = json!({
+                "id": character.id,
+                "userId": character.user_id,
+                "name": character.name,
+                "classId": character.class_id,
+                "level": character.level,
+                "experience": character.experience,
+                "experienceToNext": character.experience_to_next,
+                "stats": character.stats,
+                "location": character.location,
+                "gameState": character.game_state,
+                "createdAt": character.created_at,
+                "lastPlayed": character.last_played,
+                "abilities": abilities
+            });
+
+            Ok(Json(response))
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch character detail: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
 // Admin only - update character name
 pub async fn update_character_name(
     State(repo): State<Arc<UserRepository>>,
