@@ -182,7 +182,7 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
               <br />
               ⚡ Mana: {selectedClass.startingMana}/{selectedClass.startingMana}
               <br />
-              🗡️ Adventures: 5
+              🗡️ Adventures: 50
             </div>
           </div>
         )}

@@ -1,9 +1,7 @@
 use crate::models::Adventure;
 use anyhow::{Context, Result};
 use aws_sdk_dynamodb::types::AttributeValue;
-use chrono::Utc;
 use std::collections::HashMap;
-use uuid::Uuid;
 
 use super::UserRepository;
 
@@ -21,7 +19,10 @@ impl UserRepository {
             AttributeValue::S("ADVENTURE".to_string()),
         );
         item.insert("id".to_string(), AttributeValue::S(adventure.id.clone()));
-        item.insert("name".to_string(), AttributeValue::S(adventure.name.clone()));
+        item.insert(
+            "name".to_string(),
+            AttributeValue::S(adventure.name.clone()),
+        );
         item.insert(
             "description".to_string(),
             AttributeValue::S(adventure.description.clone()),
@@ -60,7 +61,10 @@ impl UserRepository {
             .client
             .get_item()
             .table_name(&self.table_name)
-            .key("PK", AttributeValue::S(format!("ADVENTURE#{}", adventure_id)))
+            .key(
+                "PK",
+                AttributeValue::S(format!("ADVENTURE#{}", adventure_id)),
+            )
             .key("SK", AttributeValue::S("METADATA".to_string()))
             .send()
             .await
@@ -93,7 +97,11 @@ impl UserRepository {
     }
 
     // Update an adventure
-    pub async fn update_adventure(&self, adventure_id: &str, adventure: Adventure) -> Result<Adventure> {
+    pub async fn update_adventure(
+        &self,
+        adventure_id: &str,
+        adventure: Adventure,
+    ) -> Result<Adventure> {
         // Delete old adventure and create new one
         self.delete_adventure(adventure_id).await?;
         self.create_adventure(adventure).await
@@ -104,7 +112,10 @@ impl UserRepository {
         self.client
             .delete_item()
             .table_name(&self.table_name)
-            .key("PK", AttributeValue::S(format!("ADVENTURE#{}", adventure_id)))
+            .key(
+                "PK",
+                AttributeValue::S(format!("ADVENTURE#{}", adventure_id)),
+            )
             .key("SK", AttributeValue::S("METADATA".to_string()))
             .send()
             .await
@@ -113,7 +124,10 @@ impl UserRepository {
         Ok(())
     }
 
-    pub(crate) fn parse_adventure(&self, item: &HashMap<String, AttributeValue>) -> Result<Adventure> {
+    pub(crate) fn parse_adventure(
+        &self,
+        item: &HashMap<String, AttributeValue>,
+    ) -> Result<Adventure> {
         let get_string = |key: &str| -> Result<String> {
             item.get(key)
                 .and_then(|v| v.as_s().ok())

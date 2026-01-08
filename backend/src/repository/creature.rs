@@ -1,9 +1,7 @@
 use crate::models::Creature;
 use anyhow::{Context, Result};
 use aws_sdk_dynamodb::types::AttributeValue;
-use chrono::Utc;
 use std::collections::HashMap;
-use uuid::Uuid;
 
 use super::UserRepository;
 
