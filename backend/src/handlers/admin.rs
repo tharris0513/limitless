@@ -450,14 +450,22 @@ pub async fn get_character_detail(
 
     match repo.get_character_by_id(&character_id).await {
         Ok(character) => {
-            // Also fetch the character's abilities
-            let abilities = match repo.get_character_abilities(&character_id).await {
+            // Fetch the character's abilities
+            let character_abilities = match repo.get_character_abilities(&character_id).await {
                 Ok(abs) => abs,
                 Err(e) => {
                     tracing::warn!("Failed to fetch character abilities: {:?}", e);
                     Vec::new()
                 }
             };
+
+            // Fetch full ability data for each character ability
+            let mut abilities = Vec::new();
+            for char_ability in character_abilities {
+                if let Ok(ability) = repo.get_ability(&char_ability.ability_id).await {
+                    abilities.push(ability);
+                }
+            }
 
             let response = json!({
                 "id": character.id,

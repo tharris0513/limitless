@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { type Player, type User } from '../types/game';
-import { Heart, Zap, Star, Settings, Shield, Swords } from 'lucide-react';
+import { Heart, Zap, Star, Settings, Shield, Swords, Dumbbell, ShieldCheck } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import styles from './GameLayout.module.css';
 
@@ -98,7 +98,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                   </div>
                 </div>
                 <div className={styles.statItem}>
-                  <Heart size={16} className={styles.statIcon} />
+                  <Dumbbell size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
                     <span className={styles.statValue}>{player.stats?.might || 0}</span>
                     <span className={styles.statLabel}>Might</span>
@@ -119,7 +119,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                   </div>
                 </div>
                 <div className={styles.statItem}>
-                  <Heart size={16} className={styles.statIcon} />
+                  <ShieldCheck size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
                     <span className={styles.statValue}>{player.stats?.resistance || 0}</span>
                     <span className={styles.statLabel}>Resistance</span>

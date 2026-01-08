@@ -164,18 +164,21 @@ pub async fn perform_attack(
         .map_err(|_| AppError::character_not_found(&character_id))?;
 
     // Get character abilities to check for dual_wield passive
-    let abilities: Vec<CharacterAbility> = repo
+    let character_abilities: Vec<CharacterAbility> = repo
         .get_character_abilities(&character_id)
         .await
         .map_err(|e| AppError::from(e))?;
 
-    let has_dual_wield = abilities.iter().any(|char_ability| {
-        if let Some(ref ability) = char_ability.ability {
-            ability.ability_type == "passive"
-                && ability.passive_effect.as_deref() == Some("dual_wield")
-        } else {
-            false
+    // Fetch full ability data for each character ability
+    let mut abilities = Vec::new();
+    for char_ability in character_abilities {
+        if let Ok(ability) = repo.get_ability(&char_ability.ability_id).await {
+            abilities.push(ability);
         }
+    }
+
+    let has_dual_wield = abilities.iter().any(|ability| {
+        ability.ability_type == "passive" && ability.passive_effect.as_deref() == Some("dual_wield")
     });
 
     let mut attacks = Vec::new();

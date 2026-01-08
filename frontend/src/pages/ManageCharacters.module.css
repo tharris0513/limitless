@@ -311,9 +311,14 @@
   border: 1px solid #00ff00;
   width: 32px;
   height: 32px;
-  font-size: 1rem;
+  font-size: 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
 }
 
 .closeButton:hover {
