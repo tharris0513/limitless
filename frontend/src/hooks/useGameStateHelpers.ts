@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useGameState } from './useGameState';
+import axios from 'axios';
 import type { CombatState, ChoiceState, EnemyState } from '../types/gameState';
 
 /**
@@ -9,12 +10,13 @@ export const useCombatState = () => {
   const { gameState, setGameState, saveGameState } = useGameState();
 
   const startCombat = useCallback(
-    (
+    async (
       adventureId: string,
       adventureName: string,
       enemy: EnemyState,
       playerHealth: number,
-      playerMana: number
+      playerMana: number,
+      characterId: string
     ) => {
       const combatState: CombatState = {
         inCombat: true,
@@ -27,6 +29,28 @@ export const useCombatState = () => {
         combatLog: [],
       };
       setGameState(combatState);
+
+      // Immediately save the combat state to backend (don't wait for debounce)
+      try {
+        const token = localStorage.getItem('authToken');
+        const API_BASE_URL =
+          import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+        await axios.post(
+          `${API_BASE_URL}/characters/${characterId}/state`,
+          combatState,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        console.log('Combat state initialized and saved to backend');
+      } catch (error) {
+        console.error('Failed to save initial combat state:', error);
+        throw error;
+      }
     },
     [setGameState]
   );

@@ -3,6 +3,7 @@ import { useGameState } from '../hooks/useGameState';
 import { isCombatState } from '../types/gameState';
 import type { Character } from '../types/game';
 import GameAPI from '../services/api';
+import { parseFormattedText } from '../utils/formatText';
 import styles from './CombatPage.module.css';
 
 interface CombatPageProps {
@@ -11,7 +12,7 @@ interface CombatPageProps {
 }
 
 export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUpdate }) => {
-  const { gameState, setGameState, clearGameState, saveGameState } = useGameState();
+  const { gameState, setGameState, clearGameState } = useGameState();
   const [fleeing, setFleeing] = useState(false);
   const [attacking, setAttacking] = useState(false);
   const [combatText, setCombatText] = useState<string[]>([]);
@@ -41,9 +42,6 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
     
     setAttacking(true);
     try {
-      // Ensure game state is saved before attacking
-      await saveGameState();
-      
       const result = await GameAPI.performAttack(character.id);
       console.log('Attack result:', result);
       console.log('Level up data:', result.levelUp);
@@ -73,14 +71,9 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           setCombatText(prev => [...prev, levelUpMsg]);
         }
         
-        // Update enemy health to 0 to show defeat
-        setGameState({
-          ...gameState,
-          enemy: {
-            ...gameState.enemy,
-            health: 0,
-          },
-        });
+        // Don't clear game state yet - let user click Finish button
+        // The backend has already cleared it, but we keep it locally to show victory screen
+        
         // Character has already been updated on backend, just need to refresh
         if (onCharacterUpdate) {
           try {
@@ -93,14 +86,10 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           }
         }
       } else {
-        // Update enemy health in game state
-        setGameState({
-          ...gameState,
-          enemy: {
-            ...gameState.enemy,
-            health: result.enemyHealth,
-          },
-        });
+        // Backend has updated the game state, use it directly
+        if (result.gameState) {
+          setGameState(result.gameState);
+        }
       }
       
     } catch (error) {
@@ -193,7 +182,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           <div className={styles.logEntries}>
             {combatText.map((text, index) => (
               <div key={`attack-${index}`} className={styles.logEntry}>
-                <span className={styles.logMessage}>{text}</span>
+                <span className={styles.logMessage}>{parseFormattedText(text)}</span>
               </div>
             ))}
           </div>

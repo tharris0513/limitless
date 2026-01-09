@@ -122,6 +122,7 @@ pub struct AttackResult {
     pub experience_gained: Option<i32>,
     pub victory_message: Option<String>,
     pub level_up: Option<LevelUpInfo>,
+    pub game_state: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -192,7 +193,7 @@ pub async fn perform_attack(
     attacks.push(SingleAttack {
         damage,
         description: format!(
-            "You swing your weapon at the enemy, dealing {} damage!",
+            "You swing your weapon at the enemy, dealing **{}** damage!",
             damage
         ),
         is_dual_wield: false,
@@ -205,7 +206,7 @@ pub async fn perform_attack(
         attacks.push(SingleAttack {
             damage,
             description: format!(
-                "Your off-hand weapon strikes true, dealing {} damage!",
+                "Your off-hand weapon strikes true, dealing **{}** damage!",
                 damage
             ),
             is_dual_wield: true,
@@ -332,7 +333,7 @@ pub async fn perform_attack(
             .map_err(|e| AppError::from(e))?;
 
         victory_message = Some(format!(
-            "Victory! You have defeated {}! You gained {} experience.",
+            "Victory! You have defeated {}! You gained **{}** experience.",
             enemy_name, exp_reward
         ));
 
@@ -370,5 +371,6 @@ pub async fn perform_attack(
         experience_gained,
         victory_message,
         level_up,
+        game_state: if victory { None } else { Some(game_state) },
     }))
 }

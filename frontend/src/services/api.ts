@@ -218,6 +218,13 @@ export class GameAPI {
     return response.data;
   }
 
+  static async saveGameState(
+    characterId: string,
+    gameState: any
+  ): Promise<void> {
+    await api.post(`/characters/${characterId}/state`, gameState);
+  }
+
   static async getCharacterAbilities(
     characterId: string
   ): Promise<CharacterAbility[]> {

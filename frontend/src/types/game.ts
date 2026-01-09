@@ -79,6 +79,7 @@ export interface AttackResult {
   experienceGained?: number;
   victoryMessage?: string;
   levelUp?: LevelUpInfo;
+  gameState?: any; // Updated game state from backend (null on victory)
 }
 
 export interface LevelUpInfo {

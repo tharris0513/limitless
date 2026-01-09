@@ -68,7 +68,7 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
         // Fetch creature details and start combat
         const creature = await GameAPI.adminGetCreature(response.encounterId);
         
-        setGameState({
+        const combatState = {
           inCombat: true,
           adventureId: locationId,
           adventureName: locations.find(l => l.id === locationId)?.name || 'Unknown Location',
@@ -91,7 +91,12 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
             },
           },
           combatLog: [],
-        });
+        };
+        
+        setGameState(combatState);
+        
+        // Save combat state immediately to backend
+        await GameAPI.saveGameState(character.id, combatState);
       } else if (response.encounterType === 'adventure') {
         // Start adventure - TODO: Fetch actual adventure details
         setGameState({
