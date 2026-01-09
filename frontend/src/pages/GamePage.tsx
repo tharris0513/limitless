@@ -69,7 +69,7 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
         const creature = await GameAPI.adminGetCreature(response.encounterId);
         
         const combatState = {
-          inCombat: true,
+          inCombat: true as const,
           adventureId: locationId,
           adventureName: locations.find(l => l.id === locationId)?.name || 'Unknown Location',
           turnNumber: 1,
