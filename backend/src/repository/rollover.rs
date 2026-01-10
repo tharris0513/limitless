@@ -108,7 +108,7 @@ impl UserRepository {
         Ok(characters)
     }
 
-    /// Add adventures to a character with max cap
+    /// Add adventures to a character with max cap and restore health/mana
     pub async fn add_adventures_to_character(
         &self,
         user_id: &str,
@@ -116,25 +116,31 @@ impl UserRepository {
         amount: i32,
         max_adventures: i32,
     ) -> Result<()> {
-        // First get current adventures
+        // First get current adventures and max stats
         let character = self.get_character(character_id, user_id).await?;
         let current_adventures = character.stats.adventures;
         let new_adventures = (current_adventures as i32 + amount).min(max_adventures);
+        let max_health = character.stats.max_health;
+        let max_mana = character.stats.max_mana;
 
-        // Update adventures
+        // Update adventures, health, and mana
         self.client
             .update_item()
             .table_name(&self.table_name)
             .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
             .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
-            .update_expression("SET stats.adventures = :adventures")
+            .update_expression(
+                "SET stats.adventures = :adventures, stats.health = :health, stats.mana = :mana",
+            )
             .expression_attribute_values(
                 ":adventures",
                 AttributeValue::N(new_adventures.to_string()),
             )
+            .expression_attribute_values(":health", AttributeValue::N(max_health.to_string()))
+            .expression_attribute_values(":mana", AttributeValue::N(max_mana.to_string()))
             .send()
             .await
-            .context("Failed to update character adventures")?;
+            .context("Failed to update character adventures, health, and mana")?;
 
         Ok(())
     }

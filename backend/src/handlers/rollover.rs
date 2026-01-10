@@ -4,7 +4,7 @@ use std::sync::Arc;
 /// Perform the midnight rollover
 /// 1. Enable maintenance mode
 /// 2. Invalidate all JWT tokens
-/// 3. Add 50 adventures to all characters (max 200)
+/// 3. Add 50 adventures to all characters (max 200) and restore health/mana to max
 /// 4. Disable maintenance mode
 pub async fn perform_rollover(repo: Arc<UserRepository>) {
     tracing::info!("🌙 Starting midnight rollover...");
@@ -19,7 +19,10 @@ pub async fn perform_rollover(repo: Arc<UserRepository>) {
     // Step 2: Invalidate all JWT tokens by incrementing generation
     match repo.increment_jwt_generation().await {
         Ok(new_gen) => {
-            tracing::info!("✓ JWT generation incremented to {}, all tokens invalidated", new_gen);
+            tracing::info!(
+                "✓ JWT generation incremented to {}, all tokens invalidated",
+                new_gen
+            );
         }
         Err(e) => {
             tracing::error!("Failed to increment JWT generation: {}", e);
@@ -29,7 +32,7 @@ pub async fn perform_rollover(repo: Arc<UserRepository>) {
         }
     }
 
-    // Step 3: Add 50 adventures to all characters (max 200)
+    // Step 3: Add 50 adventures to all characters (max 200) and restore health/mana
     match repo.get_all_characters_for_rollover().await {
         Ok(characters) => {
             tracing::info!("Found {} characters to update", characters.len());
@@ -55,7 +58,7 @@ pub async fn perform_rollover(repo: Arc<UserRepository>) {
             }
 
             tracing::info!(
-                "✓ Adventure rollover complete: {} success, {} errors",
+                "✓ Rollover complete (adventures, health, mana): {} success, {} errors",
                 success_count,
                 error_count
             );
