@@ -36,6 +36,7 @@ pub struct Claims {
     pub discord_id: String, // Discord user ID
     pub admin: bool,        // Admin status
     pub exp: usize,         // Expiration timestamp
+    pub gen: usize,         // Token generation (for invalidating all tokens)
 }
 
 /// OAuth URL response with auth URL and state token

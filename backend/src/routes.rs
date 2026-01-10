@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::{
     handlers::{admin, adventure, auth, character, chat, combat, health, location, player, user},
-    middleware::{global_error_handler, jwt_auth_middleware},
+    middleware::{global_error_handler, jwt_auth_middleware, maintenance_mode_middleware},
     repository::UserRepository,
 };
 
@@ -71,7 +71,11 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/experience",
             post(character::grant_experience),
         )
-        .layer(middleware::from_fn(jwt_auth_middleware));
+        .layer(middleware::from_fn(jwt_auth_middleware))
+        .layer(middleware::from_fn_with_state(
+            repo.clone(),
+            maintenance_mode_middleware,
+        ));
 
     // Admin-only routes
     // Note: jwt_auth_middleware only verifies the JWT token exists and is valid

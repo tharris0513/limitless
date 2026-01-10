@@ -96,7 +96,7 @@ pub async fn discord_callback_json(
     };
 
     // Generate JWT token for the user
-    let auth_token = match JwtService::generate_token(&user) {
+    let auth_token = match JwtService::generate_token_with_repo(&user, &repo).await {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate JWT token: {:?}", e);
@@ -180,7 +180,7 @@ pub async fn discord_callback(
     };
 
     // Generate JWT token for the user
-    let auth_token = match JwtService::generate_token(&user) {
+    let auth_token = match JwtService::generate_token_with_repo(&user, &repo).await {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate JWT token: {:?}", e);

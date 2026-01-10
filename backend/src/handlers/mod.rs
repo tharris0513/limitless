@@ -7,4 +7,5 @@ pub mod combat;
 pub mod health;
 pub mod location;
 pub mod player;
+pub mod rollover;
 pub mod user;

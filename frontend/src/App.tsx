@@ -42,6 +42,18 @@ function App() {
   useEffect(() => {
     // Check if user is already logged in
     checkAuthentication();
+
+    // Periodically check maintenance mode (every 30 seconds)
+    const maintenanceCheckInterval = setInterval(async () => {
+      try {
+        const maintenanceStatus = await GameAPI.checkMaintenanceMode();
+        setMaintenanceMode(maintenanceStatus.maintenanceMode);
+      } catch (error) {
+        console.error('Failed to check maintenance mode:', error);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(maintenanceCheckInterval);
   }, []); // Empty dependency array to run only once on mount
 
   const checkAuthentication = async () => {

@@ -15,6 +15,8 @@ mod config;
 mod creature;
 #[path = "location.rs"]
 mod location;
+#[path = "rollover.rs"]
+mod rollover;
 #[path = "user.rs"]
 mod user;
 

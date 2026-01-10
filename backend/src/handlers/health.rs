@@ -75,6 +75,7 @@ pub async fn health_check(
         discord_id: "test".to_string(),
         admin: false,
         exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
+        gen: 0,
     };
 
     let auth_status = match JwtService::generate_token_for_claims(&test_claims) {

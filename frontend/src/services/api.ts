@@ -35,6 +35,26 @@ api.interceptors.response.use(
   response => response,
   error => {
     console.error('API Error:', error);
+
+    // Handle 401 Unauthorized - JWT token invalidated or expired
+    if (error.response?.status === 401) {
+      // Clear stored token
+      localStorage.removeItem('authToken');
+      // Reload page to redirect to login
+      if (
+        !window.location.pathname.includes('/login') &&
+        !window.location.pathname.includes('/auth')
+      ) {
+        window.location.href = '/login';
+      }
+    }
+
+    // Handle 503 Service Unavailable - Maintenance mode
+    if (error.response?.status === 503) {
+      // Frontend will handle this via checkMaintenanceMode
+      console.warn('Server is in maintenance mode');
+    }
+
     return Promise.reject(error);
   }
 );

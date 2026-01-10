@@ -42,6 +42,9 @@ pub enum AppError {
     // External service errors
     DiscordApiError(String),
 
+    // Maintenance
+    MaintenanceMode,
+
     // Generic errors
     InternalServerError(String),
     BadRequest(String),
@@ -70,6 +73,8 @@ impl AppError {
 
             AppError::DiscordApiError(_) => StatusCode::BAD_GATEWAY,
 
+            AppError::MaintenanceMode => StatusCode::SERVICE_UNAVAILABLE,
+
             AppError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
@@ -87,6 +92,7 @@ impl AppError {
             AppError::Forbidden => "FORBIDDEN",
             AppError::ValidationError(_) | AppError::InvalidInput(_) => "VALIDATION_ERROR",
             AppError::UserNotFound(_) | AppError::CharacterNotFound(_) => "RESOURCE_NOT_FOUND",
+            AppError::MaintenanceMode => "MAINTENANCE_MODE",
             AppError::DuplicateResource(_) => "DUPLICATE_RESOURCE",
             AppError::DiscordApiError(_) => "EXTERNAL_SERVICE_ERROR",
             AppError::InternalServerError(_) => "INTERNAL_SERVER_ERROR",
@@ -117,6 +123,11 @@ impl AppError {
             AppError::DuplicateResource(msg) => format!("Resource already exists: {}", msg),
 
             AppError::DiscordApiError(msg) => format!("Discord API error: {}", msg),
+
+            AppError::MaintenanceMode => {
+                "The server is currently undergoing maintenance. Please try again later."
+                    .to_string()
+            }
 
             AppError::InternalServerError(msg) => format!("Internal server error: {}", msg),
             AppError::BadRequest(msg) => msg.clone(),

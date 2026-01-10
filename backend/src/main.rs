@@ -3,6 +3,7 @@ use axum::{
     Router,
 };
 use std::{net::SocketAddr, sync::Arc};
+use tokio_cron_scheduler::{Job, JobScheduler};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -67,9 +68,25 @@ async fn main() -> anyhow::Result<()> {
 
     // Build our application with routes
     let app = Router::new()
-        .nest("/api", routes::create_routes(repo))
+        .nest("/api", routes::create_routes(repo.clone()))
         .layer(TraceLayer::new_for_http())
         .layer(cors);
+
+    // Setup midnight rollover scheduler
+    let scheduler = JobScheduler::new().await?;
+    let rollover_repo = repo.clone();
+    
+    // Schedule rollover for midnight every day (0 0 0 * * *)
+    let rollover_job = Job::new_async("0 0 0 * * *", move |_uuid, _l| {
+        let repo_clone = rollover_repo.clone();
+        Box::pin(async move {
+            handlers::rollover::perform_rollover(repo_clone).await;
+        })
+    })?;
+    
+    scheduler.add(rollover_job).await?;
+    scheduler.start().await?;
+    tracing::info!("⏰ Midnight rollover scheduler started");
 
     // Bind to 0.0.0.0 in production, localhost in development
     let addr = if is_development() {

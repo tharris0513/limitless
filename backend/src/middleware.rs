@@ -1,13 +1,15 @@
 use crate::error::{ApiError, AppError};
 use crate::jwt::JwtService;
 use crate::models::Claims;
+use crate::repository::UserRepository;
 use axum::{
-    extract::{FromRequestParts, Request},
+    extract::{FromRequestParts, Request, State},
     http::{request::Parts, HeaderMap, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
     Json,
 };
+use std::sync::Arc;
 
 // Extension to add claims to request
 #[derive(Clone)]
@@ -125,4 +127,18 @@ pub async fn global_error_handler(request: Request, next: Next) -> Response {
     } else {
         response
     }
+}
+
+// Maintenance mode middleware - rejects all requests when maintenance is enabled
+pub async fn maintenance_mode_middleware(
+    State(repo): State<Arc<UserRepository>>,
+    request: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    // Check if maintenance mode is enabled
+    if repo.get_maintenance_mode().await.unwrap_or(false) {
+        return Err(AppError::MaintenanceMode);
+    }
+
+    Ok(next.run(request).await)
 }
