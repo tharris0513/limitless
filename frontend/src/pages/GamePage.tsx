@@ -5,6 +5,7 @@ import { useGameState } from '../hooks/useGameState';
 import { isCombatState, isChoiceState } from '../types/gameState';
 import { CombatPage } from './CombatPage';
 import { AdventurePage } from './AdventurePage';
+import { Modal } from '../components/Modal';
 import styles from './GamePage.module.css';
 
 interface GamePageProps {
@@ -18,6 +19,8 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [characterExists, setCharacterExists] = useState(true);
+  const [resting, setResting] = useState(false);
+  const [showRestModal, setShowRestModal] = useState(false);
   const { gameState, setGameState } = useGameState();
 
   // Validate character exists before rendering
@@ -54,6 +57,35 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
       setError('Failed to load game locations. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRest = async () => {
+    if (resting) return;
+    
+    // Check if already at full health and mana before making API call
+    if (character.health >= character.maxHealth && character.mana >= character.maxMana) {
+      setShowRestModal(true);
+      return;
+    }
+    
+    setResting(true);
+    try {
+      const updatedCharacter = await GameAPI.restCharacter(character.id);
+      
+      // Notify parent component of character update
+      if (onCharacterUpdate) {
+        onCharacterUpdate(updatedCharacter);
+      }
+      
+      setError(null);
+    } catch (error: any) {
+      console.error('Failed to rest:', error);
+      // Backend returns ApiError structure: { error, message, status_code, timestamp, details }
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to rest. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setResting(false);
     }
   };
 
@@ -140,6 +172,39 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
   return (
     <div className={styles.gameContainer}>
       <div className={styles.section}>
+        {/* Action Buttons Section */}
+        <div className={styles.actionsSection}>
+          <button 
+            className={styles.actionButton}
+            onClick={handleRest}
+            disabled={resting || character.stats.adventures <= 0}
+            title={character.stats.adventures <= 0 ? "No adventures remaining" : "Restore HP and MP (costs 1 adventure)"}
+          >
+            🛌 {resting ? 'Resting...' : 'Rest'}
+          </button>
+          <button 
+            className={`${styles.actionButton} ${styles.disabledButton}`}
+            disabled
+            title="Coming soon"
+          >
+            ✨ Abilities
+          </button>
+          <button 
+            className={`${styles.actionButton} ${styles.disabledButton}`}
+            disabled
+            title="Coming soon"
+          >
+            🎒 Items
+          </button>
+          <button 
+            className={`${styles.actionButton} ${styles.disabledButton}`}
+            disabled
+            title="Coming soon"
+          >
+            👤 Character
+          </button>
+        </div>
+
         <h2 className={styles.sectionTitle}>🗺️ Locations</h2>
         {error && <div className={styles.error}>{error}</div>}
         {loading ? (
@@ -162,6 +227,14 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
           <div className={styles.noContent}>No locations available yet.</div>
         )}
       </div>
+
+      <Modal
+        isOpen={showRestModal}
+        onClose={() => setShowRestModal(false)}
+        title="🛌 Cannot Rest"
+      >
+        <p>Your character is already at full health and mana. You don't need to rest right now!</p>
+      </Modal>
     </div>
   );
 };

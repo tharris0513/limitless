@@ -588,6 +588,27 @@ impl UserRepository {
         Ok(())
     }
 
+    // Update character mana (for spell casting/resting)
+    pub async fn update_character_mana(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        mana: i64,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression("SET mana = :mana")
+            .expression_attribute_values(":mana", AttributeValue::N(mana.to_string()))
+            .send()
+            .await
+            .context("Failed to update character mana")?;
+
+        Ok(())
+    }
+
     // Apply stat increases to character (for level-ups)
     pub async fn apply_stat_increases(
         &self,

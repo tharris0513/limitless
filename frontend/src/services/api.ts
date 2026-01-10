@@ -213,6 +213,11 @@ export class GameAPI {
     return transformCharacterFromBackend(response.data);
   }
 
+  static async restCharacter(characterId: string): Promise<Character> {
+    const response = await api.post(`/characters/${characterId}/rest`);
+    return transformCharacterFromBackend(response.data);
+  }
+
   static async performAttack(characterId: string): Promise<AttackResult> {
     const response = await api.post(`/characters/${characterId}/attack`);
     return response.data;

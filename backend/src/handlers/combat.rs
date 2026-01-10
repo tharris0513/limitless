@@ -112,6 +112,74 @@ pub async fn flee_combat(
     Ok(Json(updated_character))
 }
 
+// Rest - restore character HP and MP at the cost of 1 adventure
+pub async fn rest_character(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<Character>, AppError> {
+    // Get all user characters to verify ownership
+    let characters = repo
+        .get_user_characters(&claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    let character = characters
+        .iter()
+        .find(|c| c.id == character_id)
+        .ok_or_else(|| AppError::character_not_found(&character_id))?;
+
+    // Check if character has adventures available
+    if character.stats.adventures <= 0 {
+        return Err(AppError::validation_error("No adventures remaining"));
+    }
+
+    // Check if already at full HP and MP
+    if character.stats.health >= character.stats.max_health
+        && character.stats.mana >= character.stats.max_mana
+    {
+        return Err(AppError::validation_error(
+            "Already at full health and mana",
+        ));
+    }
+
+    // Decrease adventures by 1
+    let new_adventures = character.stats.adventures - 1;
+
+    // Update character adventures
+    repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update adventures: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Restore HP and MP to maximum
+    repo.update_character_health(&character_id, &claims.sub, character.stats.max_health)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update health: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Update mana (need to add this function to repository)
+    repo.update_character_mana(&character_id, &claims.sub, character.stats.max_mana)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update mana: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Get updated character
+    let updated_character = repo
+        .get_character(&character_id, &claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    tracing::info!("Character {} rested and restored HP/MP", character_id);
+    Ok(Json(updated_character))
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AttackResult {

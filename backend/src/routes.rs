@@ -62,6 +62,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/characters/:id/state", delete(combat::clear_game_state))
         .route("/characters/:id/flee", post(combat::flee_combat))
         .route("/characters/:id/attack", post(combat::perform_attack))
+        .route("/characters/:id/rest", post(combat::rest_character))
         .route(
             "/characters/:id/abilities",
             get(character::get_character_abilities),
