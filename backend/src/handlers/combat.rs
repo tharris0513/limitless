@@ -224,6 +224,14 @@ pub async fn perform_attack(
     let mut game_state: serde_json::Value = serde_json::from_str(game_state_str)
         .map_err(|e| AppError::validation_error(&format!("Invalid game state: {}", e)))?;
 
+    // Increment turn number
+    let current_turn = game_state
+        .get("turnNumber")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(1);
+    let new_turn = current_turn + 1;
+    game_state["turnNumber"] = serde_json::json!(new_turn);
+
     // Update enemy health
     let enemy = game_state
         .get_mut("enemy")
@@ -244,14 +252,18 @@ pub async fn perform_attack(
     let mut victory_message = None;
     let mut level_up = None;
 
-    if victory {
-        // Get enemy details for experience calculation
-        let enemy_level = enemy.get("level").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
+    // Get enemy details for experience calculation (before cloning game_state)
+    let enemy_level = enemy.get("level").and_then(|v| v.as_i64()).unwrap_or(1) as i32;
+    let enemy_name = enemy
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("enemy")
+        .to_string();
 
-        let enemy_name = enemy
-            .get("name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("enemy");
+    // Store the updated game state (with enemy at 0 health) to return to frontend
+    let updated_game_state = game_state.clone();
+
+    if victory {
 
         // Calculate experience reward (base 50 + 25 per enemy level)
         let exp_reward = 50 + (enemy_level * 25);
@@ -371,6 +383,6 @@ pub async fn perform_attack(
         experience_gained,
         victory_message,
         level_up,
-        game_state: if victory { None } else { Some(game_state) },
+        game_state: Some(updated_game_state),
     }))
 }

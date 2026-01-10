@@ -50,6 +50,11 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       const newText = result.attacks.map(attack => attack.description);
       setCombatText(prev => [...prev, ...newText]);
       
+      // Update game state (this includes enemy health at 0 on victory)
+      if (result.gameState) {
+        setGameState(result.gameState);
+      }
+      
       // Check for victory
       if (result.victory) {
         setVictory(true);
@@ -84,11 +89,6 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
             console.error('Failed to refresh character after victory:', error);
             // Don't show error to user, victory already succeeded
           }
-        }
-      } else {
-        // Backend has updated the game state, use it directly
-        if (result.gameState) {
-          setGameState(result.gameState);
         }
       }
       
