@@ -71,7 +71,11 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/experience",
             post(character::grant_experience),
         )
-        .layer(middleware::from_fn(jwt_auth_middleware))
+        .with_state(repo.clone())
+        .layer(middleware::from_fn_with_state(
+            repo.clone(),
+            jwt_auth_middleware,
+        ))
         .layer(middleware::from_fn_with_state(
             repo.clone(),
             maintenance_mode_middleware,
@@ -164,7 +168,11 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Maintenance mode
         .route("/admin/maintenance", get(admin::get_maintenance_mode))
         .route("/admin/maintenance", post(admin::set_maintenance_mode))
-        .layer(middleware::from_fn(jwt_auth_middleware));
+        .with_state(repo.clone())
+        .layer(middleware::from_fn_with_state(
+            repo.clone(),
+            jwt_auth_middleware,
+        ));
 
     Router::new()
         .merge(public_routes)

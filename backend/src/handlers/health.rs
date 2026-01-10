@@ -79,7 +79,7 @@ pub async fn health_check(
     };
 
     let auth_status = match JwtService::generate_token_for_claims(&test_claims) {
-        Ok(token) => match JwtService::verify_token(&token) {
+        Ok(token) => match JwtService::verify_token_with_repo(&token, &repo).await {
             Ok(_) => ComponentHealth {
                 status: "healthy".to_string(),
                 response_time_ms: auth_start.elapsed().as_millis() as u64,

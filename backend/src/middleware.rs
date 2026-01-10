@@ -58,6 +58,7 @@ where
 }
 
 pub async fn jwt_auth_middleware(
+    State(repo): State<Arc<UserRepository>>,
     headers: HeaderMap,
     mut request: Request,
     next: Next,
@@ -68,7 +69,7 @@ pub async fn jwt_auth_middleware(
 
     if let Some(auth_header) = auth_header {
         if let Some(token) = JwtService::extract_token_from_auth_header(auth_header) {
-            match JwtService::verify_token(token) {
+            match JwtService::verify_token_with_repo(token, &repo).await {
                 Ok(claims) => {
                     // Add claims to request extensions
                     request.extensions_mut().insert(AuthClaims(claims));

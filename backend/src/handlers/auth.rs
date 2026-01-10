@@ -276,6 +276,7 @@ async fn get_discord_user(access_token: &str) -> Result<DiscordUser, Box<dyn std
 }
 
 pub async fn get_auth_from_cookie(
+    State(repo): State<Arc<UserRepository>>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<AuthResponse>, StatusCode> {
     // Extract JWT from HTTP-only cookie
@@ -298,7 +299,7 @@ pub async fn get_auth_from_cookie(
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     // Verify the token
-    let claims = JwtService::verify_token(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let claims = JwtService::verify_token_with_repo(token, &repo).await.map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     // Get user from database (optional, for returning user data)
     let response = AuthResponse {
@@ -318,10 +319,13 @@ pub async fn get_auth_from_cookie(
     Ok(Json(response))
 }
 
-pub async fn get_auth_status(headers: axum::http::HeaderMap) -> Json<serde_json::Value> {
+pub async fn get_auth_status(
+    State(repo): State<Arc<UserRepository>>,
+    headers: axum::http::HeaderMap,
+) -> Json<serde_json::Value> {
     if let Some(auth_header) = headers.get("authorization").and_then(|h| h.to_str().ok()) {
         if let Some(token) = JwtService::extract_token_from_auth_header(auth_header) {
-            if JwtService::verify_token(token).is_ok() {
+            if JwtService::verify_token_with_repo(token, &repo).await.is_ok() {
                 return Json(json!({"authenticated": true}));
             }
         }
@@ -341,7 +345,7 @@ pub async fn verify_token(
     let token =
         JwtService::extract_token_from_auth_header(auth_header).ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let claims = JwtService::verify_token(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let claims = JwtService::verify_token_with_repo(token, &repo).await.map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     let user = repo
         .find_by_id(&claims.sub)
