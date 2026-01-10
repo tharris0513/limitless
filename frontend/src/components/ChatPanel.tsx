@@ -18,6 +18,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
   const [isConnected, setIsConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<number | undefined>(undefined);
+  const reconnectAttemptsRef = useRef(0);
+  const shouldReconnectRef = useRef(true);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,53 +42,75 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
       ? `${apiProtocol}//${apiHost}:${apiPort}/api/chat/ws`
       : `${apiProtocol}//${apiHost}/api/chat/ws`;
 
-    console.log('Connecting to WebSocket:', wsUrl);
-
-    // Connect to WebSocket
-    const ws = new WebSocket(wsUrl);
     let pingInterval: number | undefined;
 
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      setIsConnected(true);
+    const connectWebSocket = () => {
+      console.log('Connecting to WebSocket:', wsUrl);
 
-      // Send ping every 30 seconds to keep connection alive
-      pingInterval = window.setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          console.log('Sending keepalive ping');
-          ws.send(JSON.stringify({ type: 'ping' }));
+      // Connect to WebSocket
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+        reconnectAttemptsRef.current = 0; // Reset reconnection attempts on successful connection
+
+        // Send ping every 30 seconds to keep connection alive
+        pingInterval = window.setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            console.log('Sending keepalive ping');
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 30000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message: Message = JSON.parse(event.data);
+          setMessages((prev) => [...prev, message]);
+        } catch (error) {
+          console.error('Failed to parse message:', error);
         }
-      }, 30000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        console.error('Failed to connect to:', wsUrl);
+      };
+
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected', { code: event.code, reason: event.reason || 'No reason provided' });
+        setIsConnected(false);
+        if (pingInterval) {
+          clearInterval(pingInterval);
+        }
+
+        // Attempt to reconnect with exponential backoff
+        if (shouldReconnectRef.current) {
+          reconnectAttemptsRef.current++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000); // Max 30 seconds
+          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})...`);
+          
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            connectWebSocket();
+          }, delay);
+        }
+      };
+
+      wsRef.current = ws;
     };
 
-    ws.onmessage = (event) => {
-      try {
-        const message: Message = JSON.parse(event.data);
-        setMessages((prev) => [...prev, message]);
-      } catch (error) {
-        console.error('Failed to parse message:', error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      console.error('Failed to connect to:', wsUrl);
-    };
-
-    ws.onclose = (event) => {
-      console.log('WebSocket disconnected', { code: event.code, reason: event.reason || 'No reason provided' });
-      setIsConnected(false);
-      if (pingInterval) {
-        clearInterval(pingInterval);
-      }
-    };
-
-    wsRef.current = ws;
+    // Initial connection
+    connectWebSocket();
 
     // Cleanup on unmount
     return () => {
+      shouldReconnectRef.current = false; // Stop reconnection attempts
       if (pingInterval) {
         clearInterval(pingInterval);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
       if (wsRef.current) {
         wsRef.current.close();
