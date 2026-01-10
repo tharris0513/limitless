@@ -156,6 +156,16 @@
   line-height: 1.5;
 }
 
+.enemyLogEntry {
+  padding: 0.75rem;
+  background: rgba(255, 0, 0, 0.08);
+  border-left: 3px solid #ff0000;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #ff6666;
+}
+
 .logTurn {
   font-weight: bold;
   margin-right: 0.5rem;

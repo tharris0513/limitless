@@ -118,6 +118,8 @@ pub struct AttackResult {
     pub attacks: Vec<SingleAttack>,
     pub total_damage: i32,
     pub enemy_health: i32,
+    pub enemy_attacks: Vec<SingleAttack>,
+    pub player_health: i32,
     pub victory: bool,
     pub experience_gained: Option<i32>,
     pub victory_message: Option<String>,
@@ -260,11 +262,50 @@ pub async fn perform_attack(
         .unwrap_or("enemy")
         .to_string();
 
+    // Get enemy might for counterattack (before accessing game_state again)
+    let enemy_might = enemy
+        .get("stats")
+        .and_then(|s| s.get("might"))
+        .and_then(|v| v.as_i64())
+        .unwrap_or(10);
+
+    // Creature counterattack if it survived
+    let mut enemy_attacks = Vec::new();
+    let mut player_health = game_state
+        .get("playerHealth")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(character.stats.health) as i32;
+
+    if !victory {
+        // Calculate counterattack damage with ±10% variance
+        let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
+
+        enemy_attacks.push(SingleAttack {
+            damage: counter_damage,
+            description: format!(
+                "{} counterattacks, dealing **{}** damage!",
+                enemy_name, counter_damage
+            ),
+            is_dual_wield: false,
+        });
+
+        // Update player health
+        player_health = (player_health - counter_damage).max(0);
+        game_state["playerHealth"] = serde_json::json!(player_health);
+
+        // Update character health in database
+        repo.update_character_health(&character_id, &claims.sub, player_health as i64)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to update character health: {:?}", e);
+                AppError::from(e)
+            })?;
+    }
+
     // Store the updated game state (with enemy at 0 health) to return to frontend
     let updated_game_state = game_state.clone();
 
     if victory {
-
         // Calculate experience reward (base 50 + 25 per enemy level)
         let exp_reward = 50 + (enemy_level * 25);
         experience_gained = Some(exp_reward);
@@ -379,6 +420,8 @@ pub async fn perform_attack(
         attacks,
         total_damage,
         enemy_health: new_health,
+        enemy_attacks,
+        player_health,
         victory,
         experience_gained,
         victory_message,

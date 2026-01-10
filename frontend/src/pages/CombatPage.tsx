@@ -15,7 +15,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   const { gameState, setGameState, clearGameState } = useGameState();
   const [fleeing, setFleeing] = useState(false);
   const [attacking, setAttacking] = useState(false);
-  const [combatText, setCombatText] = useState<string[]>([]);
+  const [combatText, setCombatText] = useState<Array<{ text: string; type: 'player' | 'enemy' }>>([]);
   const [victory, setVictory] = useState(false);
   const [_victoryMessage, setVictoryMessage] = useState<string>('');
   const combatLogRef = useRef<HTMLDivElement>(null);
@@ -46,13 +46,36 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       console.log('Attack result:', result);
       console.log('Level up data:', result.levelUp);
       
-      // Add attack descriptions to combat text
-      const newText = result.attacks.map(attack => attack.description);
-      setCombatText(prev => [...prev, ...newText]);
+      // Add attack descriptions to combat text (player attacks in green)
+      const playerAttacks = result.attacks.map(attack => ({
+        text: attack.description,
+        type: 'player' as const
+      }));
+      setCombatText(prev => [...prev, ...playerAttacks]);
+      
+      // Add enemy counterattacks to combat text (enemy attacks in red)
+      if (result.enemyAttacks && result.enemyAttacks.length > 0) {
+        const enemyAttacks = result.enemyAttacks.map(attack => ({
+          text: attack.description,
+          type: 'enemy' as const
+        }));
+        setCombatText(prev => [...prev, ...enemyAttacks]);
+      }
       
       // Update game state (this includes enemy health at 0 on victory)
       if (result.gameState) {
         setGameState(result.gameState);
+      }
+      
+      // Refresh character to update HP in sidebar
+      if (onCharacterUpdate) {
+        try {
+          const updatedChar = await GameAPI.getCharacter(character.id);
+          onCharacterUpdate(updatedChar);
+        } catch (error) {
+          console.error('Failed to refresh character after attack:', error);
+          // Don't show error to user, combat continues
+        }
       }
       
       // Check for victory
@@ -60,7 +83,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
         setVictory(true);
         if (result.victoryMessage) {
           setVictoryMessage(result.victoryMessage);
-          setCombatText(prev => [...prev, result.victoryMessage!]);
+          setCombatText(prev => [...prev, { text: result.victoryMessage!, type: 'player' }]);
         }
         
         // Add level-up message if character leveled up
@@ -73,7 +96,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
             `+${result.levelUp.statIncreases.agility} Agility, ` +
             `+${result.levelUp.statIncreases.maxHealth} Max Health, ` +
             `+${result.levelUp.statIncreases.maxMana} Max Mana`;
-          setCombatText(prev => [...prev, levelUpMsg]);
+          setCombatText(prev => [...prev, { text: levelUpMsg, type: 'player' }]);
         }
         
         // Don't clear game state yet - let user click Finish button
@@ -180,9 +203,12 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
         {/* Attack Text */}
         {combatText.length > 0 && (
           <div className={styles.logEntries}>
-            {combatText.map((text, index) => (
-              <div key={`attack-${index}`} className={styles.logEntry}>
-                <span className={styles.logMessage}>{parseFormattedText(text)}</span>
+            {combatText.map((entry, index) => (
+              <div 
+                key={`attack-${index}`} 
+                className={entry.type === 'enemy' ? styles.enemyLogEntry : styles.logEntry}
+              >
+                <span className={styles.logMessage}>{parseFormattedText(entry.text)}</span>
               </div>
             ))}
           </div>

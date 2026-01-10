@@ -75,6 +75,8 @@ export interface AttackResult {
   attacks: SingleAttack[];
   totalDamage: number;
   enemyHealth: number;
+  enemyAttacks: SingleAttack[];
+  playerHealth: number;
   victory: boolean;
   experienceGained?: number;
   victoryMessage?: string;

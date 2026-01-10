@@ -567,6 +567,27 @@ impl UserRepository {
         Ok(())
     }
 
+    // Update character health (for combat damage/healing)
+    pub async fn update_character_health(
+        &self,
+        character_id: &str,
+        user_id: &str,
+        health: i64,
+    ) -> Result<()> {
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .update_expression("SET health = :health")
+            .expression_attribute_values(":health", AttributeValue::N(health.to_string()))
+            .send()
+            .await
+            .context("Failed to update character health")?;
+
+        Ok(())
+    }
+
     // Apply stat increases to character (for level-ups)
     pub async fn apply_stat_increases(
         &self,
