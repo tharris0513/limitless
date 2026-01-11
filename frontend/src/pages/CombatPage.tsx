@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useGameState } from '../hooks/useGameState';
 import { isCombatState } from '../types/gameState';
-import type { Character } from '../types/game';
+import type { Character, Ability } from '../types/game';
 import GameAPI from '../services/api';
 import { parseFormattedText } from '../utils/formatText';
 import styles from './CombatPage.module.css';
@@ -18,7 +18,44 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   const [combatText, setCombatText] = useState<Array<{ text: string; type: 'player' | 'enemy' }>>([]);
   const [victory, setVictory] = useState(false);
   const [_victoryMessage, setVictoryMessage] = useState<string>('');
+  const [abilities, setAbilities] = useState<Ability[]>([]);
   const combatLogRef = useRef<HTMLDivElement>(null);
+
+  // Fetch character abilities on mount
+  useEffect(() => {
+    const fetchAbilities = async () => {
+      try {
+        // Get character's unlocked ability IDs
+        const characterAbilities = await GameAPI.getCharacterAbilities(character.id);
+        console.log('Character abilities response:', characterAbilities);
+        console.log('Character abilities type:', typeof characterAbilities, Array.isArray(characterAbilities));
+        
+        const unlockedAbilityIds = new Set(characterAbilities.map((ca: any) => ca.ability_id || ca.abilityId));
+        console.log('Unlocked ability IDs:', Array.from(unlockedAbilityIds));
+        
+        // Get all abilities for the character's class
+        console.log('Fetching class abilities for class:', character.classId);
+        const classAbilities = await GameAPI.getClassAbilities(character.classId);
+        console.log('Class abilities response:', classAbilities);
+        
+        // Filter to only unlocked active abilities
+        const activeAbilities = classAbilities
+          .filter(ca => {
+            const hasAbility = unlockedAbilityIds.has(ca.ability.id);
+            console.log(`Checking ability ${ca.ability.id} (${ca.ability.name}): unlocked=${hasAbility}, type=${ca.ability.abilityType}`);
+            return hasAbility;
+          })
+          .filter(ca => ca.ability.abilityType === 'active')
+          .map(ca => ca.ability);
+        
+        console.log('Active abilities:', activeAbilities);
+        setAbilities(activeAbilities);
+      } catch (error) {
+        console.error('Failed to fetch abilities:', error);
+      }
+    };
+    fetchAbilities();
+  }, [character.id, character.classId]);
 
   // Auto-scroll combat log to bottom when new entries are added
   useEffect(() => {
@@ -181,8 +218,8 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
 
       {/* Combat Text Log */}
       <div className={styles.combatLog} ref={combatLogRef}>
-        {/* Introduction Text - shown on turn 1 */}
-        {turnNumber === 1 && gameState.enemy.introductionText && (
+        {/* Introduction Text */}
+        {gameState.enemy.introductionText && (
           <div className={styles.logEntry}>
             <p className={styles.introductionText}>{gameState.enemy.introductionText}</p>
           </div>
@@ -239,9 +276,6 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
               <button className={styles.actionButton}>
                 🛡️ Defend
               </button>
-              <button className={styles.actionButton}>
-                ✨ Use Ability
-              </button>
               <button 
                 className={styles.actionButton}
                 onClick={handleFlee}
@@ -253,6 +287,26 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           )}
         </div>
       </div>
+
+      {/* Ability Hotbar */}
+      {!victory && abilities.length > 0 && (
+        <div className={styles.hotbarSection}>
+          <h3 className={styles.hotbarTitle}>Abilities</h3>
+          <div className={styles.hotbar}>
+            {abilities.map((ability) => (
+              <button
+                key={ability.id}
+                className={styles.hotbarButton}
+                disabled={character.mana < ability.manaCost}
+                title={`${ability.description}\nMana Cost: ${ability.manaCost}${ability.cooldown > 0 ? `\nCooldown: ${ability.cooldown} turns` : ''}`}
+              >
+                <div className={styles.abilityName}>{ability.name}</div>
+                <div className={styles.abilityMana}>{ability.manaCost} MP</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 .combatContainer {
-  padding: 2rem;
+  padding: 1rem;
   max-width: 1200px;
   margin: 0 auto;
   color: #00ff00;
@@ -10,9 +10,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   border-bottom: 2px solid #00ff00;
-  padding-bottom: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 .title {
@@ -30,8 +30,8 @@
   background: rgba(0, 255, 0, 0.05);
   border: 2px solid #00ff00;
   border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
   box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
 }
 
@@ -82,26 +82,26 @@
 }
 
 .actionsSection {
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .actionsTitle {
-  font-size: 1.3rem;
-  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  margin-bottom: 0.75rem;
   text-shadow: 0 0 8px #00ff00;
 }
 
 .actionButtons {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .actionButton {
   background: rgba(0, 255, 0, 0.1);
   border: 2px solid #00ff00;
   color: #00ff00;
-  padding: 1rem;
+  padding: 0.75rem;
   font-size: 1rem;
   font-family: 'Courier New', monospace;
   cursor: pointer;
@@ -124,10 +124,10 @@
   background: rgba(0, 255, 0, 0.05);
   border: 2px solid #00ff00;
   border-radius: 8px;
-  padding: 1.5rem;
-  height: 400px;
+  padding: 0.75rem;
+  height: 300px;
   overflow-y: auto;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
 }
 
@@ -143,12 +143,12 @@
 .logEntries {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .logEntry {
-  padding: 0.75rem;
+  padding: 0.5rem;
   background: rgba(0, 255, 0, 0.03);
   border-left: 3px solid #00ff00;
   border-radius: 4px;
@@ -157,7 +157,7 @@
 }
 
 .enemyLogEntry {
-  padding: 0.75rem;
+  padding: 0.5rem;
   background: rgba(255, 0, 0, 0.08);
   border-left: 3px solid #ff0000;
   border-radius: 4px;
@@ -195,8 +195,75 @@
   background: #00cc00;
 }
 
+/* Ability Hotbar */
+.hotbarSection {
+  margin-bottom: 1rem;
+}
+
+.hotbarTitle {
+  font-size: 1.2rem;
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0 8px #00ff00;
+}
+
+.hotbar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.hotbarButton {
+  background: rgba(0, 255, 0, 0.1);
+  border: 2px solid #00ff00;
+  color: #00ff00;
+  padding: 0.5rem;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-shadow: 0 0 5px #00ff00;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 55px;
+}
+
+.hotbarButton:hover:not(:disabled) {
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+.hotbarButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.hotbarButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(0, 255, 0, 0.3);
+}
+
+.abilityName {
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.abilityMana {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
 @media (max-width: 768px) {
   .actionButtons {
     grid-template-columns: 1fr;
+  }
+
+  .hotbar {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
