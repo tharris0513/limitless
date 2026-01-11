@@ -46,7 +46,8 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
             return hasAbility;
           })
           .filter(ca => ca.ability.abilityType === 'active')
-          .map(ca => ca.ability);
+          .map(ca => ca.ability)
+          .reverse(); // Show lowest level abilities first
         
         console.log('Active abilities:', activeAbilities);
         setAbilities(activeAbilities);

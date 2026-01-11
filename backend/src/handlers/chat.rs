@@ -77,6 +77,15 @@ async fn handle_socket(socket: WebSocket, state: Arc<ChatState>) {
                 Ok(msg) => match msg {
                     Message::Text(text) => {
                         tracing::debug!("Received text message: {}", text);
+
+                        // Check if it's a ping message
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if value.get("type").and_then(|v| v.as_str()) == Some("ping") {
+                                tracing::debug!("Received JSON ping, ignoring");
+                                continue;
+                            }
+                        }
+
                         // Try to parse as ChatMessage
                         if let Ok(mut chat_msg) = serde_json::from_str::<ChatMessage>(&text) {
                             // Store username for this connection
