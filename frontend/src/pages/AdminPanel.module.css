@@ -225,3 +225,39 @@
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+.rolloverButton {
+  border-color: #00ff00 !important;
+  color: #00ff00;
+}
+
+.rolloverButton svg {
+  color: #00ff00;
+  filter: drop-shadow(0 0 5px #00ff00) !important;
+}
+
+.rolloverButton .buttonLabel {
+  color: #00ff00;
+  text-shadow: 0 0 5px #00ff00 !important;
+}
+
+.rolloverButton .buttonDescription {
+  color: rgba(0, 255, 0, 0.8);
+  text-shadow: 0 0 3px rgba(0, 255, 0, 0.6) !important;
+}
+
+.rolloverButton:hover {
+  background: rgba(0, 255, 0, 0.1) !important;
+  box-shadow: 
+    0 0 30px rgba(0, 255, 0, 0.5),
+    inset 0 0 15px rgba(0, 255, 0, 0.2) !important;
+}
+
+.rolloverButton:hover svg {
+  filter: drop-shadow(0 0 15px #00ff00) !important;
+}
+
+.rolloverButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

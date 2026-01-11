@@ -46,8 +46,8 @@ pub async fn perform_rollover(repo: Arc<UserRepository>) {
                 {
                     Ok(_) => success_count += 1,
                     Err(e) => {
-                        tracing::warn!(
-                            "Failed to update character {} for user {}: {}",
+                        tracing::error!(
+                            "Failed to update character {} for user {}: {:?}",
                             character_id,
                             user_id,
                             e

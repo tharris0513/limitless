@@ -168,6 +168,11 @@ export class GameAPI {
     await api.post('/admin/maintenance', { enabled });
   }
 
+  static async triggerRollover(): Promise<{ message: string }> {
+    const response = await api.post('/admin/rollover');
+    return response.data;
+  }
+
   // User endpoints
   static async getUser(): Promise<User> {
     const response = await api.get('/user');

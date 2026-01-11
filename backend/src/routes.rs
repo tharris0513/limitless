@@ -168,6 +168,8 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Maintenance mode
         .route("/admin/maintenance", get(admin::get_maintenance_mode))
         .route("/admin/maintenance", post(admin::set_maintenance_mode))
+        // Manual rollover trigger
+        .route("/admin/rollover", post(admin::trigger_rollover))
         .with_state(repo.clone())
         .layer(middleware::from_fn_with_state(
             repo.clone(),

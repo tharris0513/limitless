@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass, Power, Sparkles } from 'lucide-react';
+import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass, Power, Sparkles, RefreshCw } from 'lucide-react';
 import { ManageUsers } from './ManageUsers';
 import { ManageClasses } from './ManageClasses';
 import { ManageAbilities } from './ManageAbilities';
@@ -23,6 +23,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
   const [currentView, setCurrentView] = useState<AdminView>('menu');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceLoading, setMaintenanceLoading] = useState(false);
+  const [rolloverLoading, setRolloverLoading] = useState(false);
 
   // Load maintenance mode status on mount
   useEffect(() => {
@@ -59,6 +60,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
       alert('Failed to update maintenance mode. Please try again.');
     } finally {
       setMaintenanceLoading(false);
+    }
+  };
+
+  const triggerRollover = async () => {
+    if (rolloverLoading) return;
+    
+    const confirmed = window.confirm(
+      'Are you sure you want to manually trigger the midnight rollover?\n\n' +
+      'This will:\n' +
+      '1. Enable maintenance mode\n' +
+      '2. Invalidate all JWT tokens (users will need to re-login)\n' +
+      '3. Add 50 adventures to all characters (max 200)\n' +
+      '4. Restore all characters to full health/mana\n' +
+      '5. Disable maintenance mode\n\n' +
+      'Check server logs for detailed progress.'
+    );
+    
+    if (!confirmed) return;
+    
+    setRolloverLoading(true);
+    try {
+      const result = await GameAPI.triggerRollover();
+      alert(result.message);
+    } catch (error) {
+      console.error('Failed to trigger rollover:', error);
+      alert('Failed to trigger rollover. Please check server logs.');
+    } finally {
+      setRolloverLoading(false);
+      // Reload maintenance status after rollover completes
+      setTimeout(() => loadMaintenanceStatus(), 2000);
     }
   };
 
@@ -209,6 +240,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
               </span>
               <span className={styles.buttonDescription}>
                 {maintenanceMode ? 'Maintenance mode is ACTIVE' : 'Maintenance mode is OFF'}
+              </span>
+            </button>
+
+            <button 
+              className={`${styles.adminActionButton} ${styles.rolloverButton}`}
+              onClick={triggerRollover}
+              disabled={rolloverLoading}
+            >
+              <RefreshCw size={32} />
+              <span className={styles.buttonLabel}>
+                {rolloverLoading ? 'Triggering...' : 'Trigger Rollover'}
+              </span>
+              <span className={styles.buttonDescription}>
+                Manually run midnight rollover process
               </span>
             </button>
           </div>

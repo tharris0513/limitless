@@ -123,15 +123,13 @@ impl UserRepository {
         let max_health = character.stats.max_health;
         let max_mana = character.stats.max_mana;
 
-        // Update adventures, health, and mana
+        // Update adventures, health, and mana (stored as top-level attributes)
         self.client
             .update_item()
             .table_name(&self.table_name)
             .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
             .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
-            .update_expression(
-                "SET stats.adventures = :adventures, stats.health = :health, stats.mana = :mana",
-            )
+            .update_expression("SET adventures = :adventures, health = :health, mana = :mana")
             .expression_attribute_values(
                 ":adventures",
                 AttributeValue::N(new_adventures.to_string()),

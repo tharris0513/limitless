@@ -1,6 +1,7 @@
 use crate::config_export::GameConfigExport;
 use crate::damage_calculator::DamageCalculator;
 use crate::error::AppError;
+use crate::handlers::rollover;
 use crate::middleware::AdminClaims;
 use crate::models::{
     Ability, Adventure, Character, Class, CreateCreatureRequest, CreateLocationRequest, Creature,
@@ -1022,4 +1023,23 @@ pub async fn set_maintenance_mode(
             Err(AppError::from(e))
         }
     }
+}
+
+// Admin only - manually trigger rollover
+pub async fn trigger_rollover(
+    State(repo): State<Arc<UserRepository>>,
+    AdminClaims(claims): AdminClaims,
+) -> Result<Json<Value>, AppError> {
+    tracing::info!("Admin {} manually triggered rollover", claims.sub);
+
+    // Spawn rollover in background to avoid timeout
+    let repo_clone = repo.clone();
+    tokio::spawn(async move {
+        rollover::perform_rollover(repo_clone).await;
+    });
+
+    Ok(Json(json!({
+        "message": "Rollover triggered successfully. Check server logs for progress.",
+        "triggered_by": claims.sub
+    })))
 }
