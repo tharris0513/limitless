@@ -114,6 +114,8 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
             health: creature.health,
             maxHealth: creature.health,
             level: creature.level,
+            experienceReward: creature.experienceReward,
+            attackDescription: creature.attackDescription,
             stats: {
               might: creature.might,
               defense: creature.defense,

@@ -836,6 +836,7 @@ pub async fn create_creature(
         agility: request.agility,
         experience_reward: request.experience_reward,
         creature_type: request.creature_type,
+        attack_description: request.attack_description,
         created_at: Utc::now().to_rfc3339(),
     };
 

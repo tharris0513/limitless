@@ -199,6 +199,7 @@ export interface Creature {
   agility: number;
   experienceReward: number;
   creatureType: string; // 'beast', 'undead', 'humanoid', 'elemental', 'dragon', 'demon', 'horror'
+  attackDescription?: string; // Template for attack descriptions, e.g., "The ${name} attacks you for ${damage} damage!"
   createdAt: string;
 }
 

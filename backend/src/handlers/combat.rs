@@ -13,6 +13,17 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+/// Parse attack description template, replacing placeholders with actual values
+/// Supported placeholders:
+/// - ${damage} - The damage dealt
+/// - ${x} - Alias for damage (for backward compatibility)
+fn parse_attack_description(template: &str, damage: i32, creature_name: &str) -> String {
+    template
+        .replace("${damage}", &damage.to_string())
+        .replace("${x}", &damage.to_string())
+        .replace("${name}", creature_name)
+}
+
 // Save character's game state
 pub async fn save_game_state(
     State(repo): State<Arc<UserRepository>>,
@@ -330,12 +341,24 @@ pub async fn perform_attack(
         .unwrap_or("enemy")
         .to_string();
 
+    // Get enemy experience reward from creature data
+    let enemy_exp_reward = enemy
+        .get("experienceReward")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(50) as i32; // Fallback to 50 if not set
+
     // Get enemy might for counterattack (before accessing game_state again)
     let enemy_might = enemy
         .get("stats")
         .and_then(|s| s.get("might"))
         .and_then(|v| v.as_i64())
         .unwrap_or(10);
+
+    // Get enemy attack description template if it exists
+    let enemy_attack_template = enemy
+        .get("attackDescription")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
 
     // Creature counterattack if it survived
     let mut enemy_attacks = Vec::new();
@@ -348,12 +371,19 @@ pub async fn perform_attack(
         // Calculate counterattack damage with ±10% variance
         let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
 
-        enemy_attacks.push(SingleAttack {
-            damage: counter_damage,
-            description: format!(
+        // Use template if available, otherwise use default format
+        let attack_description = if let Some(template) = enemy_attack_template {
+            parse_attack_description(&template, counter_damage, &enemy_name)
+        } else {
+            format!(
                 "{} counterattacks, dealing **{}** damage!",
                 enemy_name, counter_damage
-            ),
+            )
+        };
+
+        enemy_attacks.push(SingleAttack {
+            damage: counter_damage,
+            description: attack_description,
             is_dual_wield: false,
         });
 
@@ -374,8 +404,8 @@ pub async fn perform_attack(
     let updated_game_state = game_state.clone();
 
     if victory {
-        // Calculate experience reward (base 50 + 25 per enemy level)
-        let exp_reward = 50 + (enemy_level * 25);
+        // Use the creature's configured experience reward
+        let exp_reward = enemy_exp_reward;
         experience_gained = Some(exp_reward);
 
         // Award experience to character

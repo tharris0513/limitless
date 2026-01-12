@@ -18,6 +18,8 @@ pub struct Creature {
     pub experience_reward: i64,
     #[serde(rename = "creatureType")]
     pub creature_type: String, // 'beast', 'undead', 'humanoid', 'elemental', 'dragon', 'demon', 'horror'
+    #[serde(rename = "attackDescription", skip_serializing_if = "Option::is_none")]
+    pub attack_description: Option<String>, // Template for attack text, e.g., "The creature strikes for ${damage} damage!"
     #[serde(rename = "createdAt")]
     pub created_at: String,
 }
@@ -39,4 +41,6 @@ pub struct CreateCreatureRequest {
     pub experience_reward: i64,
     #[serde(rename = "creatureType")]
     pub creature_type: String,
+    #[serde(rename = "attackDescription", skip_serializing_if = "Option::is_none")]
+    pub attack_description: Option<String>,
 }

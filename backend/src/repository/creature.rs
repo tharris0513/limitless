@@ -60,6 +60,15 @@ impl UserRepository {
             "creature_type".to_string(),
             AttributeValue::S(creature.creature_type.clone()),
         );
+
+        // Only add attack_description if it's Some
+        if let Some(ref attack_desc) = creature.attack_description {
+            item.insert(
+                "attack_description".to_string(),
+                AttributeValue::S(attack_desc.clone()),
+            );
+        }
+
         item.insert(
             "created_at".to_string(),
             AttributeValue::S(creature.created_at.clone()),
@@ -156,8 +165,11 @@ impl UserRepository {
         Ok(Creature {
             id: get_string("id")?,
             name: get_string("name")?,
-            introduction_text: get_string("introduction_text")
-                .or_else(|_| get_string("description"))?, // Backward compatibility with old field name
+            introduction_text: get_string("introduction_text")?,
+            attack_description: item
+                .get("attack_description")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
             level: get_i64("level")?,
             health: get_i64("health")?,
             might: get_i64("might")?,

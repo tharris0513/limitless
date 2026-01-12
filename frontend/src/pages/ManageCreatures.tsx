@@ -26,6 +26,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
     agility: 10,
     experienceReward: 50,
     creatureType: 'beast',
+    attackDescription: '',
   });
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
         agility: 10,
         experienceReward: 50,
         creatureType: 'beast',
+        attackDescription: '',
       });
       fetchCreatures();
     } catch (error) {
@@ -112,6 +114,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
       agility: 10,
       experienceReward: 50,
       creatureType: 'beast',
+      attackDescription: '',
     });
   };
 
@@ -132,11 +135,11 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
         </button>
       </div>
 
-      {creating && (
+      {(creating || editing) && (
         <div className={styles.modal}>
           <div className={styles.modalContent}>
-            <h2>Create New Creature</h2>
-            <form onSubmit={handleCreate}>
+            <h2>{creating ? 'Create New Creature' : 'Edit Creature'}</h2>
+            <form onSubmit={creating ? handleCreate : (e) => { e.preventDefault(); handleUpdate(editing!); }}>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label>Name *</label>
@@ -195,6 +198,19 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
                     rows={3}
                     required
                   />
+                </div>
+
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                  <label>Attack Description (Optional)</label>
+                  <input
+                    type="text"
+                    value={formData.attackDescription || ''}
+                    onChange={e => setFormData({ ...formData, attackDescription: e.target.value })}
+                    placeholder="e.g., The ${name} lunges at you for ${damage} damage!"
+                  />
+                  <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
+                    Use {`\${damage}`} or {`\${x}`} for damage, {`\${name}`} for creature name
+                  </small>
                 </div>
 
                 <div className={styles.formGroup}>
@@ -266,9 +282,9 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
 
               <div className={styles.formActions}>
                 <button type="submit" className={styles.submitButton}>
-                  Create Creature
+                  {creating ? 'Create Creature' : 'Save Changes'}
                 </button>
-                <button type="button" onClick={() => setCreating(false)} className={styles.cancelButton}>
+                <button type="button" onClick={creating ? () => setCreating(false) : cancelEdit} className={styles.cancelButton}>
                   Cancel
                 </button>
               </div>
@@ -280,129 +296,38 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
       <div className={styles.creatureGrid}>
         {creatures.map(creature => (
           <div key={creature.id} className={styles.creatureCard}>
-            {editing === creature.id ? (
-              <form onSubmit={e => { e.preventDefault(); handleUpdate(creature.id); }}>
-                <div className={styles.formGrid}>
-                  <div className={styles.formGroup}>
-                    <label>Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label>Type</label>
-                    <select
-                      value={formData.creatureType}
-                      onChange={e => setFormData({ ...formData, creatureType: e.target.value })}
-                      required
-                    >
-                      <option value="beast">Beast</option>
-                      <option value="undead">Undead</option>
-                      <option value="humanoid">Humanoid</option>
-                      <option value="elemental">Elemental</option>
-                      <option value="dragon">Dragon</option>
-                      <option value="demon">Demon</option>
-                    </select>
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label>Level</label>
-                    <input
-                      type="number"
-                      value={formData.level}
-                      onChange={e => setFormData({ ...formData, level: parseInt(e.target.value) })}
-                      min="1"
-                      required
-                    />
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label>XP Reward</label>
-                    <input
-                      type="number"
-                      value={formData.experienceReward}
-                      onChange={e => setFormData({ ...formData, experienceReward: parseInt(e.target.value) })}
-                      min="0"
-                      required
-                    />
-                  </div>
-
-                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                    <label>Introduction Text</label>
-                    <textarea
-                      value={formData.introductionText}
-                      onChange={e => setFormData({ ...formData, introductionText: e.target.value })}
-                      rows={2}
-                      required
-                    />
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label>HP</label>
-                    <input type="number" value={formData.health} onChange={e => setFormData({ ...formData, health: parseInt(e.target.value) })} min="1" required />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Might</label>
-                    <input type="number" value={formData.might} onChange={e => setFormData({ ...formData, might: parseInt(e.target.value) })} min="0" required />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Def</label>
-                    <input type="number" value={formData.defense} onChange={e => setFormData({ ...formData, defense: parseInt(e.target.value) })} min="0" required />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Magic</label>
-                    <input type="number" value={formData.magic} onChange={e => setFormData({ ...formData, magic: parseInt(e.target.value) })} min="0" required />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Res</label>
-                    <input type="number" value={formData.resistance} onChange={e => setFormData({ ...formData, resistance: parseInt(e.target.value) })} min="0" required />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Agility</label>
-                    <input type="number" value={formData.agility} onChange={e => setFormData({ ...formData, agility: parseInt(e.target.value) })} min="0" required />
-                  </div>
-                </div>
-
-                <div className={styles.formActions}>
-                  <button type="submit" className={styles.submitButton}>Save</button>
-                  <button type="button" onClick={cancelEdit} className={styles.cancelButton}>Cancel</button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <div className={styles.creatureHeader}>
-                  <h3>{creature.name}</h3>
-                  <span className={styles.badge}>{creature.creatureType}</span>
-                  <span className={styles.level}>Lvl {creature.level}</span>
-                </div>
-                <p className={styles.description}>{creature.introductionText}</p>
-                <div className={styles.stats}>
-                  <div className={styles.statRow}>
-                    <span>HP: {creature.health}</span>
-                    <span>Might: {creature.might}</span>
-                  </div>
-                  <div className={styles.statRow}>
-                    <span>Defense: {creature.defense}</span>
-                    <span>Magic: {creature.magic}</span>
-                  </div>
-                  <div className={styles.statRow}>
-                    <span>Resistance: {creature.resistance}</span>
-                    <span>Agility: {creature.agility}</span>
-                  </div>
-                  <div className={styles.statRow}>
-                    <span>XP: {creature.experienceReward}</span>
-                  </div>
-                </div>
-                <div className={styles.actions}>
-                  <button onClick={() => startEdit(creature)} className={styles.editButton}>Edit</button>
-                  <button onClick={() => handleDelete(creature.id)} className={styles.deleteButton}>Delete</button>
-                </div>
-              </>
+            <div className={styles.creatureHeader}>
+              <h3>{creature.name}</h3>
+              <span className={styles.badge}>{creature.creatureType}</span>
+              <span className={styles.level}>Lvl {creature.level}</span>
+            </div>
+            <p className={styles.description}>{creature.introductionText}</p>
+            {creature.attackDescription && (
+              <p className={styles.attackDesc}>
+                <strong>Attack:</strong> {creature.attackDescription}
+              </p>
             )}
+            <div className={styles.stats}>
+              <div className={styles.statRow}>
+                <span>HP: {creature.health}</span>
+                <span>Might: {creature.might}</span>
+              </div>
+              <div className={styles.statRow}>
+                <span>Defense: {creature.defense}</span>
+                <span>Magic: {creature.magic}</span>
+              </div>
+              <div className={styles.statRow}>
+                <span>Resistance: {creature.resistance}</span>
+                <span>Agility: {creature.agility}</span>
+              </div>
+              <div className={styles.statRow}>
+                <span>XP: {creature.experienceReward}</span>
+              </div>
+            </div>
+            <div className={styles.actions}>
+              <button onClick={() => startEdit(creature)} className={styles.editButton}>Edit</button>
+              <button onClick={() => handleDelete(creature.id)} className={styles.deleteButton}>Delete</button>
+            </div>
           </div>
         ))}
       </div>
