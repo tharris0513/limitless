@@ -38,7 +38,6 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         // Legacy routes for backward compatibility
         .route("/player", get(player::get_player))
         .route("/locations", get(location::get_locations))
-        .route("/locations/:id/visit", post(location::visit_location))
         .route("/adventures/:id/start", post(adventure::start_adventure));
 
     // WebSocket route for chat (separate router with chat_state)
@@ -71,6 +70,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/experience",
             post(character::grant_experience),
         )
+        .route("/locations/:id/visit", post(location::visit_location))
         .with_state(repo.clone())
         .layer(middleware::from_fn_with_state(
             repo.clone(),

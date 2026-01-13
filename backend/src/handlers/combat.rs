@@ -200,8 +200,10 @@ pub struct AttackResult {
     pub enemy_attacks: Vec<SingleAttack>,
     pub player_health: i32,
     pub victory: bool,
+    pub defeat: bool,
     pub experience_gained: Option<i32>,
     pub victory_message: Option<String>,
+    pub defeat_message: Option<String>,
     pub level_up: Option<LevelUpInfo>,
     pub game_state: Option<serde_json::Value>,
 }
@@ -367,6 +369,9 @@ pub async fn perform_attack(
         .and_then(|v| v.as_i64())
         .unwrap_or(character.stats.health) as i32;
 
+    let mut defeat = false;
+    let mut defeat_message = None;
+
     if !victory {
         // Calculate counterattack damage with ±10% variance
         let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
@@ -398,10 +403,37 @@ pub async fn perform_attack(
                 tracing::error!("Failed to update character health: {:?}", e);
                 AppError::from(e)
             })?;
+
+        // Check if player was defeated
+        if player_health <= 0 {
+            defeat = true;
+            defeat_message = Some(format!(
+                "You have been defeated by {}! You lose 1 adventure and gain no rewards.",
+                enemy_name
+            ));
+
+            // Subtract one adventure
+            let new_adventures = (character.stats.adventures - 1).max(0);
+            repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
+                .await
+                .map_err(|e| AppError::from(e))?;
+
+            // Clear game state (combat is over)
+            repo.update_character_game_state(&character_id, &claims.sub, None)
+                .await
+                .map_err(|e| AppError::from(e))?;
+
+            tracing::info!("Character {} was defeated by {}", character_id, enemy_name);
+        }
     }
 
     // Store the updated game state (with enemy at 0 health) to return to frontend
-    let updated_game_state = game_state.clone();
+    // Don't store if player was defeated - game state already cleared
+    let updated_game_state = if !defeat {
+        game_state.clone()
+    } else {
+        game_state.clone()
+    };
 
     if victory {
         // Use the creature's configured experience reward
@@ -494,8 +526,8 @@ pub async fn perform_attack(
             enemy_name,
             exp_reward
         );
-    } else {
-        // Save updated game state
+    } else if !defeat {
+        // Save updated game state only if combat continues (not defeated)
         let updated_game_state_str = serde_json::to_string(&game_state).map_err(|e| {
             AppError::validation_error(&format!("Failed to serialize game state: {}", e))
         })?;
@@ -521,8 +553,10 @@ pub async fn perform_attack(
         enemy_attacks,
         player_health,
         victory,
+        defeat,
         experience_gained,
         victory_message,
+        defeat_message,
         level_up,
         game_state: Some(updated_game_state),
     }))

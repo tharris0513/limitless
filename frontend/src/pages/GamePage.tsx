@@ -90,11 +90,17 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
   };
 
   const handleLocationVisit = async (locationId: string) => {
+    // Prevent visiting locations if character has 0 HP
+    if (character.health <= 0) {
+      setError('Your character has 0 HP. You must rest before adventuring.');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       
-      const response = await GameAPI.visitLocation(locationId);
+      const response = await GameAPI.visitLocation(locationId, character.id);
       
       if (response.encounterType === 'combat') {
         // Fetch creature details and start combat
@@ -215,8 +221,13 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
           locations.map((location) => (
             <div
               key={location.id}
-              className={styles.locationCard}
-              onClick={() => handleLocationVisit(location.id)}
+              className={`${styles.locationCard} ${character.health <= 0 ? styles.disabledLocation : ''}`}
+              onClick={() => character.health > 0 && handleLocationVisit(location.id)}
+              style={{
+                cursor: character.health <= 0 ? 'not-allowed' : 'pointer',
+                opacity: character.health <= 0 ? 0.5 : 1,
+              }}
+              title={character.health <= 0 ? 'You must rest before adventuring (0 HP)' : ''}
             >
               <div className={styles.tierLabel}>TIER {location.tier}</div>
               <div className={styles.locationTitle}>

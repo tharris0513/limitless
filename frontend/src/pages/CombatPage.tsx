@@ -17,6 +17,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   const [attacking, setAttacking] = useState(false);
   const [combatText, setCombatText] = useState<Array<{ text: string; type: 'player' | 'enemy' }>>([]);
   const [victory, setVictory] = useState(false);
+  const [defeat, setDefeat] = useState(false);
   const [_victoryMessage, setVictoryMessage] = useState<string>('');
   const [abilities, setAbilities] = useState<Ability[]>([]);
   const combatLogRef = useRef<HTMLDivElement>(null);
@@ -98,6 +99,27 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           type: 'enemy' as const
         }));
         setCombatText(prev => [...prev, ...enemyAttacks]);
+      }
+      
+      // Check for defeat
+      if (result.defeat) {
+        setDefeat(true);
+        if (result.defeatMessage) {
+          setCombatText(prev => [...prev, { text: result.defeatMessage!, type: 'enemy' }]);
+        }
+        
+        // Refresh character to update HP and adventures in sidebar
+        if (onCharacterUpdate) {
+          try {
+            const updatedChar = await GameAPI.getCharacter(character.id);
+            onCharacterUpdate(updatedChar);
+          } catch (error) {
+            console.error('Failed to refresh character after defeat:', error);
+          }
+        }
+        
+        setAttacking(false);
+        return;
       }
       
       // Update game state (this includes enemy health at 0 on victory)
@@ -265,6 +287,14 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
             >
               ✓ Finish
             </button>
+          ) : defeat ? (
+            <button
+              className={styles.actionButton}
+              onClick={handleFinish}
+              style={{ gridColumn: '1 / -1' }}
+            >
+              ✓ Return
+            </button>
           ) : (
             <>
               <button 
@@ -290,7 +320,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       </div>
 
       {/* Ability Hotbar */}
-      {!victory && abilities.length > 0 && (
+      {!victory && !defeat && abilities.length > 0 && (
         <div className={styles.hotbarSection}>
           <h3 className={styles.hotbarTitle}>Abilities</h3>
           <div className={styles.hotbar}>

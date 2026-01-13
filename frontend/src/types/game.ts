@@ -78,8 +78,10 @@ export interface AttackResult {
   enemyAttacks: SingleAttack[];
   playerHealth: number;
   victory: boolean;
+  defeat: boolean;
   experienceGained?: number;
   victoryMessage?: string;
+  defeatMessage?: string;
   levelUp?: LevelUpInfo;
   gameState?: any; // Updated game state from backend (null on victory)
 }

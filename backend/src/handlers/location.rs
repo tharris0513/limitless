@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::middleware::AuthClaims;
 use crate::models::Location;
 use crate::repository::UserRepository;
 use axum::{
@@ -15,6 +16,12 @@ pub struct VisitLocationResponse {
     pub encounter_type: String, // "combat" or "adventure"
     #[serde(rename = "encounterId")]
     pub encounter_id: String, // creature_id or adventure_id
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VisitLocationRequest {
+    #[serde(rename = "characterId")]
+    pub character_id: String,
 }
 
 pub async fn get_locations(
@@ -37,7 +44,21 @@ pub async fn get_locations(
 pub async fn visit_location(
     State(repo): State<Arc<UserRepository>>,
     Path(location_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+    Json(request): Json<VisitLocationRequest>,
 ) -> Result<Json<VisitLocationResponse>, AppError> {
+    // Verify character exists and belongs to the authenticated user
+    let character = repo
+        .get_character(&request.character_id, &claims.sub)
+        .await
+        .map_err(|_| AppError::character_not_found(&request.character_id))?;
+
+    // Validate character has HP > 0
+    if character.stats.health <= 0 {
+        return Err(AppError::validation_error(
+            "Your character has 0 HP. You must rest before adventuring.",
+        ));
+    }
     // Get creatures and adventures for this location
     let creatures_result = repo.get_location_creatures(&location_id).await;
     let adventures_result = repo.get_location_adventures(&location_id).await;

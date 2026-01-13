@@ -302,9 +302,12 @@ export class GameAPI {
   }
 
   static async visitLocation(
-    locationId: string
+    locationId: string,
+    characterId: string
   ): Promise<{ encounterType: string; encounterId: string }> {
-    const response = await api.post(`/locations/${locationId}/visit`);
+    const response = await api.post(`/locations/${locationId}/visit`, {
+      characterId,
+    });
     return response.data;
   }
 

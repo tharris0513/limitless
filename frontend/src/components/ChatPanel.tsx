@@ -31,6 +31,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
   }, [messages]);
 
   useEffect(() => {
+    // Reset reconnection flag on mount
+    shouldReconnectRef.current = true;
+    
     // Use the API URL from environment for both dev and prod
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
     const apiHost = new URL(apiUrl).hostname;
@@ -128,8 +131,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
         timestamp: new Date().toISOString(),
       };
 
-      // Send to WebSocket server
+      // Send to WebSocket server (server will broadcast it back to all clients including us)
       wsRef.current.send(JSON.stringify(message));
+      
+      // Clear input immediately for better UX
       setInputText('');
     }
   };
