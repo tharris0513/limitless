@@ -301,12 +301,6 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
               <span className={styles.badge}>{creature.creatureType}</span>
               <span className={styles.level}>Lvl {creature.level}</span>
             </div>
-            <p className={styles.description}>{creature.introductionText}</p>
-            {creature.attackDescription && (
-              <p className={styles.attackDesc}>
-                <strong>Attack:</strong> {creature.attackDescription}
-              </p>
-            )}
             <div className={styles.stats}>
               <div className={styles.statRow}>
                 <span>HP: {creature.health}</span>

@@ -62,6 +62,9 @@ export interface Ability {
 
   // Passive ability effect tag (for passive abilities)
   passiveEffect?: string;
+
+  // Attack description template (for active abilities with damage)
+  attackDescription?: string;
 }
 
 // Passive effect option
@@ -77,6 +80,7 @@ export interface AttackResult {
   enemyHealth: number;
   enemyAttacks: SingleAttack[];
   playerHealth: number;
+  playerMana?: number;
   victory: boolean;
   defeat: boolean;
   experienceGained?: number;

@@ -61,6 +61,12 @@ impl UserRepository {
                 AttributeValue::S(passive_effect.clone()),
             );
         }
+        if let Some(attack_description) = &ability.attack_description {
+            item.insert(
+                "attack_description".to_string(),
+                AttributeValue::S(attack_description.clone()),
+            );
+        }
 
         self.client
             .put_item()
@@ -168,6 +174,10 @@ impl UserRepository {
                 .map(|s| s.to_string()),
             passive_effect: item
                 .get("passive_effect")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
+            attack_description: item
+                .get("attack_description")
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
         })
@@ -312,6 +322,10 @@ impl UserRepository {
                 .map(|s| s.to_string()),
             passive_effect: item
                 .get("passive_effect")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
+            attack_description: item
+                .get("attack_description")
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
         })

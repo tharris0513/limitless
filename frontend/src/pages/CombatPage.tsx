@@ -17,7 +17,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   const [attacking, setAttacking] = useState(false);
   const [combatText, setCombatText] = useState<Array<{ text: string; type: 'player' | 'enemy' }>>([]);
   const [victory, setVictory] = useState(false);
-  const [defeat, setDefeat] = useState(false);
+  const [_defeat, setDefeat] = useState(false);
   const [_victoryMessage, setVictoryMessage] = useState<string>('');
   const [abilities, setAbilities] = useState<Ability[]>([]);
   const combatLogRef = useRef<HTMLDivElement>(null);
@@ -59,6 +59,33 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
     fetchAbilities();
   }, [character.id, character.classId]);
 
+  // Detect stale combat state - if backend has no combat but frontend does, clear it
+  // UNLESS the combat is finished (backend clears finished combats but sends them in response)
+  useEffect(() => {
+    const checkCombatState = async () => {
+      if (!isCombatState(gameState)) return;
+      
+      // Don't clear if combat is finished - that's expected (backend clears but sends in response)
+      if (gameState.finished) return;
+      
+      try {
+        // Refresh character to check if combat state exists on backend
+        const updatedChar = await GameAPI.getCharacter(character.id);
+        
+        // If backend has no game state but we have combat state, it's stale
+        if (!updatedChar.gameState) {
+          console.log('Detected stale combat state - clearing');
+          await clearGameState();
+        }
+      } catch (error) {
+        console.error('Failed to check combat state:', error);
+      }
+    };
+    
+    // Check on mount only
+    checkCombatState();
+  }, []); // Empty deps = run once on mount
+
   // Auto-scroll combat log to bottom when new entries are added
   useEffect(() => {
     if (combatLogRef.current) {
@@ -81,7 +108,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
     
     setAttacking(true);
     try {
-      const result = await GameAPI.performAttack(character.id);
+      const result = await GameAPI.performCombatAction(character.id, { actionType: 'melee' });
       console.log('Attack result:', result);
       console.log('Level up data:', result.levelUp);
       
@@ -159,9 +186,6 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           setCombatText(prev => [...prev, { text: levelUpMsg, type: 'player' }]);
         }
         
-        // Don't clear game state yet - let user click Finish button
-        // The backend has already cleared it, but we keep it locally to show victory screen
-        
         // Character has already been updated on backend, just need to refresh
         if (onCharacterUpdate) {
           try {
@@ -181,6 +205,111 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       if (!victory) {
         alert('Failed to attack. Please try again.');
       }
+    } finally {
+      setAttacking(false);
+    }
+  };
+
+  const handleUseAbility = async (abilityId: string) => {
+    if (attacking || !isCombatState(gameState)) return;
+    
+    setAttacking(true);
+    try {
+      const result = await GameAPI.performCombatAction(character.id, { 
+        actionType: 'ability', 
+        abilityId 
+      });
+      console.log('Ability use result:', result);
+      
+      // Add ability attack descriptions to combat text
+      const playerAttacks = result.attacks.map(attack => ({
+        text: attack.description,
+        type: 'player' as const
+      }));
+      setCombatText(prev => [...prev, ...playerAttacks]);
+      
+      // Add enemy counterattacks to combat text
+      if (result.enemyAttacks && result.enemyAttacks.length > 0) {
+        const enemyAttacks = result.enemyAttacks.map(attack => ({
+          text: attack.description,
+          type: 'enemy' as const
+        }));
+        setCombatText(prev => [...prev, ...enemyAttacks]);
+      }
+      
+      // Check for defeat
+      if (result.defeat) {
+        setDefeat(true);
+        if (result.defeatMessage) {
+          setCombatText(prev => [...prev, { text: result.defeatMessage!, type: 'enemy' }]);
+        }
+        
+        // Refresh character to update HP, mana, and adventures in sidebar
+        if (onCharacterUpdate) {
+          try {
+            const updatedChar = await GameAPI.getCharacter(character.id);
+            onCharacterUpdate(updatedChar);
+          } catch (error) {
+            console.error('Failed to refresh character after defeat:', error);
+          }
+        }
+        
+        setAttacking(false);
+        return;
+      }
+      
+      // Update game state (includes enemy health and updated mana)
+      if (result.gameState) {
+        setGameState(result.gameState);
+      }
+      
+      // Refresh character to update HP and mana in sidebar
+      if (onCharacterUpdate) {
+        try {
+          const updatedChar = await GameAPI.getCharacter(character.id);
+          onCharacterUpdate(updatedChar);
+        } catch (error) {
+          console.error('Failed to refresh character after ability use:', error);
+        }
+      }
+      
+      // Check for victory
+      if (result.victory) {
+        setVictory(true);
+        if (result.victoryMessage) {
+          setVictoryMessage(result.victoryMessage);
+          setCombatText(prev => [...prev, { text: result.victoryMessage!, type: 'player' }]);
+        }
+        
+        // Add level-up message if character leveled up
+        if (result.levelUp) {
+          const levelUpMsg = `🎉 Level Up! You are now level ${result.levelUp.newLevel}! ` +
+            `+${result.levelUp.statIncreases.might} Might, ` +
+            `+${result.levelUp.statIncreases.defense} Defense, ` +
+            `+${result.levelUp.statIncreases.magic} Magic, ` +
+            `+${result.levelUp.statIncreases.resistance} Resistance, ` +
+            `+${result.levelUp.statIncreases.agility} Agility, ` +
+            `+${result.levelUp.statIncreases.maxHealth} Max Health, ` +
+            `+${result.levelUp.statIncreases.maxMana} Max Mana`;
+          setCombatText(prev => [...prev, { text: levelUpMsg, type: 'player' }]);
+        }
+        
+        // Refresh character
+        if (onCharacterUpdate) {
+          try {
+            const updatedChar = await GameAPI.getCharacter(character.id);
+            onCharacterUpdate(updatedChar);
+          } catch (error) {
+            console.error('Failed to refresh character after victory:', error);
+          }
+        }
+      }
+      
+    } catch (error: any) {
+      console.error('Failed to use ability:', error);
+      // Show user-friendly error message
+      const errorMsg = error?.response?.data?.error || 'Failed to use ability. Please try again.';
+      alert(errorMsg);
     } finally {
       setAttacking(false);
     }
@@ -279,21 +408,13 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       <div className={styles.actionsSection}>
         <h3 className={styles.actionsTitle}>Actions</h3>
         <div className={styles.actionButtons}>
-          {victory ? (
+          {gameState.finished ? (
             <button
               className={styles.actionButton}
               onClick={handleFinish}
               style={{ gridColumn: '1 / -1' }}
             >
-              ✓ Finish
-            </button>
-          ) : defeat ? (
-            <button
-              className={styles.actionButton}
-              onClick={handleFinish}
-              style={{ gridColumn: '1 / -1' }}
-            >
-              ✓ Return
+              ✓ {victory ? 'Finish' : 'Return'}
             </button>
           ) : (
             <>
@@ -320,7 +441,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       </div>
 
       {/* Ability Hotbar */}
-      {!victory && !defeat && abilities.length > 0 && (
+      {!gameState.finished && abilities.length > 0 && (
         <div className={styles.hotbarSection}>
           <h3 className={styles.hotbarTitle}>Abilities</h3>
           <div className={styles.hotbar}>
@@ -328,7 +449,8 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
               <button
                 key={ability.id}
                 className={styles.hotbarButton}
-                disabled={character.mana < ability.manaCost}
+                disabled={character.mana < ability.manaCost || attacking}
+                onClick={() => handleUseAbility(ability.id)}
                 title={`${ability.description}\nMana Cost: ${ability.manaCost}${ability.cooldown > 0 ? `\nCooldown: ${ability.cooldown} turns` : ''}`}
               >
                 <div className={styles.abilityName}>{ability.name}</div>

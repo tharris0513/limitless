@@ -1,9 +1,11 @@
+pub mod ability_combat;
 pub mod admin;
 pub mod adventure;
 pub mod auth;
 pub mod character;
 pub mod chat;
 pub mod combat;
+pub mod combat_action;
 pub mod health;
 pub mod location;
 pub mod player;

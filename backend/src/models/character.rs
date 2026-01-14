@@ -86,6 +86,10 @@ pub struct Ability {
     // Passive ability effect tag (for passive abilities)
     #[serde(rename = "passiveEffect", skip_serializing_if = "Option::is_none")]
     pub passive_effect: Option<String>, // e.g., "dual_wield", "increased_crit", etc.
+
+    // Attack description template (for active abilities with damage)
+    #[serde(rename = "attackDescription", skip_serializing_if = "Option::is_none")]
+    pub attack_description: Option<String>, // e.g., "You unleash ${name} for ${damage} damage!"
 }
 
 /// Available passive ability effects

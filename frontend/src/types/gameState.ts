@@ -21,6 +21,7 @@ export interface EnemyState {
 
 export interface CombatState {
   inCombat: true;
+  finished?: boolean; // Set to true when combat ends (victory/defeat)
   adventureId: string;
   adventureName: string;
   turnNumber: number;

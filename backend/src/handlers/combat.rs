@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// Supported placeholders:
 /// - ${damage} - The damage dealt
 /// - ${x} - Alias for damage (for backward compatibility)
-fn parse_attack_description(template: &str, damage: i32, creature_name: &str) -> String {
+pub fn parse_attack_description(template: &str, damage: i32, creature_name: &str) -> String {
     template
         .replace("${damage}", &damage.to_string())
         .replace("${x}", &damage.to_string())
@@ -429,11 +429,12 @@ pub async fn perform_attack(
 
     // Store the updated game state (with enemy at 0 health) to return to frontend
     // Don't store if player was defeated - game state already cleared
-    let updated_game_state = if !defeat {
-        game_state.clone()
-    } else {
-        game_state.clone()
-    };
+    let mut updated_game_state = game_state.clone();
+
+    // Mark combat as finished when it ends (victory or defeat)
+    if victory || defeat {
+        updated_game_state["finished"] = serde_json::json!(true);
+    }
 
     if victory {
         // Use the creature's configured experience reward

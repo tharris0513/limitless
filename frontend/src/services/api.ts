@@ -248,6 +248,29 @@ export class GameAPI {
     return response.data;
   }
 
+  static async performCombatAction(
+    characterId: string,
+    action:
+      | { actionType: 'melee' }
+      | { actionType: 'ability'; abilityId: string }
+  ): Promise<AttackResult> {
+    const response = await api.post(
+      `/characters/${characterId}/combat-action`,
+      action
+    );
+    return response.data;
+  }
+
+  static async useAbility(
+    characterId: string,
+    abilityId: string
+  ): Promise<AttackResult> {
+    const response = await api.post(`/characters/${characterId}/use-ability`, {
+      abilityId,
+    });
+    return response.data;
+  }
+
   static async saveGameState(
     characterId: string,
     gameState: any

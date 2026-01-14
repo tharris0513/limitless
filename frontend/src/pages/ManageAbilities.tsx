@@ -45,6 +45,7 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
     healFormula?: string;
     effectFormula?: string;
     passiveEffect?: string;
+    attackDescription?: string;
   }) => {
     try {
       setLoading(true);
@@ -61,6 +62,7 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
         healFormula: formData.healFormula || undefined,
         effectFormula: formData.effectFormula || undefined,
         passiveEffect: formData.passiveEffect || undefined,
+        attackDescription: formData.attackDescription || undefined,
       };
 
       if (editingAbility) {
@@ -140,30 +142,6 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
                 <span>Mana: {ability.manaCost}</span>
                 <span>Cooldown: {ability.cooldown}</span>
               </div>
-              {ability.abilityType === 'passive' && ability.passiveEffect && (
-                <div className={styles.formulaDisplay}>
-                  <strong>Passive Effect:</strong> {ability.passiveEffect}
-                </div>
-              )}
-              {ability.abilityType === 'active' && (
-                <>
-                  {ability.damageFormula && (
-                    <div className={styles.formulaDisplay}>
-                      <strong>Damage:</strong> {ability.damageFormula}
-                    </div>
-                  )}
-                  {ability.healFormula && (
-                    <div className={styles.formulaDisplay}>
-                      <strong>Heal:</strong> {ability.healFormula}
-                    </div>
-                  )}
-                  {ability.effectFormula && (
-                    <div className={styles.formulaDisplay}>
-                      <strong>Effect:</strong> {ability.effectFormula}
-                    </div>
-                  )}
-                </>
-              )}
             </div>
           ))}
         </div>
@@ -194,6 +172,7 @@ const AbilityForm: React.FC<{
     healFormula?: string;
     effectFormula?: string;
     passiveEffect?: string;
+    attackDescription?: string;
   }) => void;
   onCancel: () => void;
 }> = ({ initialData, onSave, onCancel }) => {
@@ -204,6 +183,7 @@ const AbilityForm: React.FC<{
       healFormula: initialData.healFormula || '',
       effectFormula: initialData.effectFormula || '',
       passiveEffect: initialData.passiveEffect || '',
+      attackDescription: initialData.attackDescription || '',
     } : {
       name: '',
       description: '',
@@ -214,6 +194,7 @@ const AbilityForm: React.FC<{
       healFormula: '',
       effectFormula: '',
       passiveEffect: '',
+      attackDescription: '',
     }
   );
 
@@ -315,6 +296,18 @@ const AbilityForm: React.FC<{
                   value={formData.effectFormula}
                   onChange={(e) => setFormData({ ...formData, effectFormula: e.target.value })}
                 />
+              </label>
+              <label style={{ gridColumn: '1 / -1' }}>
+                <span>Attack Description (Optional)</span>
+                <input 
+                  type="text" 
+                  placeholder="e.g., You unleash ${name} for ${damage} damage!" 
+                  value={formData.attackDescription}
+                  onChange={(e) => setFormData({ ...formData, attackDescription: e.target.value })}
+                />
+                <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
+                  Use {'${'}damage{'}'}  or {'${'}x{'}'}  for damage, {'${'}name{'}'}  for ability name
+                </small>
               </label>
             </div>
           )}
