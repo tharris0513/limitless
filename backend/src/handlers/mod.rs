@@ -1,4 +1,3 @@
-pub mod ability_combat;
 pub mod admin;
 pub mod adventure;
 pub mod auth;

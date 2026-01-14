@@ -27,6 +27,7 @@ export interface CombatState {
   turnNumber: number;
   playerHealth: number;
   playerMana: number;
+  abilityCooldowns?: Record<string, number>; // abilityId -> turns remaining
   playerBuffs?: Array<{
     id: string;
     name: string;

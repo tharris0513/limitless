@@ -224,9 +224,10 @@
   transition: all 0.2s;
   text-shadow: 0 0 5px #00ff00;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: space-between;
+  gap: 0.5rem;
   min-height: 55px;
 }
 
@@ -249,13 +250,40 @@
 .abilityName {
   font-size: 0.9rem;
   font-weight: bold;
-  text-align: center;
+  text-align: left;
   line-height: 1.2;
+  flex: 1;
 }
 
 .abilityMana {
   font-size: 0.75rem;
   opacity: 0.8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cooldownBadge {
+  display: inline-block;
+  background: rgba(255, 0, 0, 0.3);
+  border: 1px solid #ff0000;
+  color: #ff6666;
+  padding: 0.15rem 0.4rem;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 0.9rem;
+  min-width: 1.5rem;
+  text-align: center;
+  text-shadow: 0 0 5px #ff0000;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @media (max-width: 768px) {

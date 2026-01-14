@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use crate::{
     handlers::{
-        ability_combat, admin, adventure, auth, character, chat, combat, combat_action, health,
+        admin, adventure, auth, character, chat, combat, combat_action, health,
         location, player, user,
     },
     middleware::{global_error_handler, jwt_auth_middleware, maintenance_mode_middleware},
@@ -69,10 +69,6 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         )
         // Legacy routes for backward compatibility
         .route("/characters/:id/attack", post(combat::perform_attack))
-        .route(
-            "/characters/:id/use-ability",
-            post(ability_combat::use_ability),
-        )
         .route("/characters/:id/rest", post(combat::rest_character))
         .route(
             "/characters/:id/abilities",

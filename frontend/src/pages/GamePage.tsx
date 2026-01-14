@@ -133,10 +133,17 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
           combatLog: [],
         };
         
-        setGameState(combatState);
-        
-        // Save combat state immediately to backend
+        // Save combat state to backend first, then update frontend
         await GameAPI.saveGameState(character.id, combatState);
+        
+        // Refresh character to get the saved game_state
+        const updatedChar = await GameAPI.getCharacter(character.id);
+        if (onCharacterUpdate) {
+          onCharacterUpdate(updatedChar);
+        }
+        
+        // Now set frontend state
+        setGameState(combatState);
       } else if (response.encounterType === 'adventure') {
         // Start adventure - TODO: Fetch actual adventure details
         setGameState({

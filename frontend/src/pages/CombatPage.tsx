@@ -22,6 +22,21 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   const [abilities, setAbilities] = useState<Ability[]>([]);
   const combatLogRef = useRef<HTMLDivElement>(null);
 
+  // Initialize from character.gameState if context is empty but character has combat state
+  useEffect(() => {
+    if (!isCombatState(gameState) && character.gameState) {
+      try {
+        const parsedState = JSON.parse(character.gameState);
+        if (parsedState && parsedState.inCombat) {
+          console.log('Initializing combat state from character.gameState');
+          setGameState(parsedState);
+        }
+      } catch (error) {
+        console.error('Failed to parse character game state:', error);
+      }
+    }
+  }, [character.gameState, gameState, setGameState]);
+
   // Fetch character abilities on mount
   useEffect(() => {
     const fetchAbilities = async () => {
@@ -58,33 +73,6 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
     };
     fetchAbilities();
   }, [character.id, character.classId]);
-
-  // Detect stale combat state - if backend has no combat but frontend does, clear it
-  // UNLESS the combat is finished (backend clears finished combats but sends them in response)
-  useEffect(() => {
-    const checkCombatState = async () => {
-      if (!isCombatState(gameState)) return;
-      
-      // Don't clear if combat is finished - that's expected (backend clears but sends in response)
-      if (gameState.finished) return;
-      
-      try {
-        // Refresh character to check if combat state exists on backend
-        const updatedChar = await GameAPI.getCharacter(character.id);
-        
-        // If backend has no game state but we have combat state, it's stale
-        if (!updatedChar.gameState) {
-          console.log('Detected stale combat state - clearing');
-          await clearGameState();
-        }
-      } catch (error) {
-        console.error('Failed to check combat state:', error);
-      }
-    };
-    
-    // Check on mount only
-    checkCombatState();
-  }, []); // Empty deps = run once on mount
 
   // Auto-scroll combat log to bottom when new entries are added
   useEffect(() => {
@@ -445,18 +433,30 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
         <div className={styles.hotbarSection}>
           <h3 className={styles.hotbarTitle}>Abilities</h3>
           <div className={styles.hotbar}>
-            {abilities.map((ability) => (
-              <button
-                key={ability.id}
-                className={styles.hotbarButton}
-                disabled={character.mana < ability.manaCost || attacking}
-                onClick={() => handleUseAbility(ability.id)}
-                title={`${ability.description}\nMana Cost: ${ability.manaCost}${ability.cooldown > 0 ? `\nCooldown: ${ability.cooldown} turns` : ''}`}
-              >
-                <div className={styles.abilityName}>{ability.name}</div>
-                <div className={styles.abilityMana}>{ability.manaCost} MP</div>
-              </button>
-            ))}
+            {abilities.map((ability) => {
+              const cooldownTurns = gameState.abilityCooldowns?.[ability.id] || 0;
+              const onCooldown = cooldownTurns > 0;
+              const notEnoughMana = character.mana < ability.manaCost;
+              
+              return (
+                <button
+                  key={ability.id}
+                  className={styles.hotbarButton}
+                  disabled={onCooldown || notEnoughMana || attacking}
+                  onClick={() => handleUseAbility(ability.id)}
+                  title={`${ability.description}\nMana Cost: ${ability.manaCost}${ability.cooldown > 0 ? `\nCooldown: ${ability.cooldown} turns` : ''}${onCooldown ? `\nOn cooldown for ${cooldownTurns} more turn${cooldownTurns === 1 ? '' : 's'}` : ''}`}
+                >
+                  <div className={styles.abilityName}>{ability.name}</div>
+                  <div className={styles.abilityMana}>
+                    {onCooldown ? (
+                      <span className={styles.cooldownBadge}>{cooldownTurns}</span>
+                    ) : (
+                      `${ability.manaCost} MP`
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

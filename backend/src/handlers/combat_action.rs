@@ -42,6 +42,7 @@ pub struct CombatActionResult {
     pub defeat_message: Option<String>,
     pub level_up: Option<LevelUpInfo>,
     pub game_state: Option<serde_json::Value>,
+    pub ability_cooldowns: std::collections::HashMap<String, i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -150,12 +151,29 @@ pub async fn perform_combat_action(
                 });
             }
         }
-        CombatActionRequest::Ability { ability_id } => {
+        CombatActionRequest::Ability { ref ability_id } => {
             // Validate character owns this ability
             let ability = abilities
                 .iter()
-                .find(|a| a.id == ability_id)
+                .find(|a| a.id == *ability_id)
                 .ok_or_else(|| AppError::validation_error("Ability not found or not unlocked"))?;
+
+            // Check if ability is on cooldown
+            if ability.cooldown > 0 {
+                if let Some(cooldowns) = game_state.get("abilityCooldowns") {
+                    if let Some(cooldown_turns) =
+                        cooldowns.get(&ability.id).and_then(|v| v.as_i64())
+                    {
+                        if cooldown_turns > 0 {
+                            return Err(AppError::validation_error(&format!(
+                                "Ability is on cooldown for {} more turn{}",
+                                cooldown_turns,
+                                if cooldown_turns == 1 { "" } else { "s" }
+                            )));
+                        }
+                    }
+                }
+            }
 
             // Check mana cost
             if character.stats.mana < ability.mana_cost {
@@ -204,6 +222,36 @@ pub async fn perform_combat_action(
         .and_then(|v| v.as_i64())
         .unwrap_or(1);
     game_state["turnNumber"] = serde_json::json!(current_turn + 1);
+
+    // Update ability cooldowns
+    let mut cooldowns: std::collections::HashMap<String, i32> = game_state
+        .get("abilityCooldowns")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+
+    // First, decrement all existing cooldowns (remove abilities at 0)
+    cooldowns = cooldowns
+        .into_iter()
+        .filter_map(|(id, turns)| {
+            let new_turns = (turns - 1).max(0);
+            if new_turns > 0 {
+                Some((id, new_turns))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Then, if an ability was used, set it on cooldown (AFTER decrementing)
+    if let CombatActionRequest::Ability { ref ability_id } = action {
+        if let Some(ability) = abilities.iter().find(|a| a.id == *ability_id) {
+            if ability.cooldown > 0 {
+                cooldowns.insert(ability.id.clone(), ability.cooldown as i32);
+            }
+        }
+    }
+
+    game_state["abilityCooldowns"] = serde_json::json!(&cooldowns);
 
     // Update enemy health
     let enemy = game_state
@@ -461,5 +509,6 @@ pub async fn perform_combat_action(
         defeat_message,
         level_up,
         game_state: Some(response_game_state),
+        ability_cooldowns: cooldowns,
     }))
 }
