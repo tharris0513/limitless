@@ -46,14 +46,25 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
       : `${apiProtocol}//${apiHost}/api/chat/ws`;
 
     let pingInterval: number | undefined;
+    let isCleanedUp = false; // Track if cleanup has been called
 
     const connectWebSocket = () => {
+      // Don't connect if already cleaned up (prevents double connection in StrictMode)
+      if (isCleanedUp) {
+        console.log('Skipping connection - component unmounted');
+        return;
+      }
+
       console.log('Connecting to WebSocket:', wsUrl);
 
       // Connect to WebSocket
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
+        if (isCleanedUp) {
+          ws.close();
+          return;
+        }
         console.log('WebSocket connected');
         setIsConnected(true);
         reconnectAttemptsRef.current = 0; // Reset reconnection attempts on successful connection
@@ -68,6 +79,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
       };
 
       ws.onmessage = (event) => {
+        if (isCleanedUp) return; // Ignore messages after cleanup
         try {
           const message: Message = JSON.parse(event.data);
           setMessages((prev) => [...prev, message]);
@@ -89,7 +101,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
         }
 
         // Attempt to reconnect with exponential backoff
-        if (shouldReconnectRef.current) {
+        if (shouldReconnectRef.current && !isCleanedUp) {
           reconnectAttemptsRef.current++;
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000); // Max 30 seconds
           console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})...`);
@@ -108,6 +120,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
 
     // Cleanup on unmount
     return () => {
+      console.log('ChatPanel cleanup - closing WebSocket');
+      isCleanedUp = true;
       shouldReconnectRef.current = false; // Stop reconnection attempts
       if (pingInterval) {
         clearInterval(pingInterval);
@@ -117,6 +131,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
       }
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, []);
@@ -135,6 +150,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ username }) => {
       wsRef.current.send(JSON.stringify(message));
       
       // Clear input immediately for better UX
+      // Note: We don't add the message locally - the server will broadcast it back to us
       setInputText('');
     }
   };
