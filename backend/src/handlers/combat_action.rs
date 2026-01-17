@@ -147,6 +147,12 @@ fn apply_weapon_enchantment(
 
     tracing::info!("Found {} enchantment abilities", enchant_abilities.len());
 
+    // Only apply enchantment if we found matching abilities
+    if enchant_abilities.is_empty() {
+        tracing::info!("No enchantment abilities found, skipping enchantment");
+        return None;
+    }
+
     // Calculate enchantment damage directly: magic * 0.5
     let enchant_damage = (stats.magic as f64 * 0.5).round() as i32;
 
@@ -175,9 +181,7 @@ fn apply_weapon_enchantment(
         is_dual_wield: false,
     });
 
-    return Some(enchant_damage);
-
-    None
+    Some(enchant_damage)
 }
 
 // Save character's game state
@@ -617,6 +621,21 @@ pub async fn perform_combat_action(
                         // Check if this ability applies a weapon enchantment
                         if let Some(passive_type) = &effect.passive_type {
                             if passive_type.starts_with("enchant_weapon_") {
+                                // First, verify the character has the base "enchant_weapon" passive
+                                let has_enchant_weapon_passive = abilities.iter().any(|ability| {
+                                    ability.effects.iter().any(|eff| {
+                                        eff.effect_type == "passive"
+                                            && eff.passive_type.as_deref() == Some("enchant_weapon")
+                                    }) || (ability.ability_type == "passive"
+                                        && ability.passive_effect.as_deref()
+                                            == Some("enchant_weapon"))
+                                });
+
+                                if !has_enchant_weapon_passive {
+                                    // Character doesn't have the base enchant_weapon passive, skip
+                                    continue;
+                                }
+
                                 // Extract enchantment type (fire, frost, lightning)
                                 let ench_type =
                                     passive_type.strip_prefix("enchant_weapon_").unwrap();
@@ -665,7 +684,7 @@ pub async fn perform_combat_action(
                             }
                         }
                     }
-                    // Passive effects are not processed during combat actions
+                    // Passive effects are checked but only applied if prerequisites are met
                 }
             } else {
                 // Fallback to legacy system if no effects defined
