@@ -41,10 +41,17 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({ children, 
         setGameStateInternal(DEFAULT_IDLE_STATE);
       }
     } else {
-      setGameStateInternal(DEFAULT_IDLE_STATE);
+      // Don't auto-clear if we're currently in a finished combat state
+      // Let the user click the finish button to manually clear
+      setGameStateInternal(prevState => {
+        if ('finished' in prevState && prevState.finished) {
+          return prevState; // Keep the finished combat state
+        }
+        return DEFAULT_IDLE_STATE;
+      });
       lastStateRef.current = JSON.stringify(DEFAULT_IDLE_STATE);
     }
-  }, [character?.id]); // Only reload when character ID changes
+  }, [character?.id, character?.gameState]); // Reload when character ID or gameState changes
 
   // Save game state to backend
   const saveGameState = useCallback(async () => {

@@ -8,6 +8,11 @@ use super::UserRepository;
 impl UserRepository {
     // Create a new ability
     pub async fn create_ability(&self, ability: Ability) -> Result<Ability> {
+        tracing::info!(
+            "Creating ability '{}' with ability_type: '{}'",
+            ability.name,
+            ability.ability_type
+        );
         let mut item = HashMap::new();
         item.insert(
             "PK".to_string(),
@@ -26,15 +31,15 @@ impl UserRepository {
         );
         item.insert(
             "ability_type".to_string(),
-            AttributeValue::S(ability.ability_type.clone().unwrap_or("".to_string())),
+            AttributeValue::S(ability.ability_type.clone()),
         );
         item.insert(
             "mana_cost".to_string(),
-            AttributeValue::N(ability.mana_cost.to_string()),
+            AttributeValue::N(ability.mana_cost.unwrap_or(0).to_string()),
         );
         item.insert(
             "cooldown".to_string(),
-            AttributeValue::N(ability.cooldown.to_string()),
+            AttributeValue::N(ability.cooldown.unwrap_or(0).to_string()),
         );
 
         // Store effects as JSON
@@ -44,13 +49,13 @@ impl UserRepository {
             item.insert("effects".to_string(), AttributeValue::S(effects_json));
         }
 
+        // Always insert ability_type (now required with default)
+        item.insert(
+            "ability_type".to_string(),
+            AttributeValue::S(ability.ability_type.clone()),
+        );
+
         // Legacy fields (for backward compatibility)
-        if let Some(ability_type) = &ability.ability_type {
-            item.insert(
-                "ability_type".to_string(),
-                AttributeValue::S(ability_type.clone()),
-            );
-        }
         if let Some(damage_formula) = &ability.damage_formula {
             item.insert(
                 "damage_formula".to_string(),
@@ -174,19 +179,27 @@ impl UserRepository {
             .and_then(|s| serde_json::from_str::<Vec<AbilityEffect>>(s).ok())
             .unwrap_or_default();
 
+        let ability_type_value = item
+            .get("ability_type")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "combat".to_string());
+
+        let ability_name = get_string("name")?;
+        tracing::info!(
+            "Parsed ability '{}' with ability_type from DB: '{}'",
+            ability_name,
+            ability_type_value
+        );
+
         Ok(Ability {
             id: get_string("id")?,
-            name: get_string("name")?,
+            name: ability_name,
             description: get_string("description")?,
+            ability_type: ability_type_value,
             effects,
-            mana_cost: get_i64("mana_cost")?,
-            cooldown: get_i64("cooldown")?,
-
-            // Legacy fields
-            ability_type: item
-                .get("ability_type")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
+            mana_cost: Some(get_i64("mana_cost")?),
+            cooldown: Some(get_i64("cooldown")?),
             damage_formula: item
                 .get("damage_formula")
                 .and_then(|v| v.as_s().ok())
@@ -225,11 +238,21 @@ impl UserRepository {
 
         let mut abilities = Vec::new();
         for item in result.items() {
-            if let (Some(ability), Some(level)) = (
-                self.parse_ability_from_class_item(item).ok(),
+            // Get ability_id and unlock_level from the join table
+            if let (Some(ability_id), Some(level)) = (
+                item.get("ability_id").and_then(|v| v.as_s().ok()),
                 self.get_unlock_level(item).ok(),
             ) {
-                abilities.push((ability, level));
+                // Fetch the actual ability from the ABILITY table to get current data
+                if let Ok(ability) = self.get_ability(ability_id).await {
+                    abilities.push((ability, level));
+                } else {
+                    tracing::warn!(
+                        "Failed to fetch ability {} for class {}",
+                        ability_id,
+                        class_id
+                    );
+                }
             }
         }
 
@@ -339,17 +362,28 @@ impl UserRepository {
             .and_then(|s| serde_json::from_str::<Vec<AbilityEffect>>(s).ok())
             .unwrap_or_default();
 
+        let ability_type_value = item
+            .get("ability_type")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "combat".to_string());
+
+        let ability_name = get_string("ability_name")?;
+        tracing::info!(
+            "Parsed ability '{}' from CLASS table with ability_type: '{}' (raw value present: {})",
+            ability_name,
+            ability_type_value,
+            item.get("ability_type").is_some()
+        );
+
         Ok(Ability {
             id: get_string("ability_id")?,
-            name: get_string("ability_name")?,
+            name: ability_name,
             description: get_string("ability_description")?,
+            ability_type: ability_type_value,
             effects,
-            mana_cost: get_i64("mana_cost")?,
-            cooldown: get_i64("cooldown")?,
-            ability_type: item
-                .get("ability_type")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
+            mana_cost: Some(get_i64("mana_cost")?),
+            cooldown: Some(get_i64("cooldown")?),
             damage_formula: item
                 .get("damage_formula")
                 .and_then(|v| v.as_s().ok())

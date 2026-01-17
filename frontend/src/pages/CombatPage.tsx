@@ -54,14 +54,14 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
         const classAbilities = await GameAPI.getClassAbilities(character.classId);
         console.log('Class abilities response:', classAbilities);
         
-        // Filter to only unlocked active abilities
+        // Filter to only unlocked combat abilities
         const activeAbilities = classAbilities
           .filter(ca => {
             const hasAbility = unlockedAbilityIds.has(ca.ability.id);
             console.log(`Checking ability ${ca.ability.id} (${ca.ability.name}): unlocked=${hasAbility}, type=${ca.ability.abilityType}`);
             return hasAbility;
           })
-          .filter(ca => ca.ability.abilityType === 'active')
+          .filter(ca => ca.ability.abilityType === 'combat')
           .map(ca => ca.ability)
           .reverse(); // Show lowest level abilities first
         

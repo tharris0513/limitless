@@ -97,7 +97,9 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
         {loading && <div className={styles.loading}>Loading...</div>}
 
         <div className={styles.list}>
-          {abilities.map(ability => (
+          {abilities
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(ability => (
             <div key={ability.id} className={styles.card}>
               <div className={styles.cardHeader}>
                 <h3>{ability.name}</h3>
@@ -141,6 +143,7 @@ const AbilityForm: React.FC<{
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
+    abilityType: string;
     manaCost: number;
     cooldown: number;
     effects: AbilityEffect[];
@@ -148,12 +151,14 @@ const AbilityForm: React.FC<{
     initialData ? {
       name: initialData.name,
       description: initialData.description,
-      manaCost: initialData.manaCost,
-      cooldown: initialData.cooldown,
+      abilityType: initialData.abilityType || 'combat',
+      manaCost: initialData.manaCost || 0,
+      cooldown: initialData.cooldown || 0,
       effects: initialData.effects || [],
     } : {
       name: '',
       description: '',
+      abilityType: 'combat',
       manaCost: 0,
       cooldown: 0,
       effects: [],
@@ -216,8 +221,9 @@ const AbilityForm: React.FC<{
       id: initialData?.id || formData.name.toLowerCase().replace(/\s+/g, '_'),
       name: formData.name,
       description: formData.description,
-      manaCost: formData.manaCost,
-      cooldown: formData.cooldown,
+      abilityType: formData.abilityType as 'combat' | 'passive',
+      manaCost: formData.abilityType === 'passive' ? 0 : formData.manaCost,
+      cooldown: formData.abilityType === 'passive' ? 0 : formData.cooldown,
       effects: formData.effects,
     };
     
@@ -252,23 +258,39 @@ const AbilityForm: React.FC<{
               />
             </label>
 
-            <label>
-              <span>Mana Cost</span>
-              <input 
-                type="number" 
-                value={formData.manaCost} 
-                onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })} 
-              />
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span>Ability Type *</span>
+              <select
+                value={formData.abilityType}
+                onChange={(e) => setFormData({ ...formData, abilityType: e.target.value })}
+                required
+              >
+                <option value="combat">Combat - Shows in action bar</option>
+                <option value="passive">Passive - Automatic effect</option>
+              </select>
             </label>
-            
-            <label>
-              <span>Cooldown (turns)</span>
-              <input 
-                type="number" 
-                value={formData.cooldown} 
-                onChange={(e) => setFormData({ ...formData, cooldown: parseInt(e.target.value) || 0 })} 
-              />
-            </label>
+
+            {formData.abilityType === 'combat' && (
+              <>
+                <label>
+                  <span>Mana Cost</span>
+                  <input 
+                    type="number" 
+                    value={formData.manaCost} 
+                    onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })} 
+                  />
+                </label>
+                
+                <label>
+                  <span>Cooldown (turns)</span>
+                  <input 
+                    type="number" 
+                    value={formData.cooldown} 
+                    onChange={(e) => setFormData({ ...formData, cooldown: parseInt(e.target.value) || 0 })} 
+                  />
+                </label>
+              </>
+            )}
           </div>
 
           <div style={{ marginTop: '24px' }}>
@@ -302,6 +324,7 @@ const AbilityForm: React.FC<{
                 key={effect.id}
                 effect={effect}
                 index={index}
+                abilityType={formData.abilityType}
                 passiveEffects={passiveEffects}
                 loadingEffects={loadingEffects}
                 onUpdate={(updates) => updateEffect(effect.id, updates)}
@@ -328,11 +351,12 @@ const AbilityForm: React.FC<{
 const EffectEditor: React.FC<{
   effect: AbilityEffect;
   index: number;
+  abilityType: string;
   passiveEffects: PassiveEffect[];
   loadingEffects: boolean;
   onUpdate: (updates: Partial<AbilityEffect>) => void;
   onRemove: () => void;
-}> = ({ effect, index, passiveEffects, loadingEffects, onUpdate, onRemove }) => {
+}> = ({ effect, index, abilityType, passiveEffects, loadingEffects, onUpdate, onRemove }) => {
   return (
     <div style={{
       border: '1px solid #333',
@@ -380,7 +404,7 @@ const EffectEditor: React.FC<{
             }}
             required
           >
-            <option value="active">Active</option>
+            {abilityType !== 'passive' && <option value="active">Active</option>}
             <option value="passive">Passive</option>
           </select>
         </label>
@@ -422,7 +446,7 @@ const EffectEditor: React.FC<{
                 onChange={(e) => onUpdate({ attackDescription: e.target.value })}
               />
               <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
-                Use ${'${damage}'} or ${'${x}'} for damage, ${'${name}'} for ability name
+                Use {'${damage}'} or {'${x}'} for damage, {'${name}'} for ability name
               </small>
             </label>
           </>

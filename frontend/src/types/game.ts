@@ -72,8 +72,10 @@ export interface Ability {
   manaCost: number;
   cooldown: number;
 
+  // Ability type determines visibility in combat
+  abilityType: 'combat' | 'passive';
+
   // Legacy fields (deprecated but kept for backward compatibility)
-  abilityType?: 'active' | 'passive';
   damageFormula?: string;
   healFormula?: string;
   effectFormula?: string;

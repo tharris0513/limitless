@@ -219,15 +219,15 @@ impl UserRepository {
         );
         item.insert(
             "ability_type".to_string(),
-            AttributeValue::S(ability.ability_type.clone().unwrap_or("".to_string())),
+            AttributeValue::S(ability.ability_type.clone()),
         );
         item.insert(
             "mana_cost".to_string(),
-            AttributeValue::N(ability.mana_cost.to_string()),
+            AttributeValue::N(ability.mana_cost.unwrap_or(0).to_string()),
         );
         item.insert(
             "cooldown".to_string(),
-            AttributeValue::N(ability.cooldown.to_string()),
+            AttributeValue::N(ability.cooldown.unwrap_or(0).to_string()),
         );
 
         item.insert(

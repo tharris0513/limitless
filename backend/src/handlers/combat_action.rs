@@ -89,6 +89,97 @@ fn parse_attack_description(template: &str, damage: i32, name: &str) -> String {
         .replace("${name}", name)
 }
 
+/// Apply weapon enchantment to attacks if available
+/// Returns Some(damage) if enchantment was applied, None otherwise
+/// Important: This should only be called once per attack in the sequence to avoid double-application
+fn apply_weapon_enchantment(
+    abilities: &[crate::models::Ability],
+    stats: &crate::models::CharacterStats,
+    level: i64,
+    attacks: &mut Vec<SingleAttack>,
+    enchantment_type: Option<&str>,
+    weapon: &str, // "primary" or "secondary"
+) -> Option<i32> {
+    tracing::info!(
+        "apply_weapon_enchantment called with type: {:?}",
+        enchantment_type
+    );
+
+    // Find abilities that have both:
+    // 1. A passive effect with the enchantment type (e.g., enchant_weapon_fire)
+    // 2. An active damage effect that deals the enchantment damage
+    let enchant_abilities: Vec<&crate::models::Ability> = abilities
+        .iter()
+        .filter(|ability| {
+            // Check if ability has the matching passive enchantment effect
+            let has_matching_passive = ability.effects.iter().any(|effect| {
+                if effect.effect_type == "passive" {
+                    if let Some(passive_type) = &effect.passive_type {
+                        if let Some(ench_type) = enchantment_type {
+                            // Match specific type: "enchant_weapon_fire" matches when ench_type is "fire"
+                            return passive_type == &format!("enchant_weapon_{}", ench_type);
+                        } else {
+                            // No type specified, accept any enchant_weapon_* passive
+                            return passive_type.starts_with("enchant_weapon_");
+                        }
+                    }
+                }
+                false
+            });
+
+            // Check if ability has an active damage effect
+            let has_damage_effect = !ability.effects.is_empty()
+                && ability.effects.iter().any(|effect| {
+                    effect.effect_type == "active"
+                        && effect.active_type.as_deref() == Some("damage")
+                });
+
+            tracing::info!(
+                "Checking ability {}: has_matching_passive={}, has_damage_effect={}",
+                ability.id,
+                has_matching_passive,
+                has_damage_effect
+            );
+
+            has_matching_passive && has_damage_effect
+        })
+        .collect();
+
+    tracing::info!("Found {} enchantment abilities", enchant_abilities.len());
+
+    // Calculate enchantment damage directly: magic * 0.5
+    let enchant_damage = (stats.magic as f64 * 0.5).round() as i32;
+
+    // Get element name for message
+    let element_name = if let Some(ench_type) = enchantment_type {
+        match ench_type {
+            "fire" => "fire",
+            "frost" => "frost",
+            "lightning" => "lightning",
+            _ => "elemental",
+        }
+    } else {
+        "elemental"
+    };
+
+    // Create enchantment message
+    let description = format!(
+        "Your weapon does an extra **{}** {} damage!",
+        enchant_damage, element_name
+    );
+
+    // Add enchantment attack
+    attacks.push(SingleAttack {
+        damage: enchant_damage,
+        description,
+        is_dual_wield: false,
+    });
+
+    return Some(enchant_damage);
+
+    None
+}
+
 // Save character's game state
 pub async fn save_game_state(
     State(repo): State<Arc<UserRepository>>,
@@ -184,8 +275,17 @@ pub async fn flee_combat(
             AppError::from(e)
         })?;
 
+    // Fetch the character again to get the cleared game state
+    let final_character = repo
+        .get_user_characters(&claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?
+        .into_iter()
+        .find(|c| c.id == character_id)
+        .ok_or_else(|| AppError::character_not_found(&character_id))?;
+
     tracing::info!("Character {} fled from combat", character_id);
-    Ok(Json(updated_character))
+    Ok(Json(final_character))
 }
 
 // Rest - restore character HP and MP at the cost of 1 adventure
@@ -295,6 +395,57 @@ pub async fn perform_combat_action(
     let mut attacks = Vec::new();
     let mut mana_cost = 0i64;
 
+    // Check for weapon enchant passive and get the enchantment type from separate passive abilities
+    let has_weapon_enchant = abilities.iter().any(|ability| {
+        ability.effects.iter().any(|effect| {
+            effect.effect_type == "passive"
+                && effect.passive_type.as_deref() == Some("enchant_weapon")
+        }) || (ability.ability_type == "passive"
+            && ability.passive_effect.as_deref() == Some("enchant_weapon"))
+    });
+
+    tracing::info!("Has weapon_enchant passive: {}", has_weapon_enchant);
+    tracing::info!(
+        "All character abilities: {:?}",
+        abilities.iter().map(|a| &a.id).collect::<Vec<_>>()
+    );
+
+    // Log full ability details for debugging
+    for ability in &abilities {
+        tracing::info!(
+            "Ability {}: type={}, effects={:?}",
+            ability.id,
+            ability.ability_type,
+            ability
+                .effects
+                .iter()
+                .map(|e| format!("{}:{:?}", e.effect_type, e.passive_type))
+                .collect::<Vec<_>>()
+        );
+    }
+
+    // Check which enchantment type passive the character has
+    let weapon_enchant_type: Option<String> = abilities.iter().find_map(|ability| {
+        ability.effects.iter().find_map(|effect| {
+            if effect.effect_type == "passive" {
+                if let Some(passive_type) = &effect.passive_type {
+                    if passive_type.starts_with("enchant_weapon_") {
+                        // Extract the enchantment type (fire, frost, lightning)
+                        return Some(
+                            passive_type
+                                .strip_prefix("enchant_weapon_")
+                                .unwrap()
+                                .to_string(),
+                        );
+                    }
+                }
+            }
+            None
+        })
+    });
+
+    tracing::info!("Weapon enchant type: {:?}", weapon_enchant_type);
+
     match action {
         CombatActionRequest::Melee => {
             // Check for dual wield passive (check both new effects and legacy)
@@ -304,7 +455,7 @@ pub async fn perform_combat_action(
                     effect.effect_type == "passive" && effect.passive_type.as_deref() == Some("dual_wield")
                 }) ||
                 // Check legacy system for backward compatibility
-                (ability.ability_type == Some("passive".to_string())
+                (ability.ability_type == "passive"
                     && ability.passive_effect.as_deref() == Some("dual_wield"))
             });
 
@@ -319,6 +470,25 @@ pub async fn perform_combat_action(
                 is_dual_wield: false,
             });
 
+            // Apply primary weapon enchantment if active
+            let primary_enchanted = game_state
+                .get("primaryWeaponEnchanted")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            if !primary_enchanted.is_empty() {
+                if let Some(_) = apply_weapon_enchantment(
+                    &abilities,
+                    &character.stats,
+                    character.level,
+                    &mut attacks,
+                    Some(primary_enchanted),
+                    "primary",
+                ) {
+                    // Enchantment applied
+                }
+            }
+
             // Second attack if dual wielding
             if has_dual_wield {
                 let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
@@ -330,6 +500,23 @@ pub async fn perform_combat_action(
                     ),
                     is_dual_wield: true,
                 });
+
+                // Apply secondary weapon enchantment if active
+                let secondary_enchanted = game_state
+                    .get("secondaryWeaponEnchanted")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+
+                if !secondary_enchanted.is_empty() {
+                    apply_weapon_enchantment(
+                        &abilities,
+                        &character.stats,
+                        character.level,
+                        &mut attacks,
+                        Some(secondary_enchanted),
+                        "secondary",
+                    );
+                }
             }
         }
         CombatActionRequest::Ability { ref ability_id } => {
@@ -340,32 +527,35 @@ pub async fn perform_combat_action(
                 .ok_or_else(|| AppError::validation_error("Ability not found or not unlocked"))?;
 
             // Check if ability is on cooldown
-            if ability.cooldown > 0 {
-                if let Some(cooldowns) = game_state.get("abilityCooldowns") {
-                    if let Some(cooldown_turns) =
-                        cooldowns.get(&ability.id).and_then(|v| v.as_i64())
-                    {
-                        if cooldown_turns > 0 {
-                            return Err(AppError::validation_error(&format!(
-                                "Ability is on cooldown for {} more turn{}",
-                                cooldown_turns,
-                                if cooldown_turns == 1 { "" } else { "s" }
-                            )));
+            if let Some(cooldown) = ability.cooldown {
+                if cooldown > 0 {
+                    if let Some(cooldowns) = game_state.get("abilityCooldowns") {
+                        if let Some(cooldown_turns) =
+                            cooldowns.get(&ability.id).and_then(|v| v.as_i64())
+                        {
+                            if cooldown_turns > 0 {
+                                return Err(AppError::validation_error(&format!(
+                                    "Ability is on cooldown for {} more turn{}",
+                                    cooldown_turns,
+                                    if cooldown_turns == 1 { "" } else { "s" }
+                                )));
+                            }
                         }
                     }
                 }
             }
 
             // Check mana cost
-            if character.stats.mana < ability.mana_cost {
+            let mana_cost_required = ability.mana_cost.unwrap_or(0);
+            if character.stats.mana < mana_cost_required {
                 return Err(AppError::validation_error(&format!(
                     "Not enough mana. Required: {}, Available: {}",
-                    ability.mana_cost, character.stats.mana
+                    mana_cost_required, character.stats.mana
                 )));
             }
 
             // Deduct mana cost
-            mana_cost = ability.mana_cost;
+            mana_cost = mana_cost_required;
             character.stats.mana -= mana_cost;
 
             // Process effects - iterate through each effect in the ability
@@ -421,6 +611,57 @@ pub async fn perform_combat_action(
                                 _ => {
                                     // Unknown active type, skip
                                 }
+                            }
+                        }
+                    } else if effect.effect_type == "passive" {
+                        // Check if this ability applies a weapon enchantment
+                        if let Some(passive_type) = &effect.passive_type {
+                            if passive_type.starts_with("enchant_weapon_") {
+                                // Extract enchantment type (fire, frost, lightning)
+                                let ench_type =
+                                    passive_type.strip_prefix("enchant_weapon_").unwrap();
+
+                                // Check current enchantment status
+                                let primary_enchanted = game_state
+                                    .get("primaryWeaponEnchanted")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+                                let secondary_enchanted = game_state
+                                    .get("secondaryWeaponEnchanted")
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+
+                                // Check for dual wield
+                                let has_dual_wield = abilities.iter().any(|ability| {
+                                    ability.effects.iter().any(|effect| {
+                                        effect.effect_type == "passive"
+                                            && effect.passive_type.as_deref() == Some("dual_wield")
+                                    }) || (ability.ability_type == "passive"
+                                        && ability.passive_effect.as_deref() == Some("dual_wield"))
+                                });
+
+                                // Apply enchantment
+                                if primary_enchanted.is_empty() {
+                                    game_state["primaryWeaponEnchanted"] =
+                                        serde_json::json!(ench_type);
+                                    attacks.push(SingleAttack {
+                                        damage: 0,
+                                        description: format!(
+                                            "You enchant your primary weapon with the power of {}!",
+                                            ench_type
+                                        ),
+                                        is_dual_wield: false,
+                                    });
+                                } else if has_dual_wield && secondary_enchanted.is_empty() {
+                                    game_state["secondaryWeaponEnchanted"] =
+                                        serde_json::json!(ench_type);
+                                    attacks.push(SingleAttack {
+                                        damage: 0,
+                                        description: format!("You enchant your secondary weapon with the power of {}!", ench_type),
+                                        is_dual_wield: false,
+                                    });
+                                }
+                                // If both weapons already enchanted, no message
                             }
                         }
                     }
@@ -486,8 +727,10 @@ pub async fn perform_combat_action(
     // Then, if an ability was used, set it on cooldown (AFTER decrementing)
     if let CombatActionRequest::Ability { ref ability_id } = action {
         if let Some(ability) = abilities.iter().find(|a| a.id == *ability_id) {
-            if ability.cooldown > 0 {
-                cooldowns.insert(ability.id.clone(), ability.cooldown as i32);
+            if let Some(cooldown) = ability.cooldown {
+                if cooldown > 0 {
+                    cooldowns.insert(ability.id.clone(), cooldown as i32);
+                }
             }
         }
     }

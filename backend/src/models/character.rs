@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+/// Default ability type for backward compatibility
+fn default_ability_type() -> String {
+    "combat".to_string()
+}
+
 /// Character stats structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CharacterStats {
@@ -83,7 +88,7 @@ pub struct AbilityEffect {
 
     // For passive effects
     #[serde(rename = "passiveType", skip_serializing_if = "Option::is_none")]
-    pub passive_type: Option<String>, // e.g., "dual_wield", "increased_crit", etc.
+    pub passive_type: Option<String>, // e.g., "dual_wield", "weapon_enchant_fire", etc.
 }
 
 /// Ability represents a skill or spell that characters can use
@@ -93,17 +98,20 @@ pub struct Ability {
     pub name: String,
     pub description: String,
 
+    // Ability type: "combat" = shows in combat action bar, "passive" = hidden/automatic
+    #[serde(rename = "abilityType", default = "default_ability_type")]
+    pub ability_type: String,
+
     // Multi-effect system (new)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<AbilityEffect>,
 
-    #[serde(rename = "manaCost")]
-    pub mana_cost: i64,
-    pub cooldown: i64,
+    #[serde(rename = "manaCost", default, skip_serializing_if = "Option::is_none")]
+    pub mana_cost: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cooldown: Option<i64>,
 
     // Legacy fields (deprecated but kept for backward compatibility)
-    #[serde(rename = "abilityType", skip_serializing_if = "Option::is_none")]
-    pub ability_type: Option<String>, // 'active' or 'passive'
     #[serde(rename = "damageFormula", skip_serializing_if = "Option::is_none")]
     pub damage_formula: Option<String>, // e.g., "(might * 0.8) + 15"
     #[serde(rename = "healFormula", skip_serializing_if = "Option::is_none")]
@@ -119,6 +127,22 @@ pub struct Ability {
 /// Available passive ability effects
 pub const PASSIVE_EFFECTS: &[(&str, &str)] = &[
     ("dual_wield", "Dual Wield - Attack with both weapons"),
+    (
+        "enchant_weapon",
+        "Weapon Enchantment - Allows elemental enchantments on weapons",
+    ),
+    (
+        "enchant_weapon_fire",
+        "Fire Enchantment - Adds fire damage to weapon attacks",
+    ),
+    (
+        "enchant_weapon_frost",
+        "Frost Enchantment - Adds frost damage to weapon attacks",
+    ),
+    (
+        "enchant_weapon_lightning",
+        "Lightning Enchantment - Adds lightning damage to weapon attacks",
+    ),
     (
         "increased_crit",
         "Increased Critical - +10% critical hit chance",
