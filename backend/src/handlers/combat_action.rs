@@ -100,11 +100,6 @@ fn apply_weapon_enchantment(
     enchantment_type: Option<&str>,
     weapon: &str, // "primary" or "secondary"
 ) -> Option<i32> {
-    tracing::info!(
-        "apply_weapon_enchantment called with type: {:?}",
-        enchantment_type
-    );
-
     // Find abilities that have both:
     // 1. A passive effect with the enchantment type (e.g., enchant_weapon_fire)
     // 2. An active damage effect that deals the enchantment damage
@@ -133,23 +128,11 @@ fn apply_weapon_enchantment(
                     effect.effect_type == "active"
                         && effect.active_type.as_deref() == Some("damage")
                 });
-
-            tracing::info!(
-                "Checking ability {}: has_matching_passive={}, has_damage_effect={}",
-                ability.id,
-                has_matching_passive,
-                has_damage_effect
-            );
-
             has_matching_passive && has_damage_effect
         })
         .collect();
-
-    tracing::info!("Found {} enchantment abilities", enchant_abilities.len());
-
     // Only apply enchantment if we found matching abilities
     if enchant_abilities.is_empty() {
-        tracing::info!("No enchantment abilities found, skipping enchantment");
         return None;
     }
 
@@ -199,13 +182,10 @@ pub async fn save_game_state(
         .update_character_game_state(&character_id, &claims.sub, Some(game_state_str))
         .await
     {
-        Ok(()) => {
-            tracing::info!("Saved game state for character: {}", character_id);
-            Ok(Json(serde_json::json!({
-                "message": "Game state saved",
-                "timestamp": chrono::Utc::now().to_rfc3339()
-            })))
-        }
+        Ok(()) => Ok(Json(serde_json::json!({
+            "message": "Game state saved",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))),
         Err(e) => {
             tracing::error!("Failed to save game state: {:?}", e);
             Err(AppError::from(e))
@@ -223,13 +203,10 @@ pub async fn clear_game_state(
         .update_character_game_state(&character_id, &claims.sub, None)
         .await
     {
-        Ok(()) => {
-            tracing::info!("Cleared game state for character: {}", character_id);
-            Ok(Json(serde_json::json!({
-                "message": "Game state cleared",
-                "timestamp": chrono::Utc::now().to_rfc3339()
-            })))
-        }
+        Ok(()) => Ok(Json(serde_json::json!({
+            "message": "Game state cleared",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))),
         Err(e) => {
             tracing::error!("Failed to clear game state: {:?}", e);
             Err(AppError::from(e))
@@ -287,8 +264,6 @@ pub async fn flee_combat(
         .into_iter()
         .find(|c| c.id == character_id)
         .ok_or_else(|| AppError::character_not_found(&character_id))?;
-
-    tracing::info!("Character {} fled from combat", character_id);
     Ok(Json(final_character))
 }
 
@@ -355,8 +330,6 @@ pub async fn rest_character(
         .get_character(&character_id, &claims.sub)
         .await
         .map_err(|e| AppError::from(e))?;
-
-    tracing::info!("Character {} rested and restored HP/MP", character_id);
     Ok(Json(updated_character))
 }
 
@@ -398,35 +371,6 @@ pub async fn perform_combat_action(
     // === ACTION-SPECIFIC LOGIC: Calculate player attacks ===
     let mut attacks = Vec::new();
     let mut mana_cost = 0i64;
-
-    // Check for weapon enchant passive and get the enchantment type from separate passive abilities
-    let has_weapon_enchant = abilities.iter().any(|ability| {
-        ability.effects.iter().any(|effect| {
-            effect.effect_type == "passive"
-                && effect.passive_type.as_deref() == Some("enchant_weapon")
-        }) || (ability.ability_type == "passive"
-            && ability.passive_effect.as_deref() == Some("enchant_weapon"))
-    });
-
-    tracing::info!("Has weapon_enchant passive: {}", has_weapon_enchant);
-    tracing::info!(
-        "All character abilities: {:?}",
-        abilities.iter().map(|a| &a.id).collect::<Vec<_>>()
-    );
-
-    // Log full ability details for debugging
-    for ability in &abilities {
-        tracing::info!(
-            "Ability {}: type={}, effects={:?}",
-            ability.id,
-            ability.ability_type,
-            ability
-                .effects
-                .iter()
-                .map(|e| format!("{}:{:?}", e.effect_type, e.passive_type))
-                .collect::<Vec<_>>()
-        );
-    }
 
     // Check which enchantment type passive the character has
     let weapon_enchant_type: Option<String> = abilities.iter().find_map(|ability| {
@@ -918,13 +862,6 @@ pub async fn perform_combat_action(
             "Victory! You have defeated {}! You gained **{}** experience.",
             enemy_name, enemy_exp_reward
         ));
-
-        tracing::info!(
-            "Character {} defeated {} and gained {} experience",
-            character_id,
-            enemy_name,
-            enemy_exp_reward
-        );
     } else {
         // Enemy counterattacks
         let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
@@ -972,8 +909,6 @@ pub async fn perform_combat_action(
             repo.update_character_game_state(&character_id, &claims.sub, None)
                 .await
                 .map_err(|e| AppError::from(e))?;
-
-            tracing::info!("Character {} was defeated by {}", character_id, enemy_name);
         }
     }
 
@@ -1001,13 +936,6 @@ pub async fn perform_combat_action(
         repo.update_character_game_state(&character_id, &claims.sub, Some(updated_game_state_str))
             .await
             .map_err(|e| AppError::from(e))?;
-
-        tracing::info!(
-            "Character {} performed combat action, enemy health: {} -> {}",
-            character_id,
-            current_enemy_health,
-            new_enemy_health
-        );
     }
 
     Ok(Json(CombatActionResult {
