@@ -261,13 +261,15 @@ impl UserRepository {
     }
 
     // Unlock abilities for a character at a specific level
+    // Returns a list of newly unlocked abilities
     pub(crate) async fn unlock_character_abilities(
         &self,
         character_id: &str,
         class_id: &str,
         level: i64,
-    ) -> Result<()> {
+    ) -> Result<Vec<Ability>> {
         let class_abilities = self.get_class_abilities(class_id).await?;
+        let mut unlocked_abilities = Vec::new();
 
         for (ability, unlock_level) in class_abilities {
             if unlock_level == level {
@@ -304,10 +306,12 @@ impl UserRepository {
                     .send()
                     .await
                     .context("Failed to unlock ability")?;
+
+                unlocked_abilities.push(ability);
             }
         }
 
-        Ok(())
+        Ok(unlocked_abilities)
     }
 
     pub(crate) fn parse_ability_from_class_item(

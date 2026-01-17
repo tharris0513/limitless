@@ -107,6 +107,13 @@ export interface AttackResult {
 export interface LevelUpInfo {
   newLevel: number;
   statIncreases: StatIncreases;
+  abilitiesLearned: AbilityLearned[];
+}
+
+export interface AbilityLearned {
+  id: string;
+  name: string;
+  description: string;
 }
 
 export interface StatIncreases {

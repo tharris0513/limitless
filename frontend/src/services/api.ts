@@ -243,11 +243,6 @@ export class GameAPI {
     return transformCharacterFromBackend(response.data);
   }
 
-  static async performAttack(characterId: string): Promise<AttackResult> {
-    const response = await api.post(`/characters/${characterId}/attack`);
-    return response.data;
-  }
-
   static async performCombatAction(
     characterId: string,
     action:
@@ -258,16 +253,6 @@ export class GameAPI {
       `/characters/${characterId}/combat-action`,
       action
     );
-    return response.data;
-  }
-
-  static async useAbility(
-    characterId: string,
-    abilityId: string
-  ): Promise<AttackResult> {
-    const response = await api.post(`/characters/${characterId}/use-ability`, {
-      abilityId,
-    });
     return response.data;
   }
 

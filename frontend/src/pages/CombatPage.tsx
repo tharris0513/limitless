@@ -123,6 +123,11 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           setCombatText(prev => [...prev, { text: result.defeatMessage!, type: 'enemy' }]);
         }
         
+        // Update game state to mark combat as finished
+        if (result.gameState) {
+          setGameState(result.gameState);
+        }
+        
         // Refresh character to update HP and adventures in sidebar
         if (onCharacterUpdate) {
           try {
@@ -172,6 +177,14 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
             `+${result.levelUp.statIncreases.maxHealth} Max Health, ` +
             `+${result.levelUp.statIncreases.maxMana} Max Mana`;
           setCombatText(prev => [...prev, { text: levelUpMsg, type: 'player' }]);
+          
+          // Add ability learned messages
+          if (result.levelUp.abilitiesLearned && result.levelUp.abilitiesLearned.length > 0) {
+            result.levelUp.abilitiesLearned.forEach(ability => {
+              const abilityMsg = `✨ You learned a new ability: ${ability.name}! ${ability.description}`;
+              setCombatText(prev => [...prev, { text: abilityMsg, type: 'player' }]);
+            });
+          }
         }
         
         // Character has already been updated on backend, just need to refresh
@@ -232,6 +245,11 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
           setCombatText(prev => [...prev, { text: result.defeatMessage!, type: 'enemy' }]);
         }
         
+        // Update game state to mark combat as finished
+        if (result.gameState) {
+          setGameState(result.gameState);
+        }
+        
         // Refresh character to update HP, mana, and adventures in sidebar
         if (onCharacterUpdate) {
           try {
@@ -280,6 +298,14 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
             `+${result.levelUp.statIncreases.maxHealth} Max Health, ` +
             `+${result.levelUp.statIncreases.maxMana} Max Mana`;
           setCombatText(prev => [...prev, { text: levelUpMsg, type: 'player' }]);
+          
+          // Add ability learned messages
+          if (result.levelUp.abilitiesLearned && result.levelUp.abilitiesLearned.length > 0) {
+            result.levelUp.abilitiesLearned.forEach(ability => {
+              const abilityMsg = `✨ You learned a new ability: ${ability.name}! ${ability.description}`;
+              setCombatText(prev => [...prev, { text: abilityMsg, type: 'player' }]);
+            });
+          }
         }
         
         // Refresh character

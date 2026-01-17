@@ -50,6 +50,15 @@ pub struct CombatActionResult {
 pub struct LevelUpInfo {
     pub new_level: i64,
     pub stat_increases: StatIncreases,
+    pub abilities_learned: Vec<AbilityLearned>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AbilityLearned {
+    pub id: String,
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,6 +87,173 @@ fn parse_attack_description(template: &str, damage: i32, name: &str) -> String {
         .replace("${damage}", &damage.to_string())
         .replace("${x}", &damage.to_string())
         .replace("${name}", name)
+}
+
+// Save character's game state
+pub async fn save_game_state(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+    Json(game_state): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // Convert game state to JSON string
+    let game_state_str = serde_json::to_string(&game_state)
+        .map_err(|e| AppError::validation_error(&format!("Invalid game state JSON: {}", e)))?;
+
+    match repo
+        .update_character_game_state(&character_id, &claims.sub, Some(game_state_str))
+        .await
+    {
+        Ok(()) => {
+            tracing::info!("Saved game state for character: {}", character_id);
+            Ok(Json(serde_json::json!({
+                "message": "Game state saved",
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            })))
+        }
+        Err(e) => {
+            tracing::error!("Failed to save game state: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Clear character's game state (return to idle)
+pub async fn clear_game_state(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<serde_json::Value>, AppError> {
+    match repo
+        .update_character_game_state(&character_id, &claims.sub, None)
+        .await
+    {
+        Ok(()) => {
+            tracing::info!("Cleared game state for character: {}", character_id);
+            Ok(Json(serde_json::json!({
+                "message": "Game state cleared",
+                "timestamp": chrono::Utc::now().to_rfc3339()
+            })))
+        }
+        Err(e) => {
+            tracing::error!("Failed to clear game state: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
+// Flee from combat - clear game state and consume 1 adventure
+pub async fn flee_combat(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<crate::models::Character>, AppError> {
+    // Get all user characters to verify ownership and get current adventures
+    let characters = repo
+        .get_user_characters(&claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    let character = characters
+        .iter()
+        .find(|c| c.id == character_id)
+        .ok_or_else(|| AppError::character_not_found(&character_id))?;
+
+    // Check if character has adventures available
+    if character.stats.adventures <= 0 {
+        return Err(AppError::validation_error("No adventures remaining"));
+    }
+
+    // Decrease adventures by 1
+    let new_adventures = character.stats.adventures - 1;
+
+    // Update character adventures
+    let updated_character = repo
+        .update_character_adventures(&character_id, new_adventures)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update adventures: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Clear game state
+    repo.update_character_game_state(&character_id, &claims.sub, None)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to clear game state: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    tracing::info!("Character {} fled from combat", character_id);
+    Ok(Json(updated_character))
+}
+
+// Rest - restore character HP and MP at the cost of 1 adventure
+pub async fn rest_character(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<crate::models::Character>, AppError> {
+    // Get all user characters to verify ownership
+    let characters = repo
+        .get_user_characters(&claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    let character = characters
+        .iter()
+        .find(|c| c.id == character_id)
+        .ok_or_else(|| AppError::character_not_found(&character_id))?;
+
+    // Check if character has adventures available
+    if character.stats.adventures <= 0 {
+        return Err(AppError::validation_error("No adventures remaining"));
+    }
+
+    // Check if already at full HP and MP
+    if character.stats.health >= character.stats.max_health
+        && character.stats.mana >= character.stats.max_mana
+    {
+        return Err(AppError::validation_error(
+            "Already at full health and mana",
+        ));
+    }
+
+    // Decrease adventures by 1
+    let new_adventures = character.stats.adventures - 1;
+
+    // Update character adventures
+    repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update adventures: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Restore HP and MP to maximum
+    repo.update_character_health(&character_id, &claims.sub, character.stats.max_health)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update health: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Update mana
+    repo.update_character_mana(&character_id, &claims.sub, character.stats.max_mana)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update mana: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Get updated character
+    let updated_character = repo
+        .get_character(&character_id, &claims.sub)
+        .await
+        .map_err(|e| AppError::from(e))?;
+
+    tracing::info!("Character {} rested and restored HP/MP", character_id);
+    Ok(Json(updated_character))
 }
 
 /// Unified combat action handler - handles both melee attacks and ability usage
@@ -415,6 +591,29 @@ pub async fn perform_combat_action(
             .await
             .map_err(|e| AppError::from(e))?;
 
+            // Unlock new abilities
+            let abilities_learned = match repo
+                .unlock_character_abilities(&character_id, &character.class_id, new_level)
+                .await
+            {
+                Ok(abilities) => abilities
+                    .into_iter()
+                    .map(|a| AbilityLearned {
+                        id: a.id,
+                        name: a.name,
+                        description: a.description,
+                    })
+                    .collect(),
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to unlock abilities for level {}: {:?}",
+                        new_level,
+                        e
+                    );
+                    Vec::new()
+                }
+            };
+
             level_up = Some(LevelUpInfo {
                 new_level,
                 stat_increases: StatIncreases {
@@ -426,19 +625,8 @@ pub async fn perform_combat_action(
                     max_health,
                     max_mana,
                 },
+                abilities_learned,
             });
-
-            // Unlock new abilities
-            if let Err(e) = repo
-                .unlock_character_abilities(&character_id, &character.class_id, new_level)
-                .await
-            {
-                tracing::error!(
-                    "Failed to unlock abilities for level {}: {:?}",
-                    new_level,
-                    e
-                );
-            }
 
             // Fully restore health and mana on level up
             character.stats.health = character.stats.max_health + max_health;

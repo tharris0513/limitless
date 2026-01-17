@@ -7,8 +7,7 @@ use std::sync::Arc;
 
 use crate::{
     handlers::{
-        admin, adventure, auth, character, chat, combat, combat_action, health,
-        location, player, user,
+        admin, adventure, auth, character, chat, combat_action, health, location, player, user,
     },
     middleware::{global_error_handler, jwt_auth_middleware, maintenance_mode_middleware},
     repository::UserRepository,
@@ -60,16 +59,20 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             "/characters/:id/last-played",
             patch(character::update_character_last_played),
         )
-        .route("/characters/:id/state", post(combat::save_game_state))
-        .route("/characters/:id/state", delete(combat::clear_game_state))
-        .route("/characters/:id/flee", post(combat::flee_combat))
+        .route(
+            "/characters/:id/state",
+            post(combat_action::save_game_state),
+        )
+        .route(
+            "/characters/:id/state",
+            delete(combat_action::clear_game_state),
+        )
+        .route("/characters/:id/flee", post(combat_action::flee_combat))
         .route(
             "/characters/:id/combat-action",
             post(combat_action::perform_combat_action),
         )
-        // Legacy routes for backward compatibility
-        .route("/characters/:id/attack", post(combat::perform_attack))
-        .route("/characters/:id/rest", post(combat::rest_character))
+        .route("/characters/:id/rest", post(combat_action::rest_character))
         .route(
             "/characters/:id/abilities",
             get(character::get_character_abilities),
