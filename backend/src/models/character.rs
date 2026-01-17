@@ -63,31 +63,55 @@ pub struct Class {
     pub starting_mana: i64,
 }
 
+/// Represents a single effect within an ability
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AbilityEffect {
+    pub id: String, // Unique ID for this effect within the ability
+
+    #[serde(rename = "effectType")]
+    pub effect_type: String, // "active" or "passive"
+
+    // For active effects
+    #[serde(rename = "activeType", skip_serializing_if = "Option::is_none")]
+    pub active_type: Option<String>, // "damage" or "heal"
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub formula: Option<String>, // The calculation formula
+
+    #[serde(rename = "attackDescription", skip_serializing_if = "Option::is_none")]
+    pub attack_description: Option<String>, // Description template for this effect
+
+    // For passive effects
+    #[serde(rename = "passiveType", skip_serializing_if = "Option::is_none")]
+    pub passive_type: Option<String>, // e.g., "dual_wield", "increased_crit", etc.
+}
+
 /// Ability represents a skill or spell that characters can use
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ability {
     pub id: String,
     pub name: String,
     pub description: String,
-    #[serde(rename = "abilityType")]
-    pub ability_type: String, // 'active' or 'passive'
+
+    // Multi-effect system (new)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<AbilityEffect>,
+
     #[serde(rename = "manaCost")]
     pub mana_cost: i64,
     pub cooldown: i64,
 
-    // Formula-based calculations (for active abilities)
+    // Legacy fields (deprecated but kept for backward compatibility)
+    #[serde(rename = "abilityType", skip_serializing_if = "Option::is_none")]
+    pub ability_type: Option<String>, // 'active' or 'passive'
     #[serde(rename = "damageFormula", skip_serializing_if = "Option::is_none")]
     pub damage_formula: Option<String>, // e.g., "(might * 0.8) + 15"
     #[serde(rename = "healFormula", skip_serializing_if = "Option::is_none")]
     pub heal_formula: Option<String>, // e.g., "(magic * 1.2) + 20"
     #[serde(rename = "effectFormula", skip_serializing_if = "Option::is_none")]
     pub effect_formula: Option<String>, // For complex status effects
-
-    // Passive ability effect tag (for passive abilities)
     #[serde(rename = "passiveEffect", skip_serializing_if = "Option::is_none")]
     pub passive_effect: Option<String>, // e.g., "dual_wield", "increased_crit", etc.
-
-    // Attack description template (for active abilities with damage)
     #[serde(rename = "attackDescription", skip_serializing_if = "Option::is_none")]
     pub attack_description: Option<String>, // e.g., "You unleash ${name} for ${damage} damage!"
 }

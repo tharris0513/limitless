@@ -396,7 +396,9 @@ const AbilityAssignment: React.FC<{
     try {
       setLoading(true);
       const abilities = await GameAPI.getClassAbilities(classId);
-      setAssignedAbilities(abilities);
+      // Sort abilities by unlock level (ascending - level 1 first)
+      const sortedAbilities = abilities.sort((a, b) => a.unlockLevel - b.unlockLevel);
+      setAssignedAbilities(sortedAbilities);
     } catch (err) {
       console.error('Failed to load class abilities:', err);
     } finally {

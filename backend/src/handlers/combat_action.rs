@@ -121,10 +121,15 @@ pub async fn perform_combat_action(
 
     match action {
         CombatActionRequest::Melee => {
-            // Check for dual wield passive
+            // Check for dual wield passive (check both new effects and legacy)
             let has_dual_wield = abilities.iter().any(|ability| {
-                ability.ability_type == "passive"
-                    && ability.passive_effect.as_deref() == Some("dual_wield")
+                // Check new effects system
+                ability.effects.iter().any(|effect| {
+                    effect.effect_type == "passive" && effect.passive_type.as_deref() == Some("dual_wield")
+                }) ||
+                // Check legacy system for backward compatibility
+                (ability.ability_type == Some("passive".to_string())
+                    && ability.passive_effect.as_deref() == Some("dual_wield"))
             });
 
             // First attack (main hand)
@@ -187,28 +192,88 @@ pub async fn perform_combat_action(
             mana_cost = ability.mana_cost;
             character.stats.mana -= mana_cost;
 
-            // Calculate damage from formula
-            let damage = if ability.damage_formula.is_some() {
-                DamageCalculator::calculate_damage(ability, &character, None).map_err(|e| {
-                    AppError::validation_error(&format!("Damage calculation failed: {}", e))
-                })?
-            } else {
-                // Fallback to might-based if no formula
-                DamageCalculator::calculate_melee_attack(character.stats.might)
-            };
+            // Process effects - iterate through each effect in the ability
+            if !ability.effects.is_empty() {
+                // Use new effects system
+                for effect in &ability.effects {
+                    if effect.effect_type == "active" {
+                        // Only process active effects during combat (passive effects are handled elsewhere)
+                        if let Some(active_type) = &effect.active_type {
+                            match active_type.as_str() {
+                                "damage" => {
+                                    // Calculate damage from this effect's formula
+                                    if let Some(ref formula) = effect.formula {
+                                        let damage = DamageCalculator::test_formula(
+                                            formula,
+                                            &character.stats,
+                                            character.level,
+                                        )
+                                        .map_err(|e| {
+                                            AppError::validation_error(&format!(
+                                                "Damage calculation failed for effect {}: {}",
+                                                effect.id, e
+                                            ))
+                                        })?;
 
-            // Use ability's attack description template
-            let description = if let Some(ref template) = ability.attack_description {
-                parse_attack_description(template, damage, &ability.name)
-            } else {
-                format!("You use {} for **{}** damage!", ability.name, damage)
-            };
+                                        // Use effect's attack description or create default
+                                        let description =
+                                            if let Some(ref template) = effect.attack_description {
+                                                parse_attack_description(
+                                                    template,
+                                                    damage,
+                                                    &ability.name,
+                                                )
+                                            } else {
+                                                format!(
+                                                    "You use {} for **{}** damage!",
+                                                    ability.name, damage
+                                                )
+                                            };
 
-            attacks.push(SingleAttack {
-                damage,
-                description,
-                is_dual_wield: false,
-            });
+                                        attacks.push(SingleAttack {
+                                            damage,
+                                            description,
+                                            is_dual_wield: false,
+                                        });
+                                    }
+                                }
+                                "heal" => {
+                                    // TODO: Implement healing effects
+                                    // For now, we'll skip heal effects in combat actions
+                                    // They would restore player health instead of dealing damage
+                                }
+                                _ => {
+                                    // Unknown active type, skip
+                                }
+                            }
+                        }
+                    }
+                    // Passive effects are not processed during combat actions
+                }
+            } else {
+                // Fallback to legacy system if no effects defined
+                let damage = if ability.damage_formula.is_some() {
+                    DamageCalculator::calculate_damage(ability, &character, None).map_err(|e| {
+                        AppError::validation_error(&format!("Damage calculation failed: {}", e))
+                    })?
+                } else {
+                    // Fallback to might-based if no formula
+                    DamageCalculator::calculate_melee_attack(character.stats.might)
+                };
+
+                // Use ability's attack description template
+                let description = if let Some(ref template) = ability.attack_description {
+                    parse_attack_description(template, damage, &ability.name)
+                } else {
+                    format!("You use {} for **{}** damage!", ability.name, damage)
+                };
+
+                attacks.push(SingleAttack {
+                    damage,
+                    description,
+                    is_dual_wield: false,
+                });
+            }
         }
     }
 

@@ -219,7 +219,7 @@ impl UserRepository {
         );
         item.insert(
             "ability_type".to_string(),
-            AttributeValue::S(ability.ability_type.clone()),
+            AttributeValue::S(ability.ability_type.clone().unwrap_or("".to_string())),
         );
         item.insert(
             "mana_cost".to_string(),

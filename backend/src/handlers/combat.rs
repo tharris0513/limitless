@@ -262,7 +262,12 @@ pub async fn perform_attack(
     }
 
     let has_dual_wield = abilities.iter().any(|ability| {
-        ability.ability_type == "passive" && ability.passive_effect.as_deref() == Some("dual_wield")
+        // Check new effects system
+        ability.effects.iter().any(|effect| {
+            effect.effect_type == "passive" && effect.passive_type.as_deref() == Some("dual_wield")
+        }) ||
+        // Check legacy system for backward compatibility
+        (ability.ability_type.as_deref() == Some("passive") && ability.passive_effect.as_deref() == Some("dual_wield"))
     });
 
     let mut attacks = Vec::new();

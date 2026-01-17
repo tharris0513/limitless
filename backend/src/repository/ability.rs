@@ -1,4 +1,4 @@
-use crate::models::{Ability, CharacterAbility};
+use crate::models::{Ability, AbilityEffect, CharacterAbility};
 use anyhow::{Context, Result};
 use aws_sdk_dynamodb::types::AttributeValue;
 use std::collections::HashMap;
@@ -26,7 +26,7 @@ impl UserRepository {
         );
         item.insert(
             "ability_type".to_string(),
-            AttributeValue::S(ability.ability_type.clone()),
+            AttributeValue::S(ability.ability_type.clone().unwrap_or("".to_string())),
         );
         item.insert(
             "mana_cost".to_string(),
@@ -37,6 +37,20 @@ impl UserRepository {
             AttributeValue::N(ability.cooldown.to_string()),
         );
 
+        // Store effects as JSON
+        if !ability.effects.is_empty() {
+            let effects_json =
+                serde_json::to_string(&ability.effects).context("Failed to serialize effects")?;
+            item.insert("effects".to_string(), AttributeValue::S(effects_json));
+        }
+
+        // Legacy fields (for backward compatibility)
+        if let Some(ability_type) = &ability.ability_type {
+            item.insert(
+                "ability_type".to_string(),
+                AttributeValue::S(ability_type.clone()),
+            );
+        }
         if let Some(damage_formula) = &ability.damage_formula {
             item.insert(
                 "damage_formula".to_string(),
@@ -153,13 +167,26 @@ impl UserRepository {
                 .context(format!("Missing {}", key))
         };
 
+        // Parse effects from JSON
+        let effects = item
+            .get("effects")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<Vec<AbilityEffect>>(s).ok())
+            .unwrap_or_default();
+
         Ok(Ability {
             id: get_string("id")?,
             name: get_string("name")?,
             description: get_string("description")?,
-            ability_type: get_string("ability_type")?,
+            effects,
             mana_cost: get_i64("mana_cost")?,
             cooldown: get_i64("cooldown")?,
+
+            // Legacy fields
+            ability_type: item
+                .get("ability_type")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
             damage_formula: item
                 .get("damage_formula")
                 .and_then(|v| v.as_s().ok())
@@ -301,13 +328,24 @@ impl UserRepository {
                 .context(format!("Missing {}", key))
         };
 
+        // Parse effects from JSON
+        let effects = item
+            .get("effects")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<Vec<AbilityEffect>>(s).ok())
+            .unwrap_or_default();
+
         Ok(Ability {
             id: get_string("ability_id")?,
             name: get_string("ability_name")?,
             description: get_string("ability_description")?,
-            ability_type: get_string("ability_type")?,
+            effects,
             mana_cost: get_i64("mana_cost")?,
             cooldown: get_i64("cooldown")?,
+            ability_type: item
+                .get("ability_type")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s.to_string()),
             damage_formula: item
                 .get("damage_formula")
                 .and_then(|v| v.as_s().ok())

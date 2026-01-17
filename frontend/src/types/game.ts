@@ -46,24 +46,38 @@ export interface Class {
   startingMana: number;
 }
 
+// Represents a single effect within an ability
+export interface AbilityEffect {
+  id: string; // Unique ID for this effect
+  effectType: 'active' | 'passive';
+
+  // For active effects
+  activeType?: 'damage' | 'heal';
+  formula?: string;
+  attackDescription?: string;
+
+  // For passive effects
+  passiveType?: string; // e.g., "dual_wield", "increased_crit"
+}
+
 // Ability represents a skill or spell that characters can use
 export interface Ability {
   id: string;
   name: string;
   description: string;
-  abilityType: 'active' | 'passive';
+
+  // Multi-effect system (new)
+  effects?: AbilityEffect[];
+
   manaCost: number;
   cooldown: number;
 
-  // Formula-based calculations (for active abilities)
+  // Legacy fields (deprecated but kept for backward compatibility)
+  abilityType?: 'active' | 'passive';
   damageFormula?: string;
   healFormula?: string;
   effectFormula?: string;
-
-  // Passive ability effect tag (for passive abilities)
   passiveEffect?: string;
-
-  // Attack description template (for active abilities with damage)
   attackDescription?: string;
 }
 

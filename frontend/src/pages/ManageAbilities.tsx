@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, X } from 'lucide-react';
 import GameAPI from '../services/api';
-import type { Ability, PassiveEffect } from '../types/game';
+import type { Ability, AbilityEffect, PassiveEffect } from '../types/game';
 import styles from './ManageClasses.module.css';
 
 interface ManageAbilitiesProps {
@@ -34,36 +34,10 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
     }
   };
 
-  const handleSaveAbility = async (formData: {
-    id?: string;
-    name: string;
-    description: string;
-    abilityType: 'active' | 'passive';
-    manaCost: number;
-    cooldown: number;
-    damageFormula?: string;
-    healFormula?: string;
-    effectFormula?: string;
-    passiveEffect?: string;
-    attackDescription?: string;
-  }) => {
+  const handleSaveAbility = async (abilityData: Ability) => {
     try {
       setLoading(true);
       setError('');
-
-      const abilityData: Ability = {
-        id: formData.id || formData.name.toLowerCase().replace(/\s+/g, '_'),
-        name: formData.name,
-        description: formData.description,
-        abilityType: formData.abilityType,
-        manaCost: formData.manaCost,
-        cooldown: formData.cooldown,
-        damageFormula: formData.damageFormula || undefined,
-        healFormula: formData.healFormula || undefined,
-        effectFormula: formData.effectFormula || undefined,
-        passiveEffect: formData.passiveEffect || undefined,
-        attackDescription: formData.attackDescription || undefined,
-      };
 
       if (editingAbility) {
         await GameAPI.adminUpdateAbility(editingAbility.id, abilityData);
@@ -138,7 +112,7 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
               </div>
               <p className={styles.description}>{ability.description}</p>
               <div className={styles.abilityInfo}>
-                <span>Type: {ability.abilityType}</span>
+                <span>Effects: {ability.effects?.length || 0}</span>
                 <span>Mana: {ability.manaCost}</span>
                 <span>Cooldown: {ability.cooldown}</span>
               </div>
@@ -158,43 +132,31 @@ export const ManageAbilities: React.FC<ManageAbilitiesProps> = ({ onBack }) => {
   );
 };
 
-// Ability Form Component
+// Ability Form Component with Multi-Effect Support
 const AbilityForm: React.FC<{
   initialData: Ability | null;
-  onSave: (data: {
-    id?: string;
-    name: string;
-    description: string;
-    abilityType: 'active' | 'passive';
-    manaCost: number;
-    cooldown: number;
-    damageFormula?: string;
-    healFormula?: string;
-    effectFormula?: string;
-    passiveEffect?: string;
-    attackDescription?: string;
-  }) => void;
+  onSave: (data: Ability) => void;
   onCancel: () => void;
 }> = ({ initialData, onSave, onCancel }) => {
-  const [formData, setFormData] = useState(
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    manaCost: number;
+    cooldown: number;
+    effects: AbilityEffect[];
+  }>(
     initialData ? {
-      ...initialData,
-      damageFormula: initialData.damageFormula || '',
-      healFormula: initialData.healFormula || '',
-      effectFormula: initialData.effectFormula || '',
-      passiveEffect: initialData.passiveEffect || '',
-      attackDescription: initialData.attackDescription || '',
+      name: initialData.name,
+      description: initialData.description,
+      manaCost: initialData.manaCost,
+      cooldown: initialData.cooldown,
+      effects: initialData.effects || [],
     } : {
       name: '',
       description: '',
-      abilityType: 'active' as 'active' | 'passive',
       manaCost: 0,
       cooldown: 0,
-      damageFormula: '',
-      healFormula: '',
-      effectFormula: '',
-      passiveEffect: '',
-      attackDescription: '',
+      effects: [],
     }
   );
 
@@ -202,10 +164,8 @@ const AbilityForm: React.FC<{
   const [loadingEffects, setLoadingEffects] = useState(false);
 
   useEffect(() => {
-    if (formData.abilityType === 'passive') {
-      loadPassiveEffects();
-    }
-  }, [formData.abilityType]);
+    loadPassiveEffects();
+  }, []);
 
   const loadPassiveEffects = async () => {
     try {
@@ -219,116 +179,274 @@ const AbilityForm: React.FC<{
     }
   };
 
+  const addEffect = () => {
+    const newEffect: AbilityEffect = {
+      id: `effect_${Date.now()}`,
+      effectType: 'active',
+      activeType: 'damage',
+      formula: '',
+      attackDescription: '',
+    };
+    setFormData({
+      ...formData,
+      effects: [...formData.effects, newEffect],
+    });
+  };
+
+  const removeEffect = (effectId: string) => {
+    setFormData({
+      ...formData,
+      effects: formData.effects.filter(e => e.id !== effectId),
+    });
+  };
+
+  const updateEffect = (effectId: string, updates: Partial<AbilityEffect>) => {
+    setFormData({
+      ...formData,
+      effects: formData.effects.map(e => 
+        e.id === effectId ? { ...e, ...updates } : e
+      ),
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const abilityData: Ability = {
+      id: initialData?.id || formData.name.toLowerCase().replace(/\s+/g, '_'),
+      name: formData.name,
+      description: formData.description,
+      manaCost: formData.manaCost,
+      cooldown: formData.cooldown,
+      effects: formData.effects,
+    };
+    
+    onSave(abilityData);
+  };
+
   return (
     <div className={styles.modal}>
-      <div className={styles.modalContent}>
+      <div className={styles.modalContent} style={{ maxWidth: '800px' }}>
         <h2>{initialData ? 'Edit Ability' : 'New Ability'}</h2>
-        <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }}>
-          <input
-            type="text"
-            placeholder="Ability Name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        <form onSubmit={handleSubmit}>
+          <div className={styles.formGrid}>
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span>Ability Name *</span>
+              <input
+                type="text"
+                placeholder="Ability Name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </label>
+            
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span>Description *</span>
+              <textarea
+                placeholder="Description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required
+                rows={3}
+              />
+            </label>
+
+            <label>
+              <span>Mana Cost</span>
+              <input 
+                type="number" 
+                value={formData.manaCost} 
+                onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })} 
+              />
+            </label>
+            
+            <label>
+              <span>Cooldown (turns)</span>
+              <input 
+                type="number" 
+                value={formData.cooldown} 
+                onChange={(e) => setFormData({ ...formData, cooldown: parseInt(e.target.value) || 0 })} 
+              />
+            </label>
+          </div>
+
+          <div style={{ marginTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0 }}>Effects</h3>
+              <button 
+                type="button" 
+                className={styles.addButton}
+                onClick={addEffect}
+                style={{ padding: '8px 16px', fontSize: '14px' }}
+              >
+                <Plus size={16} /> Add Effect
+              </button>
+            </div>
+
+            {formData.effects.length === 0 && (
+              <div style={{ 
+                padding: '24px', 
+                textAlign: 'center', 
+                color: '#888',
+                border: '2px dashed #333',
+                borderRadius: '8px',
+                marginBottom: '16px'
+              }}>
+                No effects added yet. Click "Add Effect" to create one.
+              </div>
+            )}
+
+            {formData.effects.map((effect, index) => (
+              <EffectEditor
+                key={effect.id}
+                effect={effect}
+                index={index}
+                passiveEffects={passiveEffects}
+                loadingEffects={loadingEffects}
+                onUpdate={(updates) => updateEffect(effect.id, updates)}
+                onRemove={() => removeEffect(effect.id)}
+              />
+            ))}
+          </div>
+
+          <div className={styles.formActions} style={{ marginTop: '24px' }}>
+            <button type="submit" className={styles.saveButton}>
+              {initialData ? 'Update Ability' : 'Create Ability'}
+            </button>
+            <button type="button" onClick={onCancel} className={styles.cancelButton}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Effect Editor Component
+const EffectEditor: React.FC<{
+  effect: AbilityEffect;
+  index: number;
+  passiveEffects: PassiveEffect[];
+  loadingEffects: boolean;
+  onUpdate: (updates: Partial<AbilityEffect>) => void;
+  onRemove: () => void;
+}> = ({ effect, index, passiveEffects, loadingEffects, onUpdate, onRemove }) => {
+  return (
+    <div style={{
+      border: '1px solid #333',
+      borderRadius: '8px',
+      padding: '16px',
+      marginBottom: '16px',
+      backgroundColor: '#0a0a0a'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h4 style={{ margin: 0 }}>Effect #{index + 1}</h4>
+        <button
+          type="button"
+          onClick={onRemove}
+          style={{
+            background: '#dc2626',
+            border: 'none',
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          <X size={14} /> Remove
+        </button>
+      </div>
+
+      <div className={styles.formGrid}>
+        <label>
+          <span>Effect Type *</span>
+          <select
+            value={effect.effectType}
+            onChange={(e) => {
+              const newType = e.target.value as 'active' | 'passive';
+              onUpdate({ 
+                effectType: newType,
+                // Reset type-specific fields
+                activeType: newType === 'active' ? 'damage' : undefined,
+                passiveType: newType === 'passive' ? '' : undefined,
+                formula: newType === 'active' ? '' : undefined,
+                attackDescription: newType === 'active' ? '' : undefined,
+              });
+            }}
             required
-          />
-          <textarea
-            placeholder="Description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            required
-          />
-          <select value={formData.abilityType} onChange={(e) => setFormData({ ...formData, abilityType: e.target.value as 'active' | 'passive' })}>
+          >
             <option value="active">Active</option>
             <option value="passive">Passive</option>
           </select>
-          
-          {formData.abilityType === 'passive' ? (
-            <div className={styles.formulaSection}>
-              <h3>Passive Effect</h3>
-              <p className={styles.formulaHelp}>Select the passive effect this ability provides</p>
-              <label>
-                <span>Effect Type</span>
-                {loadingEffects ? (
-                  <p>Loading effects...</p>
-                ) : (
-                  <select 
-                    value={formData.passiveEffect}
-                    onChange={(e) => setFormData({ ...formData, passiveEffect: e.target.value })}
-                    required
-                  >
-                    <option value="">-- Select a passive effect --</option>
-                    {passiveEffects.map(effect => (
-                      <option key={effect.id} value={effect.id}>
-                        {effect.description}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </label>
-            </div>
-          ) : (
-            <div className={styles.formulaSection}>
-              <h3>Formulas (Advanced)</h3>
-              <p className={styles.formulaHelp}>Available variables: might, defense, magic, resistance, agility, level</p>
-              <label>
-                <span>Damage Formula</span>
-                <input 
-                  type="text" 
-                  placeholder="e.g., (might * 0.8) + 15" 
-                  value={formData.damageFormula}
-                  onChange={(e) => setFormData({ ...formData, damageFormula: e.target.value })}
-                />
-              </label>
-              <label>
-                <span>Heal Formula</span>
-                <input 
-                  type="text" 
-                  placeholder="e.g., (magic * 1.2) + 20" 
-                  value={formData.healFormula}
-                  onChange={(e) => setFormData({ ...formData, healFormula: e.target.value })}
-                />
-              </label>
-              <label>
-                <span>Effect Formula</span>
-                <input 
-                  type="text" 
-                  placeholder="e.g., magic * 0.5" 
-                  value={formData.effectFormula}
-                  onChange={(e) => setFormData({ ...formData, effectFormula: e.target.value })}
-                />
-              </label>
-              <label style={{ gridColumn: '1 / -1' }}>
-                <span>Attack Description (Optional)</span>
-                <input 
-                  type="text" 
-                  placeholder="e.g., You unleash ${name} for ${damage} damage!" 
-                  value={formData.attackDescription}
-                  onChange={(e) => setFormData({ ...formData, attackDescription: e.target.value })}
-                />
-                <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
-                  Use {'${'}damage{'}'}  or {'${'}x{'}'}  for damage, {'${'}name{'}'}  for ability name
-                </small>
-              </label>
-            </div>
-          )}
+        </label>
 
-          {formData.abilityType === 'active' && (
-            <div className={styles.formGrid}>
-              <label>
-                <span>Mana Cost</span>
-                <input type="number" placeholder="Mana Cost" value={formData.manaCost} onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })} />
-              </label>
-              <label>
-                <span>Cooldown</span>
-                <input type="number" placeholder="Cooldown" value={formData.cooldown} onChange={(e) => setFormData({ ...formData, cooldown: parseInt(e.target.value) || 0 })} />
-              </label>
-            </div>
-          )}
-          <div className={styles.formActions}>
-            <button type="submit" className={styles.saveButton}>Save</button>
-            <button type="button" onClick={onCancel} className={styles.cancelButton}>Cancel</button>
-          </div>
-        </form>
+        {effect.effectType === 'active' ? (
+          <>
+            <label>
+              <span>Active Type *</span>
+              <select
+                value={effect.activeType || 'damage'}
+                onChange={(e) => onUpdate({ activeType: e.target.value as 'damage' | 'heal' })}
+                required
+              >
+                <option value="damage">Damage</option>
+                <option value="heal">Heal</option>
+              </select>
+            </label>
+
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span>Formula *</span>
+              <input
+                type="text"
+                placeholder="e.g., (might * 1.2) + (magic * 0.5) + 10"
+                value={effect.formula || ''}
+                onChange={(e) => onUpdate({ formula: e.target.value })}
+                required
+              />
+              <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
+                Available variables: might, defense, magic, resistance, agility, level
+              </small>
+            </label>
+
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span>Attack Description (Optional)</span>
+              <input
+                type="text"
+                placeholder="e.g., You unleash flames for ${damage} damage!"
+                value={effect.attackDescription || ''}
+                onChange={(e) => onUpdate({ attackDescription: e.target.value })}
+              />
+              <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
+                Use ${'${damage}'} or ${'${x}'} for damage, ${'${name}'} for ability name
+              </small>
+            </label>
+          </>
+        ) : (
+          <label style={{ gridColumn: '1 / -1' }}>
+            <span>Passive Type *</span>
+            {loadingEffects ? (
+              <p>Loading effects...</p>
+            ) : (
+              <select
+                value={effect.passiveType || ''}
+                onChange={(e) => onUpdate({ passiveType: e.target.value })}
+                required
+              >
+                <option value="">-- Select a passive effect --</option>
+                {passiveEffects.map(pe => (
+                  <option key={pe.id} value={pe.id}>
+                    {pe.description}
+                  </option>
+                ))}
+              </select>
+            )}
+          </label>
+        )}
       </div>
     </div>
   );

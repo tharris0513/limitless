@@ -64,6 +64,8 @@ axios.get("/api/user");
 - **Global**: `GameStateContext` for current game state (combat, exploration) - auto-saves to `Character.game_state` JSON field
 - **Loading**: `LoadingContext` for async operations tracking
 - Use custom hooks: `useGameState()`, `useLoading()`, `useApiWithLoading()`
+- **NEVER LET THE FRONT END MODIFY STATE**. The front end only tells the backend what to do; the backend is the source of truth.
+- The backend must validate all state changes.
 
 **Naming Convention**: Backend uses `snake_case`, frontend uses `camelCase`. Transform in `api.ts`:
 
