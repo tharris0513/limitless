@@ -4,7 +4,9 @@ use crate::level_system::{
     calculate_level_from_experience, calculate_stat_increases_for_level, experience_for_level,
 };
 use crate::middleware::AuthClaims;
-use crate::models::CharacterAbility;
+use crate::models::{
+    Ability, ActiveEffectType, Character, CharacterAbility, EffectType, PassiveEffectType,
+};
 use crate::repository::UserRepository;
 use axum::{
     extract::{Path, State},
@@ -12,6 +14,230 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+
+// Game state field name constants
+const GS_ENEMY: &str = "enemy";
+const GS_ENEMY_HEALTH: &str = "health";
+const GS_ENEMY_NAME: &str = "name";
+const GS_ENEMY_STATS: &str = "stats";
+const GS_ENEMY_MIGHT: &str = "might";
+const GS_ENEMY_EXP_REWARD: &str = "experienceReward";
+const GS_ENEMY_ATTACK_DESC: &str = "attackDescription";
+const GS_PRIMARY_WEAPON_ENCHANTED: &str = "primaryWeaponEnchanted";
+const GS_SECONDARY_WEAPON_ENCHANTED: &str = "secondaryWeaponEnchanted";
+const GS_ABILITY_COOLDOWNS: &str = "abilityCooldowns";
+const GS_TURN_NUMBER: &str = "turnNumber";
+const GS_PLAYER_HEALTH: &str = "playerHealth";
+const GS_FINISHED: &str = "finished";
+
+/// Helper struct to process abilities for a character
+pub struct AbilityProcessor<'a> {
+    character: &'a Character,
+    abilities: &'a [Ability],
+}
+
+impl<'a> AbilityProcessor<'a> {
+    pub fn new(character: &'a Character, abilities: &'a [Ability]) -> Self {
+        Self {
+            character,
+            abilities,
+        }
+    }
+
+    /// Check if character has a specific passive effect
+    pub fn has_passive(&self, passive_type: PassiveEffectType) -> bool {
+        self.abilities.iter().any(|a| a.has_passive(passive_type))
+    }
+
+    /// Get the current weapon enchantment type the character has
+    /// Returns Some(PassiveEffectType::EnchantWeaponFire), etc., or None
+    pub fn get_weapon_enchantment_type(&self) -> Option<PassiveEffectType> {
+        for ability in self.abilities {
+            if let Some(enchant_type) = ability.get_enchantment_type() {
+                return Some(enchant_type);
+            }
+        }
+        None
+    }
+
+    /// Calculate enchantment damage using standardized formula
+    pub fn calculate_enchantment_damage(&self) -> i32 {
+        (self.character.stats.magic as f64 * 0.5).round() as i32
+    }
+
+    /// Check if character has the base weapon enchantment passive
+    pub fn has_base_weapon_enchant_passive(&self) -> bool {
+        self.has_passive(PassiveEffectType::EnchantWeapon)
+    }
+
+    /// Get abilities that provide enchantment damage for a specific type
+    pub fn get_enchantment_damage_abilities(
+        &self,
+        enchant_type: Option<PassiveEffectType>,
+    ) -> Vec<&Ability> {
+        self.abilities
+            .iter()
+            .filter(|ability| {
+                // Check if ability has the matching passive enchantment effect
+                let has_matching_passive = ability.effects.iter().any(|effect| {
+                    if effect.effect_type == EffectType::Passive {
+                        if let Some(passive_type) = &effect.passive_type {
+                            if let Some(ref ench_type) = enchant_type {
+                                // Match specific type
+                                return passive_type == ench_type;
+                            } else {
+                                // No type specified, accept any enchant_weapon_* passive
+                                return matches!(
+                                    passive_type,
+                                    PassiveEffectType::EnchantWeaponFire
+                                        | PassiveEffectType::EnchantWeaponFrost
+                                        | PassiveEffectType::EnchantWeaponLightning
+                                );
+                            }
+                        }
+                    }
+                    false
+                });
+
+                // Check if ability provides enchantment damage
+                has_matching_passive && ability.provides_enchantment_damage()
+            })
+            .collect()
+    }
+
+    /// Find ability by ID
+    pub fn find_ability(&self, ability_id: &str) -> Option<&Ability> {
+        self.abilities.iter().find(|a| a.id == ability_id)
+    }
+}
+
+/// Helper to access game state fields with proper error handling
+pub struct GameStateHelper<'a> {
+    state: &'a serde_json::Value,
+}
+
+impl<'a> GameStateHelper<'a> {
+    pub fn new(state: &'a serde_json::Value) -> Self {
+        Self { state }
+    }
+
+    /// Get primary weapon enchantment type
+    pub fn primary_enchantment(&self) -> Option<PassiveEffectType> {
+        self.state
+            .get(GS_PRIMARY_WEAPON_ENCHANTED)
+            .and_then(|v| v.as_str())
+            .and_then(parse_enchantment_from_state)
+    }
+
+    /// Get secondary weapon enchantment type
+    pub fn secondary_enchantment(&self) -> Option<PassiveEffectType> {
+        self.state
+            .get(GS_SECONDARY_WEAPON_ENCHANTED)
+            .and_then(|v| v.as_str())
+            .and_then(parse_enchantment_from_state)
+    }
+
+    /// Get primary weapon enchantment as string
+    pub fn primary_enchantment_str(&self) -> &str {
+        self.state
+            .get(GS_PRIMARY_WEAPON_ENCHANTED)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+    }
+
+    /// Get secondary weapon enchantment as string
+    pub fn secondary_enchantment_str(&self) -> &str {
+        self.state
+            .get(GS_SECONDARY_WEAPON_ENCHANTED)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+    }
+
+    /// Get ability cooldowns map
+    pub fn ability_cooldowns(&self) -> std::collections::HashMap<String, i32> {
+        self.state
+            .get(GS_ABILITY_COOLDOWNS)
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default()
+    }
+
+    /// Get current turn number
+    pub fn turn_number(&self) -> i64 {
+        self.state
+            .get(GS_TURN_NUMBER)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(1)
+    }
+
+    /// Get player health
+    pub fn player_health(&self, default: i64) -> i32 {
+        self.state
+            .get(GS_PLAYER_HEALTH)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(default) as i32
+    }
+
+    /// Get enemy object
+    pub fn enemy(&self) -> Result<&serde_json::Value, AppError> {
+        self.state
+            .get(GS_ENEMY)
+            .ok_or_else(|| AppError::validation_error("No enemy in game state"))
+    }
+}
+
+/// Helper to extract enemy details from enemy JSON object
+pub struct EnemyHelper<'a> {
+    enemy: &'a serde_json::Value,
+}
+
+impl<'a> EnemyHelper<'a> {
+    pub fn new(enemy: &'a serde_json::Value) -> Self {
+        Self { enemy }
+    }
+
+    /// Get enemy health
+    pub fn health(&self) -> Result<i32, AppError> {
+        self.enemy
+            .get(GS_ENEMY_HEALTH)
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| AppError::validation_error("Invalid enemy health"))
+            .map(|h| h as i32)
+    }
+
+    /// Get enemy name
+    pub fn name(&self) -> String {
+        self.enemy
+            .get(GS_ENEMY_NAME)
+            .and_then(|v| v.as_str())
+            .unwrap_or("enemy")
+            .to_string()
+    }
+
+    /// Get enemy experience reward
+    pub fn exp_reward(&self) -> i32 {
+        self.enemy
+            .get(GS_ENEMY_EXP_REWARD)
+            .and_then(|v| v.as_i64())
+            .unwrap_or(50) as i32
+    }
+
+    /// Get enemy might stat
+    pub fn might(&self) -> i64 {
+        self.enemy
+            .get(GS_ENEMY_STATS)
+            .and_then(|s| s.get(GS_ENEMY_MIGHT))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(10)
+    }
+
+    /// Get enemy attack description template
+    pub fn attack_description(&self) -> Option<String> {
+        self.enemy
+            .get(GS_ENEMY_ATTACK_DESC)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+    }
+}
 
 /// Combat action request
 #[derive(Debug, Deserialize)]
@@ -89,64 +315,39 @@ fn parse_attack_description(template: &str, damage: i32, name: &str) -> String {
         .replace("${name}", name)
 }
 
+/// Parse enchantment type from game state string
+fn parse_enchantment_from_state(enchant_str: &str) -> Option<PassiveEffectType> {
+    match enchant_str {
+        "fire" => Some(PassiveEffectType::EnchantWeaponFire),
+        "frost" => Some(PassiveEffectType::EnchantWeaponFrost),
+        "lightning" => Some(PassiveEffectType::EnchantWeaponLightning),
+        _ => None,
+    }
+}
+
 /// Apply weapon enchantment to attacks if available
 /// Returns Some(damage) if enchantment was applied, None otherwise
 /// Important: This should only be called once per attack in the sequence to avoid double-application
 fn apply_weapon_enchantment(
-    abilities: &[crate::models::Ability],
-    stats: &crate::models::CharacterStats,
-    level: i64,
+    processor: &AbilityProcessor,
     attacks: &mut Vec<SingleAttack>,
-    enchantment_type: Option<&str>,
-    weapon: &str, // "primary" or "secondary"
+    enchantment_type: Option<PassiveEffectType>,
+    _weapon: &str, // "primary" or "secondary"
 ) -> Option<i32> {
-    // Find abilities that have both:
-    // 1. A passive effect with the enchantment type (e.g., enchant_weapon_fire)
-    // 2. An active damage effect that deals the enchantment damage
-    let enchant_abilities: Vec<&crate::models::Ability> = abilities
-        .iter()
-        .filter(|ability| {
-            // Check if ability has the matching passive enchantment effect
-            let has_matching_passive = ability.effects.iter().any(|effect| {
-                if effect.effect_type == "passive" {
-                    if let Some(passive_type) = &effect.passive_type {
-                        if let Some(ench_type) = enchantment_type {
-                            // Match specific type: "enchant_weapon_fire" matches when ench_type is "fire"
-                            return passive_type == &format!("enchant_weapon_{}", ench_type);
-                        } else {
-                            // No type specified, accept any enchant_weapon_* passive
-                            return passive_type.starts_with("enchant_weapon_");
-                        }
-                    }
-                }
-                false
-            });
+    // Find abilities that provide enchantment damage for this type
+    let enchant_abilities = processor.get_enchantment_damage_abilities(enchantment_type);
 
-            // Check if ability has an active damage effect
-            let has_damage_effect = !ability.effects.is_empty()
-                && ability.effects.iter().any(|effect| {
-                    effect.effect_type == "active"
-                        && effect.active_type.as_deref() == Some("damage")
-                });
-            has_matching_passive && has_damage_effect
-        })
-        .collect();
     // Only apply enchantment if we found matching abilities
     if enchant_abilities.is_empty() {
         return None;
     }
 
-    // Calculate enchantment damage directly: magic * 0.5
-    let enchant_damage = (stats.magic as f64 * 0.5).round() as i32;
+    // Calculate enchantment damage using standardized formula
+    let enchant_damage = processor.calculate_enchantment_damage();
 
     // Get element name for message
-    let element_name = if let Some(ench_type) = enchantment_type {
-        match ench_type {
-            "fire" => "fire",
-            "frost" => "frost",
-            "lightning" => "lightning",
-            _ => "elemental",
-        }
+    let element_name = if let Some(ref ench_type) = enchantment_type {
+        ench_type.enchantment_element().unwrap_or("elemental")
     } else {
         "elemental"
     };
@@ -165,6 +366,409 @@ fn apply_weapon_enchantment(
     });
 
     Some(enchant_damage)
+}
+
+/// Process melee attacks with dual-wield and enchantments
+fn process_melee_attacks(
+    processor: &AbilityProcessor,
+    character: &Character,
+    game_state: &serde_json::Value,
+) -> Vec<SingleAttack> {
+    let mut attacks = Vec::new();
+    let has_dual_wield = processor.has_passive(PassiveEffectType::DualWield);
+
+    // First attack (main hand)
+    let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
+    attacks.push(SingleAttack {
+        damage,
+        description: format!(
+            "You swing your weapon at the enemy, dealing **{}** damage!",
+            damage
+        ),
+        is_dual_wield: false,
+    });
+
+    // Apply primary weapon enchantment if active
+    let gs_helper = GameStateHelper::new(game_state);
+    let primary_enchanted = gs_helper.primary_enchantment();
+
+    if let Some(enchant_type) = primary_enchanted {
+        apply_weapon_enchantment(processor, &mut attacks, Some(enchant_type), "primary");
+    }
+
+    // Second attack if dual wielding
+    if has_dual_wield {
+        let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
+        attacks.push(SingleAttack {
+            damage,
+            description: format!(
+                "Your off-hand weapon strikes true, dealing **{}** damage!",
+                damage
+            ),
+            is_dual_wield: true,
+        });
+
+        // Apply secondary weapon enchantment if active
+        let secondary_enchanted = gs_helper.secondary_enchantment();
+
+        if let Some(enchant_type) = secondary_enchanted {
+            apply_weapon_enchantment(processor, &mut attacks, Some(enchant_type), "secondary");
+        }
+    }
+
+    attacks
+}
+
+/// Process ability effects and generate attacks
+fn process_ability_attacks(
+    ability: &Ability,
+    character: &Character,
+    processor: &AbilityProcessor,
+    game_state: &mut serde_json::Value,
+) -> Result<Vec<SingleAttack>, AppError> {
+    let mut attacks = Vec::new();
+
+    if !ability.effects.is_empty() {
+        // Use new effects system
+        for effect in &ability.effects {
+            if effect.effect_type == EffectType::Active {
+                // Only process active effects during combat
+                if let Some(ref active_type) = effect.active_type {
+                    match active_type {
+                        ActiveEffectType::Damage => {
+                            // Calculate damage from this effect's formula
+                            if let Some(ref formula) = effect.formula {
+                                let damage = DamageCalculator::test_formula(
+                                    formula,
+                                    &character.stats,
+                                    character.level,
+                                )
+                                .map_err(|e| {
+                                    AppError::validation_error(&format!(
+                                        "Damage calculation failed for effect {}: {}",
+                                        effect.id, e
+                                    ))
+                                })?;
+
+                                // Use effect's attack description or create default
+                                let description = if let Some(ref template) =
+                                    effect.attack_description
+                                {
+                                    parse_attack_description(template, damage, &ability.name)
+                                } else {
+                                    format!("You use {} for **{}** damage!", ability.name, damage)
+                                };
+
+                                attacks.push(SingleAttack {
+                                    damage,
+                                    description,
+                                    is_dual_wield: false,
+                                });
+                            }
+                        }
+                        ActiveEffectType::Heal => {
+                            // TODO: Implement healing effects
+                        }
+                        ActiveEffectType::Buff | ActiveEffectType::Debuff => {
+                            // TODO: Implement buff/debuff effects
+                        }
+                    }
+                }
+            } else if effect.effect_type == EffectType::Passive {
+                // Check if this ability applies a weapon enchantment
+                if let Some(ref passive_type) = effect.passive_type {
+                    match passive_type {
+                        PassiveEffectType::EnchantWeaponFire
+                        | PassiveEffectType::EnchantWeaponFrost
+                        | PassiveEffectType::EnchantWeaponLightning => {
+                            // First, verify the character has the base "enchant_weapon" passive
+                            if !processor.has_base_weapon_enchant_passive() {
+                                continue;
+                            }
+
+                            // Get enchantment element name
+                            let ench_type = passive_type.enchantment_element().unwrap();
+
+                            // Check current enchantment status
+                            let gs_helper = GameStateHelper::new(game_state);
+                            let primary_enchanted = gs_helper.primary_enchantment_str();
+                            let secondary_enchanted = gs_helper.secondary_enchantment_str();
+
+                            // Check for dual wield
+                            let has_dual_wield =
+                                processor.has_passive(PassiveEffectType::DualWield);
+
+                            // Apply enchantment
+                            if primary_enchanted.is_empty() {
+                                game_state[GS_PRIMARY_WEAPON_ENCHANTED] =
+                                    serde_json::json!(ench_type);
+                                attacks.push(SingleAttack {
+                                    damage: 0,
+                                    description: format!(
+                                        "You enchant your primary weapon with the power of {}!",
+                                        ench_type
+                                    ),
+                                    is_dual_wield: false,
+                                });
+                            } else if has_dual_wield && secondary_enchanted.is_empty() {
+                                game_state[GS_SECONDARY_WEAPON_ENCHANTED] =
+                                    serde_json::json!(ench_type);
+                                attacks.push(SingleAttack {
+                                    damage: 0,
+                                    description: format!(
+                                        "You enchant your secondary weapon with the power of {}!",
+                                        ench_type
+                                    ),
+                                    is_dual_wield: false,
+                                });
+                            }
+                        }
+                        _ => {
+                            // Other passive types not handled in combat actions
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Fallback to legacy system if no effects defined
+        let damage = if ability.damage_formula.is_some() {
+            DamageCalculator::calculate_damage(ability, character, None).map_err(|e| {
+                AppError::validation_error(&format!("Damage calculation failed: {}", e))
+            })?
+        } else {
+            // Fallback to might-based if no formula
+            DamageCalculator::calculate_melee_attack(character.stats.might)
+        };
+
+        // Use ability's attack description template
+        let description = if let Some(ref template) = ability.attack_description {
+            parse_attack_description(template, damage, &ability.name)
+        } else {
+            format!("You use {} for **{}** damage!", ability.name, damage)
+        };
+
+        attacks.push(SingleAttack {
+            damage,
+            description,
+            is_dual_wield: false,
+        });
+    }
+
+    Ok(attacks)
+}
+
+/// Update ability cooldowns for the turn
+fn update_cooldowns(
+    game_state: &mut serde_json::Value,
+    action: &CombatActionRequest,
+    abilities: &[Ability],
+) -> std::collections::HashMap<String, i32> {
+    let gs_helper = GameStateHelper::new(game_state);
+    let mut cooldowns = gs_helper.ability_cooldowns();
+
+    // First, decrement all existing cooldowns (remove abilities at 0)
+    cooldowns = cooldowns
+        .into_iter()
+        .filter_map(|(id, turns)| {
+            let new_turns = (turns - 1).max(0);
+            if new_turns > 0 {
+                Some((id, new_turns))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Then, if an ability was used, set it on cooldown (AFTER decrementing)
+    if let CombatActionRequest::Ability { ref ability_id } = action {
+        if let Some(ability) = abilities.iter().find(|a| a.id == *ability_id) {
+            if let Some(cooldown) = ability.cooldown {
+                if cooldown > 0 {
+                    cooldowns.insert(ability.id.clone(), cooldown as i32);
+                }
+            }
+        }
+    }
+
+    game_state[GS_ABILITY_COOLDOWNS] = serde_json::json!(&cooldowns);
+    cooldowns
+}
+
+/// Handle victory: award XP, check for level-up, update character
+async fn handle_victory(
+    repo: &UserRepository,
+    character_id: &str,
+    user_id: &str,
+    character: &mut Character,
+    enemy_name: String,
+    enemy_exp_reward: i32,
+) -> Result<(Option<i32>, Option<String>, Option<LevelUpInfo>), AppError> {
+    let experience_gained = Some(enemy_exp_reward);
+
+    // Calculate total accumulated experience
+    let mut total_accumulated_exp = 0;
+    for lvl in 2..=character.level {
+        total_accumulated_exp += experience_for_level(lvl);
+    }
+    total_accumulated_exp += character.experience;
+    let new_total_experience = total_accumulated_exp + enemy_exp_reward as i64;
+
+    // Check for level up
+    let old_level = character.level;
+    let (new_level, exp_into_level, exp_for_next) =
+        calculate_level_from_experience(new_total_experience);
+
+    // Update experience
+    repo.update_character_experience_progress(character_id, user_id, exp_into_level, exp_for_next)
+        .await
+        .map_err(AppError::from)?;
+
+    let mut level_up = None;
+
+    // Handle level up
+    if new_level > old_level {
+        repo.update_character_level(character_id, user_id, new_level)
+            .await
+            .map_err(AppError::from)?;
+
+        let (might, defense, magic, resistance, agility, max_health, max_mana) =
+            calculate_stat_increases_for_level(&character.class_id, new_level);
+
+        repo.apply_stat_increases(
+            character_id,
+            user_id,
+            might,
+            defense,
+            magic,
+            resistance,
+            agility,
+            max_health,
+            max_mana,
+        )
+        .await
+        .map_err(AppError::from)?;
+
+        // Unlock new abilities
+        let abilities_learned = match repo
+            .unlock_character_abilities(character_id, &character.class_id, new_level)
+            .await
+        {
+            Ok(abilities) => abilities
+                .into_iter()
+                .map(|a| AbilityLearned {
+                    id: a.id,
+                    name: a.name,
+                    description: a.description,
+                })
+                .collect(),
+            Err(e) => {
+                tracing::error!(
+                    "Failed to unlock abilities for level {}: {:?}",
+                    new_level,
+                    e
+                );
+                Vec::new()
+            }
+        };
+
+        level_up = Some(LevelUpInfo {
+            new_level,
+            stat_increases: StatIncreases {
+                might,
+                defense,
+                magic,
+                resistance,
+                agility,
+                max_health,
+                max_mana,
+            },
+            abilities_learned,
+        });
+
+        // Fully restore health and mana on level up
+        character.stats.health = character.stats.max_health + max_health;
+        character.stats.mana = character.stats.max_mana + max_mana;
+    }
+
+    // Update health and mana in database
+    repo.update_character_health(character_id, user_id, character.stats.health)
+        .await
+        .map_err(AppError::from)?;
+    repo.update_character_mana(character_id, user_id, character.stats.mana)
+        .await
+        .map_err(AppError::from)?;
+
+    // Deduct adventure
+    let new_adventures = (character.stats.adventures - 1).max(0);
+    repo.update_character_adventures_with_user(character_id, user_id, new_adventures)
+        .await
+        .map_err(AppError::from)?;
+
+    // Clear game state (combat is over)
+    repo.update_character_game_state(character_id, user_id, None)
+        .await
+        .map_err(AppError::from)?;
+
+    let victory_message = Some(format!(
+        "Victory! You have defeated {}! You gained **{}** experience.",
+        enemy_name, enemy_exp_reward
+    ));
+
+    Ok((experience_gained, victory_message, level_up))
+}
+
+/// Handle defeat: deduct adventure, clear game state
+async fn handle_defeat(
+    repo: &UserRepository,
+    character_id: &str,
+    user_id: &str,
+    character: &Character,
+    enemy_name: String,
+) -> Result<Option<String>, AppError> {
+    // Deduct adventure
+    let new_adventures = (character.stats.adventures - 1).max(0);
+    repo.update_character_adventures_with_user(character_id, user_id, new_adventures)
+        .await
+        .map_err(AppError::from)?;
+
+    // Clear game state (combat is over)
+    repo.update_character_game_state(character_id, user_id, None)
+        .await
+        .map_err(AppError::from)?;
+
+    let defeat_message = Some(format!(
+        "You have been defeated by {}! You lose 1 adventure and gain no rewards.",
+        enemy_name
+    ));
+
+    Ok(defeat_message)
+}
+
+/// Apply enemy counterattack
+fn apply_enemy_attack(
+    enemy_might: i64,
+    enemy_name: &str,
+    enemy_attack_template: Option<String>,
+) -> (Vec<SingleAttack>, i32) {
+    let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
+
+    let attack_description = if let Some(template) = enemy_attack_template {
+        parse_attack_description(&template, counter_damage, enemy_name)
+    } else {
+        format!(
+            "{} counterattacks, dealing **{}** damage!",
+            enemy_name, counter_damage
+        )
+    };
+
+    let attacks = vec![SingleAttack {
+        damage: counter_damage,
+        description: attack_description,
+        is_dual_wield: false,
+    }];
+
+    (attacks, counter_damage)
 }
 
 // Save character's game state
@@ -224,7 +828,7 @@ pub async fn flee_combat(
     let characters = repo
         .get_user_characters(&claims.sub)
         .await
-        .map_err(|e| AppError::from(e))?;
+        .map_err(AppError::from)?;
 
     let character = characters
         .iter()
@@ -240,7 +844,7 @@ pub async fn flee_combat(
     let new_adventures = character.stats.adventures - 1;
 
     // Update character adventures
-    let updated_character = repo
+    let _updated_character = repo
         .update_character_adventures(&character_id, new_adventures)
         .await
         .map_err(|e| {
@@ -260,7 +864,7 @@ pub async fn flee_combat(
     let final_character = repo
         .get_user_characters(&claims.sub)
         .await
-        .map_err(|e| AppError::from(e))?
+        .map_err(AppError::from)?
         .into_iter()
         .find(|c| c.id == character_id)
         .ok_or_else(|| AppError::character_not_found(&character_id))?;
@@ -277,7 +881,7 @@ pub async fn rest_character(
     let characters = repo
         .get_user_characters(&claims.sub)
         .await
-        .map_err(|e| AppError::from(e))?;
+        .map_err(AppError::from)?;
 
     let character = characters
         .iter()
@@ -329,7 +933,7 @@ pub async fn rest_character(
     let updated_character = repo
         .get_character(&character_id, &claims.sub)
         .await
-        .map_err(|e| AppError::from(e))?;
+        .map_err(AppError::from)?;
     Ok(Json(updated_character))
 }
 
@@ -359,7 +963,7 @@ pub async fn perform_combat_action(
     let character_abilities: Vec<CharacterAbility> = repo
         .get_character_abilities(&character_id)
         .await
-        .map_err(|e| AppError::from(e))?;
+        .map_err(AppError::from)?;
 
     let mut abilities = Vec::new();
     for char_ability in character_abilities {
@@ -368,116 +972,25 @@ pub async fn perform_combat_action(
         }
     }
 
-    // === ACTION-SPECIFIC LOGIC: Calculate player attacks ===
-    let mut attacks = Vec::new();
-    let mut mana_cost = 0i64;
+    // Create ability processor
+    let processor = AbilityProcessor::new(&character, &abilities);
 
-    // Check which enchantment type passive the character has
-    let weapon_enchant_type: Option<String> = abilities.iter().find_map(|ability| {
-        ability.effects.iter().find_map(|effect| {
-            if effect.effect_type == "passive" {
-                if let Some(passive_type) = &effect.passive_type {
-                    if passive_type.starts_with("enchant_weapon_") {
-                        // Extract the enchantment type (fire, frost, lightning)
-                        return Some(
-                            passive_type
-                                .strip_prefix("enchant_weapon_")
-                                .unwrap()
-                                .to_string(),
-                        );
-                    }
-                }
-            }
-            None
-        })
-    });
-
-    tracing::info!("Weapon enchant type: {:?}", weapon_enchant_type);
-
-    match action {
+    // === Generate player attacks based on action type ===
+    let (attacks, mana_cost) = match action {
         CombatActionRequest::Melee => {
-            // Check for dual wield passive (check both new effects and legacy)
-            let has_dual_wield = abilities.iter().any(|ability| {
-                // Check new effects system
-                ability.effects.iter().any(|effect| {
-                    effect.effect_type == "passive" && effect.passive_type.as_deref() == Some("dual_wield")
-                }) ||
-                // Check legacy system for backward compatibility
-                (ability.ability_type == "passive"
-                    && ability.passive_effect.as_deref() == Some("dual_wield"))
-            });
-
-            // First attack (main hand)
-            let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
-            attacks.push(SingleAttack {
-                damage,
-                description: format!(
-                    "You swing your weapon at the enemy, dealing **{}** damage!",
-                    damage
-                ),
-                is_dual_wield: false,
-            });
-
-            // Apply primary weapon enchantment if active
-            let primary_enchanted = game_state
-                .get("primaryWeaponEnchanted")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-
-            if !primary_enchanted.is_empty() {
-                if let Some(_) = apply_weapon_enchantment(
-                    &abilities,
-                    &character.stats,
-                    character.level,
-                    &mut attacks,
-                    Some(primary_enchanted),
-                    "primary",
-                ) {
-                    // Enchantment applied
-                }
-            }
-
-            // Second attack if dual wielding
-            if has_dual_wield {
-                let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
-                attacks.push(SingleAttack {
-                    damage,
-                    description: format!(
-                        "Your off-hand weapon strikes true, dealing **{}** damage!",
-                        damage
-                    ),
-                    is_dual_wield: true,
-                });
-
-                // Apply secondary weapon enchantment if active
-                let secondary_enchanted = game_state
-                    .get("secondaryWeaponEnchanted")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-
-                if !secondary_enchanted.is_empty() {
-                    apply_weapon_enchantment(
-                        &abilities,
-                        &character.stats,
-                        character.level,
-                        &mut attacks,
-                        Some(secondary_enchanted),
-                        "secondary",
-                    );
-                }
-            }
+            let attacks = process_melee_attacks(&processor, &character, &game_state);
+            (attacks, 0i64)
         }
         CombatActionRequest::Ability { ref ability_id } => {
             // Validate character owns this ability
-            let ability = abilities
-                .iter()
-                .find(|a| a.id == *ability_id)
+            let ability = processor
+                .find_ability(ability_id)
                 .ok_or_else(|| AppError::validation_error("Ability not found or not unlocked"))?;
 
             // Check if ability is on cooldown
             if let Some(cooldown) = ability.cooldown {
                 if cooldown > 0 {
-                    if let Some(cooldowns) = game_state.get("abilityCooldowns") {
+                    if let Some(cooldowns) = game_state.get(GS_ABILITY_COOLDOWNS) {
                         if let Some(cooldown_turns) =
                             cooldowns.get(&ability.id).and_then(|v| v.as_i64())
                         {
@@ -502,421 +1015,98 @@ pub async fn perform_combat_action(
                 )));
             }
 
-            // Deduct mana cost
-            mana_cost = mana_cost_required;
-            character.stats.mana -= mana_cost;
+            // Process ability effects
+            let attacks =
+                process_ability_attacks(ability, &character, &processor, &mut game_state)?;
 
-            // Process effects - iterate through each effect in the ability
-            if !ability.effects.is_empty() {
-                // Use new effects system
-                for effect in &ability.effects {
-                    if effect.effect_type == "active" {
-                        // Only process active effects during combat (passive effects are handled elsewhere)
-                        if let Some(active_type) = &effect.active_type {
-                            match active_type.as_str() {
-                                "damage" => {
-                                    // Calculate damage from this effect's formula
-                                    if let Some(ref formula) = effect.formula {
-                                        let damage = DamageCalculator::test_formula(
-                                            formula,
-                                            &character.stats,
-                                            character.level,
-                                        )
-                                        .map_err(|e| {
-                                            AppError::validation_error(&format!(
-                                                "Damage calculation failed for effect {}: {}",
-                                                effect.id, e
-                                            ))
-                                        })?;
-
-                                        // Use effect's attack description or create default
-                                        let description =
-                                            if let Some(ref template) = effect.attack_description {
-                                                parse_attack_description(
-                                                    template,
-                                                    damage,
-                                                    &ability.name,
-                                                )
-                                            } else {
-                                                format!(
-                                                    "You use {} for **{}** damage!",
-                                                    ability.name, damage
-                                                )
-                                            };
-
-                                        attacks.push(SingleAttack {
-                                            damage,
-                                            description,
-                                            is_dual_wield: false,
-                                        });
-                                    }
-                                }
-                                "heal" => {
-                                    // TODO: Implement healing effects
-                                    // For now, we'll skip heal effects in combat actions
-                                    // They would restore player health instead of dealing damage
-                                }
-                                _ => {
-                                    // Unknown active type, skip
-                                }
-                            }
-                        }
-                    } else if effect.effect_type == "passive" {
-                        // Check if this ability applies a weapon enchantment
-                        if let Some(passive_type) = &effect.passive_type {
-                            if passive_type.starts_with("enchant_weapon_") {
-                                // First, verify the character has the base "enchant_weapon" passive
-                                let has_enchant_weapon_passive = abilities.iter().any(|ability| {
-                                    ability.effects.iter().any(|eff| {
-                                        eff.effect_type == "passive"
-                                            && eff.passive_type.as_deref() == Some("enchant_weapon")
-                                    }) || (ability.ability_type == "passive"
-                                        && ability.passive_effect.as_deref()
-                                            == Some("enchant_weapon"))
-                                });
-
-                                if !has_enchant_weapon_passive {
-                                    // Character doesn't have the base enchant_weapon passive, skip
-                                    continue;
-                                }
-
-                                // Extract enchantment type (fire, frost, lightning)
-                                let ench_type =
-                                    passive_type.strip_prefix("enchant_weapon_").unwrap();
-
-                                // Check current enchantment status
-                                let primary_enchanted = game_state
-                                    .get("primaryWeaponEnchanted")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("");
-                                let secondary_enchanted = game_state
-                                    .get("secondaryWeaponEnchanted")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("");
-
-                                // Check for dual wield
-                                let has_dual_wield = abilities.iter().any(|ability| {
-                                    ability.effects.iter().any(|effect| {
-                                        effect.effect_type == "passive"
-                                            && effect.passive_type.as_deref() == Some("dual_wield")
-                                    }) || (ability.ability_type == "passive"
-                                        && ability.passive_effect.as_deref() == Some("dual_wield"))
-                                });
-
-                                // Apply enchantment
-                                if primary_enchanted.is_empty() {
-                                    game_state["primaryWeaponEnchanted"] =
-                                        serde_json::json!(ench_type);
-                                    attacks.push(SingleAttack {
-                                        damage: 0,
-                                        description: format!(
-                                            "You enchant your primary weapon with the power of {}!",
-                                            ench_type
-                                        ),
-                                        is_dual_wield: false,
-                                    });
-                                } else if has_dual_wield && secondary_enchanted.is_empty() {
-                                    game_state["secondaryWeaponEnchanted"] =
-                                        serde_json::json!(ench_type);
-                                    attacks.push(SingleAttack {
-                                        damage: 0,
-                                        description: format!("You enchant your secondary weapon with the power of {}!", ench_type),
-                                        is_dual_wield: false,
-                                    });
-                                }
-                                // If both weapons already enchanted, no message
-                            }
-                        }
-                    }
-                    // Passive effects are checked but only applied if prerequisites are met
-                }
-            } else {
-                // Fallback to legacy system if no effects defined
-                let damage = if ability.damage_formula.is_some() {
-                    DamageCalculator::calculate_damage(ability, &character, None).map_err(|e| {
-                        AppError::validation_error(&format!("Damage calculation failed: {}", e))
-                    })?
-                } else {
-                    // Fallback to might-based if no formula
-                    DamageCalculator::calculate_melee_attack(character.stats.might)
-                };
-
-                // Use ability's attack description template
-                let description = if let Some(ref template) = ability.attack_description {
-                    parse_attack_description(template, damage, &ability.name)
-                } else {
-                    format!("You use {} for **{}** damage!", ability.name, damage)
-                };
-
-                attacks.push(SingleAttack {
-                    damage,
-                    description,
-                    is_dual_wield: false,
-                });
-            }
+            (attacks, mana_cost_required)
         }
-    }
+    };
 
     let total_damage: i32 = attacks.iter().map(|a| a.damage).sum();
 
-    // === SHARED COMBAT FLOW ===
+    // === Apply combat round changes ===
+
+    // Apply mana cost
+    character.stats.mana -= mana_cost;
 
     // Increment turn number
-    let current_turn = game_state
-        .get("turnNumber")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(1);
-    game_state["turnNumber"] = serde_json::json!(current_turn + 1);
+    let gs_helper = GameStateHelper::new(&game_state);
+    let current_turn = gs_helper.turn_number();
+    game_state[GS_TURN_NUMBER] = serde_json::json!(current_turn + 1);
 
     // Update ability cooldowns
-    let mut cooldowns: std::collections::HashMap<String, i32> = game_state
-        .get("abilityCooldowns")
-        .and_then(|v| serde_json::from_value(v.clone()).ok())
-        .unwrap_or_default();
-
-    // First, decrement all existing cooldowns (remove abilities at 0)
-    cooldowns = cooldowns
-        .into_iter()
-        .filter_map(|(id, turns)| {
-            let new_turns = (turns - 1).max(0);
-            if new_turns > 0 {
-                Some((id, new_turns))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    // Then, if an ability was used, set it on cooldown (AFTER decrementing)
-    if let CombatActionRequest::Ability { ref ability_id } = action {
-        if let Some(ability) = abilities.iter().find(|a| a.id == *ability_id) {
-            if let Some(cooldown) = ability.cooldown {
-                if cooldown > 0 {
-                    cooldowns.insert(ability.id.clone(), cooldown as i32);
-                }
-            }
-        }
-    }
-
-    game_state["abilityCooldowns"] = serde_json::json!(&cooldowns);
+    let cooldowns = update_cooldowns(&mut game_state, &action, &abilities);
 
     // Update enemy health
     let enemy = game_state
-        .get_mut("enemy")
+        .get_mut(GS_ENEMY)
         .ok_or_else(|| AppError::validation_error("No enemy in game state"))?;
 
-    let current_enemy_health = enemy
-        .get("health")
-        .and_then(|v| v.as_i64())
-        .ok_or_else(|| AppError::validation_error("Invalid enemy health"))?
-        as i32;
+    let enemy_helper = EnemyHelper::new(enemy);
+    let current_enemy_health = enemy_helper.health()?;
 
     let new_enemy_health = (current_enemy_health - total_damage).max(0);
-    enemy["health"] = serde_json::json!(new_enemy_health);
+    enemy[GS_ENEMY_HEALTH] = serde_json::json!(new_enemy_health);
 
     // Get enemy details before we potentially modify game_state further
-    let enemy_name = enemy
-        .get("name")
-        .and_then(|v| v.as_str())
-        .unwrap_or("enemy")
-        .to_string();
-    let enemy_exp_reward = enemy
-        .get("experienceReward")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(50) as i32;
-    let enemy_might = enemy
-        .get("stats")
-        .and_then(|s| s.get("might"))
-        .and_then(|v| v.as_i64())
-        .unwrap_or(10);
-    let enemy_attack_template = enemy
-        .get("attackDescription")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+    let enemy_helper = EnemyHelper::new(enemy);
+    let enemy_name = enemy_helper.name();
+    let enemy_exp_reward = enemy_helper.exp_reward();
+    let enemy_might = enemy_helper.might();
+    let enemy_attack_template = enemy_helper.attack_description();
 
-    // Check for victory
+    // === Handle combat outcome ===
+
     let victory = new_enemy_health <= 0;
-    let mut experience_gained = None;
-    let mut victory_message = None;
-    let mut level_up = None;
-    let mut enemy_attacks = Vec::new();
-    let mut player_health = game_state
-        .get("playerHealth")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(character.stats.health) as i32;
-    let mut defeat = false;
-    let mut defeat_message = None;
+    let gs_helper = GameStateHelper::new(&game_state);
+    let mut player_health = gs_helper.player_health(character.stats.health);
 
-    if victory {
-        // Award experience
-        experience_gained = Some(enemy_exp_reward);
-
-        // Calculate total accumulated experience
-        let mut total_accumulated_exp = 0;
-        for lvl in 2..=character.level {
-            total_accumulated_exp += experience_for_level(lvl);
-        }
-        total_accumulated_exp += character.experience;
-        let new_total_experience = total_accumulated_exp + enemy_exp_reward as i64;
-
-        // Check for level up
-        let old_level = character.level;
-        let (new_level, exp_into_level, exp_for_next) =
-            calculate_level_from_experience(new_total_experience);
-
-        // Update experience
-        repo.update_character_experience_progress(
-            &character_id,
-            &claims.sub,
-            exp_into_level,
-            exp_for_next,
-        )
-        .await
-        .map_err(|e| AppError::from(e))?;
-
-        // Handle level up
-        if new_level > old_level {
-            repo.update_character_level(&character_id, &claims.sub, new_level)
-                .await
-                .map_err(|e| AppError::from(e))?;
-
-            let (might, defense, magic, resistance, agility, max_health, max_mana) =
-                calculate_stat_increases_for_level(&character.class_id, new_level);
-
-            repo.apply_stat_increases(
+    let (experience_gained, victory_message, level_up, enemy_attacks, defeat, defeat_message) =
+        if victory {
+            let (exp, vic_msg, lvl_up) = handle_victory(
+                &repo,
                 &character_id,
                 &claims.sub,
-                might,
-                defense,
-                magic,
-                resistance,
-                agility,
-                max_health,
-                max_mana,
+                &mut character,
+                enemy_name,
+                enemy_exp_reward,
             )
-            .await
-            .map_err(|e| AppError::from(e))?;
+            .await?;
 
-            // Unlock new abilities
-            let abilities_learned = match repo
-                .unlock_character_abilities(&character_id, &character.class_id, new_level)
+            (exp, vic_msg, lvl_up, Vec::new(), false, None)
+        } else {
+            // Enemy counterattacks
+            let (attacks, counter_damage) =
+                apply_enemy_attack(enemy_might, &enemy_name, enemy_attack_template);
+
+            // Update player health
+            player_health = (player_health - counter_damage).max(0);
+            game_state[GS_PLAYER_HEALTH] = serde_json::json!(player_health);
+            character.stats.health = player_health as i64;
+
+            // Update character health in database
+            repo.update_character_health(&character_id, &claims.sub, character.stats.health)
                 .await
-            {
-                Ok(abilities) => abilities
-                    .into_iter()
-                    .map(|a| AbilityLearned {
-                        id: a.id,
-                        name: a.name,
-                        description: a.description,
-                    })
-                    .collect(),
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to unlock abilities for level {}: {:?}",
-                        new_level,
-                        e
-                    );
-                    Vec::new()
-                }
+                .map_err(AppError::from)?;
+
+            // Check for defeat
+            let (defeat, defeat_msg) = if player_health <= 0 {
+                let msg = handle_defeat(&repo, &character_id, &claims.sub, &character, enemy_name)
+                    .await?;
+                (true, msg)
+            } else {
+                (false, None)
             };
 
-            level_up = Some(LevelUpInfo {
-                new_level,
-                stat_increases: StatIncreases {
-                    might,
-                    defense,
-                    magic,
-                    resistance,
-                    agility,
-                    max_health,
-                    max_mana,
-                },
-                abilities_learned,
-            });
-
-            // Fully restore health and mana on level up
-            character.stats.health = character.stats.max_health + max_health;
-            character.stats.mana = character.stats.max_mana + max_mana;
-        }
-
-        // Update health and mana in database
-        repo.update_character_health(&character_id, &claims.sub, character.stats.health)
-            .await
-            .map_err(|e| AppError::from(e))?;
-        repo.update_character_mana(&character_id, &claims.sub, character.stats.mana)
-            .await
-            .map_err(|e| AppError::from(e))?;
-
-        // Deduct adventure
-        let new_adventures = (character.stats.adventures - 1).max(0);
-        repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
-            .await
-            .map_err(|e| AppError::from(e))?;
-
-        // Clear game state (combat is over)
-        repo.update_character_game_state(&character_id, &claims.sub, None)
-            .await
-            .map_err(|e| AppError::from(e))?;
-
-        victory_message = Some(format!(
-            "Victory! You have defeated {}! You gained **{}** experience.",
-            enemy_name, enemy_exp_reward
-        ));
-    } else {
-        // Enemy counterattacks
-        let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
-
-        let attack_description = if let Some(template) = enemy_attack_template {
-            parse_attack_description(&template, counter_damage, &enemy_name)
-        } else {
-            format!(
-                "{} counterattacks, dealing **{}** damage!",
-                enemy_name, counter_damage
-            )
+            (None, None, None, attacks, defeat, defeat_msg)
         };
-
-        enemy_attacks.push(SingleAttack {
-            damage: counter_damage,
-            description: attack_description,
-            is_dual_wield: false,
-        });
-
-        // Update player health
-        player_health = (player_health - counter_damage).max(0);
-        game_state["playerHealth"] = serde_json::json!(player_health);
-        character.stats.health = player_health as i64;
-
-        // Update character health in database
-        repo.update_character_health(&character_id, &claims.sub, character.stats.health)
-            .await
-            .map_err(|e| AppError::from(e))?;
-
-        // Check for defeat
-        if player_health <= 0 {
-            defeat = true;
-            defeat_message = Some(format!(
-                "You have been defeated by {}! You lose 1 adventure and gain no rewards.",
-                enemy_name
-            ));
-
-            // Deduct adventure
-            let new_adventures = (character.stats.adventures - 1).max(0);
-            repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
-                .await
-                .map_err(|e| AppError::from(e))?;
-
-            // Clear game state (combat is over)
-            repo.update_character_game_state(&character_id, &claims.sub, None)
-                .await
-                .map_err(|e| AppError::from(e))?;
-        }
-    }
 
     // Update mana if it was consumed (ability use)
     if mana_cost > 0 && !victory && !defeat {
         repo.update_character_mana(&character_id, &claims.sub, character.stats.mana)
             .await
-            .map_err(|e| AppError::from(e))?;
+            .map_err(AppError::from)?;
     }
 
     // Prepare game state for response
@@ -924,7 +1114,7 @@ pub async fn perform_combat_action(
 
     // Mark combat as finished when it ends
     if victory || defeat {
-        response_game_state["finished"] = serde_json::json!(true);
+        response_game_state[GS_FINISHED] = serde_json::json!(true);
     }
 
     // Save updated game state if combat continues
@@ -935,7 +1125,7 @@ pub async fn perform_combat_action(
 
         repo.update_character_game_state(&character_id, &claims.sub, Some(updated_game_state_str))
             .await
-            .map_err(|e| AppError::from(e))?;
+            .map_err(AppError::from)?;
     }
 
     Ok(Json(CombatActionResult {
