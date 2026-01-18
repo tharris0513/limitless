@@ -7,6 +7,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod combat;
 mod config_export;
 mod damage_calculator;
 mod database;
@@ -75,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
     // Setup midnight rollover scheduler
     let scheduler = JobScheduler::new().await?;
     let rollover_repo = repo.clone();
-    
+
     // Schedule rollover for midnight every day (0 0 0 * * *)
     let rollover_job = Job::new_async("0 0 0 * * *", move |_uuid, _l| {
         let repo_clone = rollover_repo.clone();
@@ -83,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
             handlers::rollover::perform_rollover(repo_clone).await;
         })
     })?;
-    
+
     scheduler.add(rollover_job).await?;
     scheduler.start().await?;
     tracing::info!("⏰ Midnight rollover scheduler started");
