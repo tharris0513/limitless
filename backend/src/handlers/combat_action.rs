@@ -22,6 +22,11 @@ pub async fn save_game_state(
     AuthClaims(claims): AuthClaims,
     Json(game_state): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    // Verify character ownership
+    repo.get_character(&character_id, &claims.sub)
+        .await
+        .map_err(|_| AppError::character_not_found("Character not found or access denied"))?;
+
     // Convert game state to JSON string
     let game_state_str = serde_json::to_string(&game_state)
         .map_err(|e| AppError::validation_error(&format!("Invalid game state JSON: {}", e)))?;
@@ -47,6 +52,11 @@ pub async fn clear_game_state(
     Path(character_id): Path<String>,
     AuthClaims(claims): AuthClaims,
 ) -> Result<Json<serde_json::Value>, AppError> {
+    // Verify character ownership
+    repo.get_character(&character_id, &claims.sub)
+        .await
+        .map_err(|_| AppError::character_not_found("Character not found or access denied"))?;
+
     match repo
         .update_character_game_state(&character_id, &claims.sub, None)
         .await

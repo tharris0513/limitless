@@ -150,31 +150,6 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({ children, 
     };
   }, [gameState, autoSaveEnabled, character?.id, saveGameState]);
 
-  // Save on page unload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (autoSaveEnabled && character?.id) {
-        // Use synchronous beacon API for reliable save on page close
-        const currentStateStr = JSON.stringify(gameState);
-        if (currentStateStr !== lastStateRef.current) {
-          const token = localStorage.getItem('authToken');
-          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-          
-          // Note: sendBeacon only works with small payloads
-          // For larger states, consider using keepalive fetch
-          const blob = new Blob([currentStateStr], { type: 'application/json' });
-          navigator.sendBeacon(
-            `${API_BASE_URL}/characters/${character.id}/state?token=${token}`,
-            blob
-          );
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [gameState, autoSaveEnabled, character?.id]);
-
   const setGameState = useCallback((state: GameState) => {
     setGameStateInternal(state);
   }, []);
