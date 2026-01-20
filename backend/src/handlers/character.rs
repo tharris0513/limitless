@@ -99,6 +99,27 @@ pub async fn get_character_abilities(
     }
 }
 
+// Get unlocked abilities for a character (full Ability data)
+pub async fn get_character_unlocked_abilities(
+    State(repo): State<Arc<UserRepository>>,
+    Path(character_id): Path<String>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<Vec<(crate::models::Ability, i64)>>, AppError> {
+    // Verify character belongs to authenticated user
+    match repo.get_character(&character_id, &claims.sub).await {
+        Ok(_) => {}
+        Err(_) => return Err(AppError::character_not_found(&character_id)),
+    }
+
+    match repo.get_character_unlocked_abilities(&character_id).await {
+        Ok(abilities) => Ok(Json(abilities)),
+        Err(e) => {
+            tracing::error!("Failed to get character unlocked abilities: {:?}", e);
+            Err(AppError::from(e))
+        }
+    }
+}
+
 // Update character
 pub async fn update_character(
     State(_repo): State<Arc<UserRepository>>,

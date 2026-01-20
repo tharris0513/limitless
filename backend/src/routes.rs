@@ -78,6 +78,10 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             get(character::get_character_abilities),
         )
         .route(
+            "/characters/:id/abilities/unlocked",
+            get(character::get_character_unlocked_abilities),
+        )
+        .route(
             "/characters/:id/experience",
             post(character::grant_experience),
         )

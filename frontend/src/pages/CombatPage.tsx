@@ -41,28 +41,14 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   useEffect(() => {
     const fetchAbilities = async () => {
       try {
-        // Get character's unlocked ability IDs
-        const characterAbilities = await GameAPI.getCharacterAbilities(character.id);
-        console.log('Character abilities response:', characterAbilities);
-        console.log('Character abilities type:', typeof characterAbilities, Array.isArray(characterAbilities));
+        // Get character's unlocked abilities with full ability data
+        const unlockedAbilities = await GameAPI.getCharacterUnlockedAbilities(character.id);
+        console.log('Unlocked abilities response:', unlockedAbilities);
         
-        const unlockedAbilityIds = new Set(characterAbilities.map((ca: any) => ca.ability_id || ca.abilityId));
-        console.log('Unlocked ability IDs:', Array.from(unlockedAbilityIds));
-        
-        // Get all abilities for the character's class
-        console.log('Fetching class abilities for class:', character.classId);
-        const classAbilities = await GameAPI.getClassAbilities(character.classId);
-        console.log('Class abilities response:', classAbilities);
-        
-        // Filter to only unlocked combat abilities
-        const activeAbilities = classAbilities
-          .filter(ca => {
-            const hasAbility = unlockedAbilityIds.has(ca.ability.id);
-            console.log(`Checking ability ${ca.ability.id} (${ca.ability.name}): unlocked=${hasAbility}, type=${ca.ability.abilityType}`);
-            return hasAbility;
-          })
-          .filter(ca => ca.ability.abilityType === 'combat')
-          .map(ca => ca.ability)
+        // Filter to only combat abilities
+        const activeAbilities = unlockedAbilities
+          .filter(ua => ua.ability.abilityType === 'combat')
+          .map(ua => ua.ability)
           .reverse(); // Show lowest level abilities first
         
         console.log('Active abilities:', activeAbilities);

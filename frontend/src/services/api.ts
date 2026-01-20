@@ -270,6 +270,19 @@ export class GameAPI {
     return response.data;
   }
 
+  static async getCharacterUnlockedAbilities(
+    characterId: string
+  ): Promise<Array<{ ability: Ability; unlockLevel: number }>> {
+    const response = await api.get(
+      `/characters/${characterId}/abilities/unlocked`
+    );
+    // Backend returns array of tuples [Ability, unlockLevel], transform to objects
+    return response.data.map((item: [Ability, number]) => ({
+      ability: item[0],
+      unlockLevel: item[1],
+    }));
+  }
+
   // Class endpoints
   static async getClasses(): Promise<Class[]> {
     const response = await api.get('/classes');

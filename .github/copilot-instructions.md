@@ -108,10 +108,6 @@ Both backend and frontend need `.env` files (copy from `.env.example`):
 - **Backend**: AWS credentials, Discord OAuth (client ID/secret), `JWT_SECRET`
 - **Frontend**: `VITE_API_URL=http://localhost:8080/api`
 
-### Database Seeding
-
-Initial game config (classes, abilities) lives in [`backend/seeds/game-config.json`](../backend/seeds/game-config.json). Import via admin endpoints (not automated yet).
-
 ## Key Integration Points
 
 ### Discord OAuth Flow
@@ -158,3 +154,22 @@ Separate router with shared state: `Router::new().route("/chat/ws", ...).with_st
 - **New Game Mechanic**: Update `DAMAGE_FORMULAS.md` if formula-based, add to `game-config.json` for seeding
 - **Protected Route**: Add to `protected_routes` in `routes.rs` (JWT middleware auto-applies)
 - **Admin Feature**: Use `AdminClaims(claims)` extractor - automatic 403 for non-admins
+
+## Game Content Specifications
+
+Game concepts live in markdown spec files at the repo root:
+
+- `GAME_MECHANICS.md` - Core game mechanics and systems
+
+Class designs live in markdown files at the repo root:
+
+- `SPELLBLADE.md` - Spellblade class specification
+- (Add more as you create them)
+
+Each spec includes:
+
+- Stat priorities and progression
+- Complete ability lists with formulas, costs, cooldowns
+- Thematic/visual guidance
+
+When implementing a new class, read its spec file for all details.

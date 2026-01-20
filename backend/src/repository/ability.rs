@@ -283,6 +283,47 @@ impl UserRepository {
         Ok(abilities)
     }
 
+    // Get character's unlocked abilities with full Ability data
+    pub async fn get_character_unlocked_abilities(
+        &self,
+        character_id: &str,
+    ) -> Result<Vec<(Ability, i64)>> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("ABILITY#".to_string()))
+            .send()
+            .await
+            .context("Failed to query character abilities")?;
+
+        let mut abilities = Vec::new();
+        for item in result.items() {
+            // Get ability_id and unlocked_at_level from the character ability record
+            if let (Some(ability_id), Some(level)) = (
+                item.get("ability_id").and_then(|v| v.as_s().ok()),
+                item.get("unlocked_at_level")
+                    .and_then(|v| v.as_n().ok())
+                    .and_then(|s| s.parse::<i64>().ok()),
+            ) {
+                // Fetch the actual ability from the ABILITY table to get current data
+                if let Ok(ability) = self.get_ability(ability_id).await {
+                    abilities.push((ability, level));
+                } else {
+                    tracing::warn!(
+                        "Failed to fetch ability {} for character {}",
+                        ability_id,
+                        character_id
+                    );
+                }
+            }
+        }
+
+        Ok(abilities)
+    }
+
     // Unlock abilities for a character at a specific level
     // Returns a list of newly unlocked abilities
     pub(crate) async fn unlock_character_abilities(
