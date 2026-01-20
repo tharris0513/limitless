@@ -43,13 +43,14 @@ impl DamageCalculator {
         }
     }
 
-    /// Calculate melee attack damage based on might with variance
-    pub fn calculate_melee_attack(might: i64) -> i32 {
+    /// Calculate melee attack damage based on might with variance, reduced by target defense
+    pub fn calculate_melee_attack(might: i64, target_defense: i64) -> i32 {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let variance = rng.gen_range(-0.1..=0.1);
-        let damage = ((might as f64) * (1.0 + variance)).round() as i32;
-        damage.max(1) // Minimum 1 damage
+        let raw_damage = ((might as f64) * (1.0 + variance)).round() as i32;
+        // Subtract target defense (minimum 1 damage)
+        (raw_damage - target_defense as i32).max(1)
     }
 
     /// Validate a formula by testing it with sample stats
@@ -81,6 +82,29 @@ impl DamageCalculator {
         level: i64,
     ) -> Result<i32, String> {
         let context = Self::build_context(sample_stats, level, None);
+        Self::evaluate_formula(formula, &context)
+    }
+
+    /// Test a formula with sample stats and enemy stats
+    pub fn test_formula_with_enemy(
+        formula: &str,
+        caster_stats: &CharacterStats,
+        caster_level: i64,
+        enemy_defense: i64,
+        enemy_resistance: i64,
+        enemy_level: i64,
+        enemy_health: i64,
+        enemy_max_health: i64,
+    ) -> Result<i32, String> {
+        let context = Self::build_context_with_enemy(
+            caster_stats,
+            caster_level,
+            enemy_defense,
+            enemy_resistance,
+            enemy_level,
+            enemy_health,
+            enemy_max_health,
+        );
         Self::evaluate_formula(formula, &context)
     }
 
@@ -122,6 +146,44 @@ impl DamageCalculator {
                     let max = tuple[1].as_number()?;
                     let mut rng = rand::thread_rng();
                     Ok(Value::from(rng.gen_range(min..=max)))
+                }),
+            )
+            .unwrap();
+
+        // Add min(a, b) function - returns the minimum of two values
+        context_with_functions
+            .set_function(
+                "min".into(),
+                Function::new(|argument| {
+                    let tuple = argument.as_tuple()?;
+                    if tuple.len() != 2 {
+                        return Err(EvalexprError::WrongFunctionArgumentAmount {
+                            expected: 2..=2,
+                            actual: tuple.len(),
+                        });
+                    }
+                    let a = tuple[0].as_number()?;
+                    let b = tuple[1].as_number()?;
+                    Ok(Value::from(a.min(b)))
+                }),
+            )
+            .unwrap();
+
+        // Add max(a, b) function - returns the maximum of two values
+        context_with_functions
+            .set_function(
+                "max".into(),
+                Function::new(|argument| {
+                    let tuple = argument.as_tuple()?;
+                    if tuple.len() != 2 {
+                        return Err(EvalexprError::WrongFunctionArgumentAmount {
+                            expected: 2..=2,
+                            actual: tuple.len(),
+                        });
+                    }
+                    let a = tuple[0].as_number()?;
+                    let b = tuple[1].as_number()?;
+                    Ok(Value::from(a.max(b)))
                 }),
             )
             .unwrap();
@@ -194,6 +256,57 @@ impl DamageCalculator {
                 )
                 .unwrap();
         }
+
+        context
+    }
+
+    fn build_context_with_enemy(
+        caster_stats: &CharacterStats,
+        caster_level: i64,
+        enemy_defense: i64,
+        enemy_resistance: i64,
+        enemy_level: i64,
+        enemy_health: i64,
+        enemy_max_health: i64,
+    ) -> HashMapContext {
+        let mut context = HashMapContext::new();
+
+        // Caster stats
+        context
+            .set_value("might".into(), Value::from(caster_stats.might))
+            .unwrap();
+        context
+            .set_value("defense".into(), Value::from(caster_stats.defense))
+            .unwrap();
+        context
+            .set_value("magic".into(), Value::from(caster_stats.magic))
+            .unwrap();
+        context
+            .set_value("resistance".into(), Value::from(caster_stats.resistance))
+            .unwrap();
+        context
+            .set_value("agility".into(), Value::from(caster_stats.agility))
+            .unwrap();
+        context
+            .set_value("level".into(), Value::from(caster_level))
+            .unwrap();
+
+        // Enemy stats
+        context
+            .set_value("target_defense".into(), Value::from(enemy_defense))
+            .unwrap();
+        context
+            .set_value("target_resistance".into(), Value::from(enemy_resistance))
+            .unwrap();
+        context
+            .set_value("target_level".into(), Value::from(enemy_level))
+            .unwrap();
+        context
+            .set_value("target_health".into(), Value::from(enemy_health))
+            .unwrap();
+        context
+            .set_value("target_max_health".into(), Value::from(enemy_max_health))
+            .unwrap();
 
         context
     }
@@ -297,5 +410,112 @@ mod tests {
         assert!(result.is_ok());
         let damage = result.unwrap();
         assert!(damage >= 21 && damage <= 27);
+    }
+
+    #[test]
+    fn test_min_function() {
+        let stats = create_test_stats();
+        // Test min() function with constants (use rand() to bypass auto-variation)
+        let result = DamageCalculator::test_formula("min(10, 20) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 10);
+
+        // Test min() function with stats (use rand() to bypass auto-variation)
+        let result = DamageCalculator::test_formula("min(might, magic) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        // might=12, magic=10, so min should be 10
+        assert_eq!(result.unwrap(), 10);
+    }
+
+    #[test]
+    fn test_max_function() {
+        let stats = create_test_stats();
+        // Test max() function with constants (use rand() to bypass auto-variation)
+        let result = DamageCalculator::test_formula("max(10, 20) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 20);
+
+        // Test max() function with stats (use rand() to bypass auto-variation)
+        let result = DamageCalculator::test_formula("max(might, magic) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        // might=12, magic=10, so max should be 12
+        assert_eq!(result.unwrap(), 12);
+    }
+
+    #[test]
+    fn test_max_prevents_negative_damage() {
+        let stats = create_test_stats();
+        // Test max() to prevent negative damage when defense is high
+        // might=12, if we subtract a high value, max(0, ...) ensures non-negative
+        let result = DamageCalculator::test_formula("max(0, might - 100) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // Should be 0 since might - 100 = -88, max(0, -88) = 0
+        assert_eq!(damage, 0);
+    }
+
+    #[test]
+    fn test_min_caps_damage() {
+        let stats = create_test_stats();
+        // Test min() to cap damage at a maximum value
+        let result = DamageCalculator::test_formula("min(50, might * 10) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // might * 10 = 120, but min(50, 120) = 50
+        assert_eq!(damage, 50);
+    }
+
+    #[test]
+    fn test_min_max_combined() {
+        let stats = create_test_stats();
+        // Test combining min and max to clamp a value between bounds
+        let result = DamageCalculator::test_formula("max(10, min(20, might)) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // might=12, min(20, 12)=12, max(10, 12)=12
+        assert_eq!(damage, 12);
+
+        // Test with a value below the minimum
+        let result = DamageCalculator::test_formula("max(15, min(20, magic)) + rand()", &stats, 1);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // magic=10, min(20, 10)=10, max(15, 10)=15
+        assert_eq!(damage, 15);
+    }
+
+    #[test]
+    fn test_max_with_defense_subtraction() {
+        let stats = create_test_stats();
+        // Test realistic scenario: damage with defense mitigation
+        let result = DamageCalculator::test_formula_with_enemy(
+            "max(1, might - target_defense) + rand()",
+            &stats,
+            1,
+            5,   // enemy_defense
+            0,   // enemy_resistance
+            1,   // enemy_level
+            100, // enemy_health
+            100, // enemy_max_health
+        );
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // might=12, target_defense=5, so 12-5=7, max(1, 7)=7
+        assert_eq!(damage, 7);
+
+        // Test with very high defense
+        let result = DamageCalculator::test_formula_with_enemy(
+            "max(1, might - target_defense) + rand()",
+            &stats,
+            1,
+            99999, // enemy_defense (extremely high)
+            0,
+            1,
+            100,
+            100,
+        );
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // might=12, target_defense=99999, so 12-99999=-99987, max(1, -99987)=1
+        assert_eq!(damage, 1);
     }
 }

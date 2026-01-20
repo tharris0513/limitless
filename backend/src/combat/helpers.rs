@@ -4,9 +4,13 @@ use crate::models::{Ability, Character, PassiveEffectType};
 // Game state field name constants
 pub const GS_ENEMY: &str = "enemy";
 pub const GS_ENEMY_HEALTH: &str = "health";
+pub const GS_ENEMY_MAX_HEALTH: &str = "maxHealth";
 pub const GS_ENEMY_NAME: &str = "name";
+pub const GS_ENEMY_LEVEL: &str = "level";
 pub const GS_ENEMY_STATS: &str = "stats";
 pub const GS_ENEMY_MIGHT: &str = "might";
+pub const GS_ENEMY_DEFENSE: &str = "defense";
+pub const GS_ENEMY_RESISTANCE: &str = "resistance";
 pub const GS_ENEMY_EXP_REWARD: &str = "experienceReward";
 pub const GS_ENEMY_ATTACK_DESC: &str = "attackDescription";
 pub const GS_PRIMARY_WEAPON_ENCHANTED: &str = "primaryWeaponEnchanted";
@@ -192,6 +196,24 @@ impl<'a> EnemyHelper<'a> {
             .map(|h| h as i32)
     }
 
+    /// Get enemey max health
+    pub fn max_health(&self) -> Result<i32, AppError> {
+        self.enemy
+            .get(GS_ENEMY_MAX_HEALTH)
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| AppError::validation_error("Invalid enemy health"))
+            .map(|h| h as i32)
+    }
+
+    /// Get enemy level
+    pub fn level(&self) -> Result<i32, AppError> {
+        self.enemy
+            .get(GS_ENEMY_LEVEL)
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| AppError::validation_error("Invalid enemy level"))
+            .map(|l| l as i32)
+    }
+
     /// Get enemy name
     pub fn name(&self) -> String {
         self.enemy
@@ -216,6 +238,24 @@ impl<'a> EnemyHelper<'a> {
             .and_then(|s| s.get(GS_ENEMY_MIGHT))
             .and_then(|v| v.as_i64())
             .unwrap_or(10)
+    }
+
+    /// Get enemy defense stat
+    pub fn defense(&self) -> i64 {
+        self.enemy
+            .get(GS_ENEMY_STATS)
+            .and_then(|s| s.get(GS_ENEMY_DEFENSE))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0)
+    }
+
+    /// Get enemy resistance stat
+    pub fn resistance(&self) -> i64 {
+        self.enemy
+            .get(GS_ENEMY_STATS)
+            .and_then(|s| s.get(GS_ENEMY_RESISTANCE))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0)
     }
 
     /// Get enemy attack description template
@@ -248,7 +288,7 @@ pub fn parse_enchantment_from_state(enchant_str: &str) -> Option<PassiveEffectTy
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AbilityEffect, ActiveEffectType, CharacterStats, EffectType};
+    use crate::models::{AbilityEffect, CharacterStats, EffectType};
 
     /// Helper to create a basic test character
     fn create_test_character() -> Character {

@@ -131,12 +131,13 @@ pub fn process_melee_attacks(
     processor: &AbilityProcessor,
     character: &Character,
     game_state: &serde_json::Value,
+    enemy_defense: i64,
 ) -> Vec<SingleAttack> {
     let mut attacks = Vec::new();
     let has_dual_wield = processor.has_passive(PassiveEffectType::DualWield);
 
     // First attack (main hand)
-    let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
+    let damage = DamageCalculator::calculate_melee_attack(character.stats.might, enemy_defense);
     attacks.push(SingleAttack {
         damage,
         description: format!(
@@ -156,7 +157,7 @@ pub fn process_melee_attacks(
 
     // Second attack if dual wielding
     if has_dual_wield {
-        let damage = DamageCalculator::calculate_melee_attack(character.stats.might);
+        let damage = DamageCalculator::calculate_melee_attack(character.stats.might, enemy_defense);
         attacks.push(SingleAttack {
             damage,
             description: format!(
@@ -183,8 +184,20 @@ pub fn process_ability_attacks(
     character: &Character,
     processor: &AbilityProcessor,
     game_state: &mut serde_json::Value,
+    enemy_defense: i64,
+    enemy_resistance: i64,
 ) -> Result<Vec<SingleAttack>, AppError> {
     let mut attacks = Vec::new();
+
+    // Get enemy stats from game state for formula context
+    let enemy_helper = EnemyHelper::new(
+        game_state
+            .get(GS_ENEMY)
+            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?,
+    );
+    let enemy_level = enemy_helper.level()?;
+    let enemy_health = enemy_helper.health()?;
+    let enemy_max_health = enemy_helper.max_health()?;
 
     if !ability.effects.is_empty() {
         // Use new effects system
@@ -196,10 +209,15 @@ pub fn process_ability_attacks(
                         ActiveEffectType::Damage => {
                             // Calculate damage from this effect's formula
                             if let Some(ref formula) = effect.formula {
-                                let damage = DamageCalculator::test_formula(
+                                let damage = DamageCalculator::test_formula_with_enemy(
                                     formula,
                                     &character.stats,
                                     character.level,
+                                    enemy_defense,
+                                    enemy_resistance,
+                                    enemy_level as i64,
+                                    enemy_health as i64,
+                                    enemy_max_health as i64,
                                 )
                                 .map_err(|e| {
                                     AppError::validation_error(&format!(
@@ -295,8 +313,8 @@ pub fn process_ability_attacks(
                 AppError::validation_error(&format!("Damage calculation failed: {}", e))
             })?
         } else {
-            // Fallback to might-based if no formula
-            DamageCalculator::calculate_melee_attack(character.stats.might)
+            // Fallback to might-based if no formula (won't apply defense here as this is legacy)
+            DamageCalculator::calculate_melee_attack(character.stats.might, 0)
         };
 
         // Use ability's attack description template
@@ -503,30 +521,39 @@ pub async fn handle_defeat(
     Ok(defeat_message)
 }
 
-/// Apply enemy counterattack
+/// Apply enemy counterattack with player defense reduction
 pub fn apply_enemy_attack(
     enemy_might: i64,
+    player_defense: i64,
     enemy_name: &str,
     enemy_attack_template: Option<String>,
 ) -> (Vec<SingleAttack>, i32) {
-    let counter_damage = DamageCalculator::calculate_melee_attack(enemy_might);
+    // Enemy melee attack reduced by player defense
+    let mitigated_damage = DamageCalculator::calculate_melee_attack(enemy_might, player_defense);
+
+    tracing::debug!(
+        "Enemy attack: enemy_might={}, player_defense={}, final={}",
+        enemy_might,
+        player_defense,
+        mitigated_damage
+    );
 
     let attack_description = if let Some(template) = enemy_attack_template {
-        parse_attack_description(&template, counter_damage, enemy_name)
+        parse_attack_description(&template, mitigated_damage, enemy_name)
     } else {
         format!(
             "{} counterattacks, dealing **{}** damage!",
-            enemy_name, counter_damage
+            enemy_name, mitigated_damage
         )
     };
 
     let attacks = vec![SingleAttack {
-        damage: counter_damage,
+        damage: mitigated_damage,
         description: attack_description,
         is_dual_wield: false,
     }];
 
-    (attacks, counter_damage)
+    (attacks, mitigated_damage)
 }
 
 #[cfg(test)]
@@ -602,9 +629,23 @@ mod tests {
         }
     }
 
+    /// Helper to create a basic test enemy
+    fn create_test_enemy() -> serde_json::Value {
+        serde_json::json!({
+            "name": "Goblin",
+            "health": 50,
+            "stats": {
+                "might": 10,
+                "defense": 5,
+            },
+            "experienceReward": 100
+        })
+    }
+
     #[test]
     fn test_process_melee_attacks_basic() {
         let character = create_test_character();
+        let enemy = create_test_enemy();
         let abilities = vec![];
         let processor = AbilityProcessor::new(&character, &abilities);
         let game_state = serde_json::json!({
@@ -615,7 +656,12 @@ mod tests {
             "turnNumber": 1
         });
 
-        let attacks = process_melee_attacks(&processor, &character, &game_state);
+        let attacks = process_melee_attacks(
+            &processor,
+            &character,
+            &game_state,
+            enemy["stats"]["defense"].as_i64().unwrap(),
+        );
 
         // Should have exactly 1 attack (no dual-wield)
         assert_eq!(attacks.len(), 1);
@@ -659,7 +705,7 @@ mod tests {
             "turnNumber": 1
         });
 
-        let attacks = process_melee_attacks(&processor, &character, &game_state);
+        let attacks = process_melee_attacks(&processor, &character, &game_state, 5);
 
         // Should have 2 attacks (main hand + off-hand)
         assert_eq!(attacks.len(), 2);
@@ -738,7 +784,7 @@ mod tests {
             "turnNumber": 1
         });
 
-        let attacks = process_melee_attacks(&processor, &character, &game_state);
+        let attacks = process_melee_attacks(&processor, &character, &game_state, 5);
 
         // Should have 2 attacks: melee + enchantment damage
         assert_eq!(attacks.len(), 2);
@@ -757,12 +803,19 @@ mod tests {
         let mut game_state = serde_json::json!({
             "enemy": {
                 "name": "Goblin",
-                "health": 50
+                "health": 50,
+                "maxHealth": 50,
+                "level": 3,
+                "stats": {
+                    "defense": 5,
+                    "resistance": 3
+                }
             },
             "turnNumber": 1
         });
 
-        let result = process_ability_attacks(&ability, &character, &processor, &mut game_state);
+        let result =
+            process_ability_attacks(&ability, &character, &processor, &mut game_state, 5, 3);
 
         assert!(result.is_ok());
         let attacks = result.unwrap();

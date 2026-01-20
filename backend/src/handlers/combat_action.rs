@@ -229,10 +229,18 @@ pub async fn perform_combat_action(
     // Create ability processor
     let processor = AbilityProcessor::new(&character, &abilities);
 
+    // Get enemy stats before generating attacks
+    let enemy = game_state
+        .get(GS_ENEMY)
+        .ok_or_else(|| AppError::validation_error("No enemy in game state"))?;
+    let enemy_helper = EnemyHelper::new(enemy);
+    let enemy_defense = enemy_helper.defense();
+    let enemy_resistance = enemy_helper.resistance();
+
     // === Generate player attacks based on action type ===
     let (attacks, mana_cost) = match action {
         CombatActionRequest::Melee => {
-            let attacks = process_melee_attacks(&processor, &character, &game_state);
+            let attacks = process_melee_attacks(&processor, &character, &game_state, enemy_defense);
             (attacks, 0i64)
         }
         CombatActionRequest::Ability { ref ability_id } => {
@@ -270,8 +278,14 @@ pub async fn perform_combat_action(
             }
 
             // Process ability effects
-            let attacks =
-                process_ability_attacks(ability, &character, &processor, &mut game_state)?;
+            let attacks = process_ability_attacks(
+                ability,
+                &character,
+                &processor,
+                &mut game_state,
+                enemy_defense,
+                enemy_resistance,
+            )?;
 
             (attacks, mana_cost_required)
         }
@@ -330,9 +344,13 @@ pub async fn perform_combat_action(
 
             (exp, vic_msg, lvl_up, Vec::new(), false, None)
         } else {
-            // Enemy counterattacks
-            let (attacks, counter_damage) =
-                apply_enemy_attack(enemy_might, &enemy_name, enemy_attack_template);
+            // Enemy counterattacks (with player defense mitigation)
+            let (attacks, counter_damage) = apply_enemy_attack(
+                enemy_might,
+                character.stats.defense,
+                &enemy_name,
+                enemy_attack_template,
+            );
 
             // Update player health
             player_health = (player_health - counter_damage).max(0);
