@@ -408,17 +408,17 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       <div className={styles.actionsSection}>
         <h3 className={styles.actionsTitle}>Actions</h3>
         <div className={styles.actionButtons}>
-          {gameState.finished ? (
+          {(gameState.status === 'victory' || gameState.status === 'defeat') ? (
             <button
               className={styles.actionButton}
               onClick={handleFinish}
               style={{ gridColumn: '1 / -1' }}
             >
-              ✓ {victory ? 'Finish' : 'Return'}
+              ✓ {gameState.status === 'victory' ? 'Finish' : 'Return'}
             </button>
           ) : (
             <>
-              <button 
+              <button
                 className={styles.actionButton}
                 onClick={handleAttack}
                 disabled={attacking}
@@ -428,7 +428,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
               <button className={styles.actionButton}>
                 🛡️ Defend
               </button>
-              <button 
+              <button
                 className={styles.actionButton}
                 onClick={handleFlee}
                 disabled={fleeing}
@@ -441,7 +441,7 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       </div>
 
       {/* Ability Hotbar */}
-      {!gameState.finished && abilities.length > 0 && (
+      {gameState.status !== 'victory' && gameState.status !== 'defeat' && abilities.length > 0 && (
         <div className={styles.hotbarSection}>
           <h3 className={styles.hotbarTitle}>Abilities</h3>
           <div className={styles.hotbar}>

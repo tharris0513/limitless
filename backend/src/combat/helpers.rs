@@ -18,7 +18,7 @@ pub const GS_SECONDARY_WEAPON_ENCHANTED: &str = "secondaryWeaponEnchanted";
 pub const GS_ABILITY_COOLDOWNS: &str = "abilityCooldowns";
 pub const GS_TURN_NUMBER: &str = "turnNumber";
 pub const GS_PLAYER_HEALTH: &str = "playerHealth";
-pub const GS_FINISHED: &str = "finished";
+pub const GS_STATUS: &str = "status"; // Combat status: "started", "ongoing", "victory", "defeat"
 
 /// Helper struct to process abilities for a character
 pub struct AbilityProcessor<'a> {

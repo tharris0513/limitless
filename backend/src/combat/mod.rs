@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 
 pub use helpers::{
     parse_attack_description, AbilityProcessor, EnemyHelper, GameStateHelper, GS_ABILITY_COOLDOWNS,
-    GS_ENEMY, GS_ENEMY_HEALTH, GS_FINISHED, GS_PLAYER_HEALTH, GS_PRIMARY_WEAPON_ENCHANTED,
-    GS_SECONDARY_WEAPON_ENCHANTED, GS_TURN_NUMBER,
+    GS_ENEMY, GS_ENEMY_HEALTH, GS_PLAYER_HEALTH, GS_PRIMARY_WEAPON_ENCHANTED,
+    GS_SECONDARY_WEAPON_ENCHANTED, GS_STATUS, GS_TURN_NUMBER,
 };
 
 /// Combat action request

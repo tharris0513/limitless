@@ -19,9 +19,11 @@ export interface EnemyState {
   abilities?: string[];
 }
 
+export type CombatStatus = 'started' | 'ongoing' | 'victory' | 'defeat';
+
 export interface CombatState {
   inCombat: true;
-  finished?: boolean; // Set to true when combat ends (victory/defeat)
+  status: CombatStatus; // Combat state: started (turn 1), ongoing (turn 2+), victory, or defeat
   adventureId: string;
   adventureName: string;
   turnNumber: number;

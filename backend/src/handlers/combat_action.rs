@@ -12,7 +12,7 @@ use crate::combat::{
     apply_enemy_attack, handle_defeat, handle_victory, process_ability_attacks,
     process_melee_attacks, update_cooldowns, AbilityProcessor, CombatActionRequest,
     CombatActionResult, EnemyHelper, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY,
-    GS_ENEMY_HEALTH, GS_FINISHED, GS_PLAYER_HEALTH, GS_TURN_NUMBER,
+    GS_ENEMY_HEALTH, GS_PLAYER_HEALTH, GS_STATUS, GS_TURN_NUMBER,
 };
 
 // Save character's game state
@@ -301,7 +301,15 @@ pub async fn perform_combat_action(
     // Increment turn number
     let gs_helper = GameStateHelper::new(&game_state);
     let current_turn = gs_helper.turn_number();
-    game_state[GS_TURN_NUMBER] = serde_json::json!(current_turn + 1);
+    let new_turn = current_turn + 1;
+    game_state[GS_TURN_NUMBER] = serde_json::json!(new_turn);
+
+    // Update combat status based on turn number (if not already finished)
+    if new_turn == 1 {
+        game_state[GS_STATUS] = serde_json::json!("started");
+    } else if new_turn > 1 {
+        game_state[GS_STATUS] = serde_json::json!("ongoing");
+    }
 
     // Update ability cooldowns
     let cooldowns = update_cooldowns(&mut game_state, &action, &abilities);
@@ -384,9 +392,11 @@ pub async fn perform_combat_action(
     // Prepare game state for response
     let mut response_game_state = game_state.clone();
 
-    // Mark combat as finished when it ends
-    if victory || defeat {
-        response_game_state[GS_FINISHED] = serde_json::json!(true);
+    // Update combat status when it ends
+    if victory {
+        response_game_state[GS_STATUS] = serde_json::json!("victory");
+    } else if defeat {
+        response_game_state[GS_STATUS] = serde_json::json!("defeat");
     }
 
     // Save updated game state if combat continues

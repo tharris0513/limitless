@@ -44,8 +44,10 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({ children, 
       // Don't auto-clear if we're currently in a finished combat state
       // Let the user click the finish button to manually clear
       setGameStateInternal(prevState => {
-        if ('finished' in prevState && prevState.finished) {
-          return prevState; // Keep the finished combat state
+        if ('inCombat' in prevState && prevState.inCombat) {
+          if (prevState.status === 'victory' || prevState.status === 'defeat') {
+            return prevState; // Keep the finished combat state
+          }
         }
         return DEFAULT_IDLE_STATE;
       });
