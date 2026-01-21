@@ -108,6 +108,7 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
         
         const combatState = {
           inCombat: true as const,
+          status: 'started' as const,
           adventureId: locationId,
           adventureName: locations.find(l => l.id === locationId)?.name || 'Unknown Location',
           turnNumber: 1,

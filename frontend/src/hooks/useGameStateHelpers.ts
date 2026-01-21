@@ -20,6 +20,7 @@ export const useCombatState = () => {
     ) => {
       const combatState: CombatState = {
         inCombat: true,
+        status: 'started',
         adventureId,
         adventureName,
         turnNumber: 1,
