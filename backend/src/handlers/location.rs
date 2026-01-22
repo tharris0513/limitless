@@ -54,7 +54,7 @@ pub async fn visit_location(
         .map_err(|_| AppError::character_not_found(&request.character_id))?;
 
     // Validate character has HP > 0
-    if character.stats.health <= 0 {
+    if character.health <= 0 {
         return Err(AppError::validation_error(
             "Your character has 0 HP. You must rest before adventuring.",
         ));

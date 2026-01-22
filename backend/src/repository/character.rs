@@ -1,7 +1,7 @@
 use crate::level_system::{
     calculate_level_from_experience, calculate_stat_increases_for_level, experience_for_level,
 };
-use crate::models::{Character, CharacterStats};
+use crate::models::Character;
 use anyhow::{Context, Result};
 use aws_sdk_dynamodb::types::AttributeValue;
 use chrono::Utc;
@@ -61,19 +61,16 @@ impl UserRepository {
         let character_id = Uuid::new_v4().to_string();
         let created_at = Utc::now().to_rfc3339();
         let last_played = created_at.clone();
-
-        let stats = CharacterStats {
-            might: class.starting_might,
-            defense: class.starting_defense,
-            magic: class.starting_magic,
-            resistance: class.starting_resistance,
-            agility: class.starting_agility,
-            adventures: 50,
-            health: class.starting_health,
-            max_health: class.starting_health,
-            mana: class.starting_mana,
-            max_mana: class.starting_mana,
-        };
+        let might = class.starting_might;
+        let defense = class.starting_defense;
+        let magic = class.starting_magic;
+        let resistance = class.starting_resistance;
+        let agility = class.starting_agility;
+        let adventures = 50;
+        let health = class.starting_health;
+        let max_health = class.starting_health;
+        let mana = class.starting_mana;
+        let max_mana = class.starting_mana;
 
         let mut item = HashMap::new();
         item.insert(
@@ -100,45 +97,33 @@ impl UserRepository {
         );
         item.insert("level".to_string(), AttributeValue::N("1".to_string()));
         // Embed stats in the same item
-        item.insert(
-            "might".to_string(),
-            AttributeValue::N(stats.might.to_string()),
-        );
+        item.insert("might".to_string(), AttributeValue::N(might.to_string()));
         item.insert(
             "defense".to_string(),
-            AttributeValue::N(stats.defense.to_string()),
+            AttributeValue::N(defense.to_string()),
         );
-        item.insert(
-            "magic".to_string(),
-            AttributeValue::N(stats.magic.to_string()),
-        );
+        item.insert("magic".to_string(), AttributeValue::N(magic.to_string()));
         item.insert(
             "resistance".to_string(),
-            AttributeValue::N(stats.resistance.to_string()),
+            AttributeValue::N(resistance.to_string()),
         );
         item.insert(
             "agility".to_string(),
-            AttributeValue::N(stats.agility.to_string()),
+            AttributeValue::N(agility.to_string()),
         );
         item.insert(
             "adventures".to_string(),
-            AttributeValue::N(stats.adventures.to_string()),
+            AttributeValue::N(adventures.to_string()),
         );
-        item.insert(
-            "health".to_string(),
-            AttributeValue::N(stats.health.to_string()),
-        );
+        item.insert("health".to_string(), AttributeValue::N(health.to_string()));
         item.insert(
             "max_health".to_string(),
-            AttributeValue::N(stats.max_health.to_string()),
+            AttributeValue::N(max_health.to_string()),
         );
-        item.insert(
-            "mana".to_string(),
-            AttributeValue::N(stats.mana.to_string()),
-        );
+        item.insert("mana".to_string(), AttributeValue::N(mana.to_string()));
         item.insert(
             "max_mana".to_string(),
-            AttributeValue::N(stats.max_mana.to_string()),
+            AttributeValue::N(max_mana.to_string()),
         );
         item.insert("experience".to_string(), AttributeValue::N("0".to_string()));
         item.insert(
@@ -182,9 +167,20 @@ impl UserRepository {
             level: 1,
             experience: 0,
             experience_to_next: 100,
-            stats,
+            // Top-level fields
+            health: health,
+            max_health: max_health,
+            mana: mana,
+            max_mana: max_mana,
+            might: might,
+            defense: defense,
+            magic: magic,
+            resistance: resistance,
+            agility: agility,
+            adventures: adventures,
             location: "starting_area".to_string(),
             game_state: None,
+            active_buffs: None,
             created_at,
             last_played,
         })
@@ -259,6 +255,54 @@ impl UserRepository {
         Ok(())
     }
 
+    /// Update character state (including mana and active buffs)
+    pub async fn update_character_state(
+        &self,
+        character_id: &str,
+        character: &Character,
+    ) -> Result<()> {
+        let mut update_parts = vec!["mana = :mana"];
+        let mut request = self
+            .client
+            .update_item()
+            .table_name(&self.table_name)
+            .key(
+                "PK",
+                AttributeValue::S(format!("USER#{}", character.user_id)),
+            )
+            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
+            .expression_attribute_values(":mana", AttributeValue::N(character.mana.to_string()));
+
+        // Handle active_buffs
+        if let Some(active_buffs) = &character.active_buffs {
+            if !active_buffs.is_empty() {
+                let buffs_json = serde_json::to_string(active_buffs)
+                    .context("Failed to serialize active_buffs")?;
+                update_parts.push("active_buffs = :active_buffs");
+                request = request
+                    .expression_attribute_values(":active_buffs", AttributeValue::S(buffs_json));
+            } else {
+                update_parts.push("active_buffs = :empty");
+                request = request
+                    .expression_attribute_values(":empty", AttributeValue::S("[]".to_string()));
+            }
+        } else {
+            update_parts.push("active_buffs = :empty");
+            request =
+                request.expression_attribute_values(":empty", AttributeValue::S("[]".to_string()));
+        }
+
+        let update_expression = format!("SET {}", update_parts.join(", "));
+        request = request.update_expression(update_expression);
+
+        request
+            .send()
+            .await
+            .context("Failed to update character state")?;
+
+        Ok(())
+    }
+
     pub(crate) fn parse_character(
         &self,
         item: &HashMap<String, AttributeValue>,
@@ -286,6 +330,17 @@ impl UserRepository {
             experience_to_next
         );
 
+        // Parse active_buffs from JSON if present
+        let active_buffs = item
+            .get("active_buffs")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<Vec<crate::models::ActiveBuff>>(s).ok());
+
+        let health = get_i64("health")?;
+        let max_health = get_i64("max_health")?;
+        let mana = get_i64("mana")?;
+        let max_mana = get_i64("max_mana")?;
+
         let character = Character {
             id: get_string("id")?,
             user_id: get_string("user_id")?,
@@ -294,23 +349,23 @@ impl UserRepository {
             level: get_i64("level")?,
             experience,
             experience_to_next,
-            stats: CharacterStats {
-                might: get_i64("might")?,
-                defense: get_i64("defense")?,
-                magic: get_i64("magic")?,
-                resistance: get_i64("resistance")?,
-                agility: get_i64("agility")?,
-                adventures: get_i64("adventures")?,
-                health: get_i64("health")?,
-                max_health: get_i64("max_health")?,
-                mana: get_i64("mana")?,
-                max_mana: get_i64("max_mana")?,
-            },
+            // Top-level fields for frontend compatibility
+            health,
+            max_health,
+            mana,
+            max_mana,
+            might: get_i64("might")?,
+            defense: get_i64("defense")?,
+            magic: get_i64("magic")?,
+            resistance: get_i64("resistance")?,
+            agility: get_i64("agility")?,
+            adventures: get_i64("adventures")?,
             location: get_string("location")?,
             game_state: item
                 .get("game_state")
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
+            active_buffs,
             created_at: get_string("created_at")?,
             last_played: get_string("last_played")?,
         };
@@ -321,7 +376,7 @@ impl UserRepository {
             character.level,
             character.experience,
             character.experience_to_next,
-            character.stats.health
+            character.health
         );
 
         Ok(character)
@@ -625,15 +680,15 @@ impl UserRepository {
         // First get current stats
         let character = self.get_character(character_id, user_id).await?;
 
-        let new_might = character.stats.might + might;
-        let new_defense = character.stats.defense + defense;
-        let new_magic = character.stats.magic + magic;
-        let new_resistance = character.stats.resistance + resistance;
-        let new_agility = character.stats.agility + agility;
-        let new_max_health = character.stats.max_health + max_health;
-        let new_max_mana = character.stats.max_mana + max_mana;
-        let new_health = character.stats.health + max_health; // Heal on level up
-        let new_mana = character.stats.mana + max_mana; // Restore mana on level up
+        let new_might = character.might + might;
+        let new_defense = character.defense + defense;
+        let new_magic = character.magic + magic;
+        let new_resistance = character.resistance + resistance;
+        let new_agility = character.agility + agility;
+        let new_max_health = character.max_health + max_health;
+        let new_max_mana = character.max_mana + max_mana;
+        let new_health = character.health + max_health; // Heal on level up
+        let new_mana = character.mana + max_mana; // Restore mana on level up
 
         self.client
             .update_item()
@@ -798,17 +853,17 @@ impl UserRepository {
                 );
 
                 // Update stats
-                let new_might = character.stats.might + total_might;
-                let new_defense = character.stats.defense + total_defense;
-                let new_magic = character.stats.magic + total_magic;
-                let new_resistance = character.stats.resistance + total_resistance;
-                let new_agility = character.stats.agility + total_agility;
-                let new_max_health = character.stats.max_health + total_max_health;
-                let new_max_mana = character.stats.max_mana + total_max_mana;
+                let new_might = character.might + total_might;
+                let new_defense = character.defense + total_defense;
+                let new_magic = character.magic + total_magic;
+                let new_resistance = character.resistance + total_resistance;
+                let new_agility = character.agility + total_agility;
+                let new_max_health = character.max_health + total_max_health;
+                let new_max_mana = character.max_mana + total_max_mana;
 
                 // Also increase current health and mana by the same amount (heal on level up)
-                let new_health = character.stats.health + total_max_health;
-                let new_mana = character.stats.mana + total_max_mana;
+                let new_health = character.health + total_max_health;
+                let new_mana = character.mana + total_max_mana;
 
                 update_parts.extend([
                     "might = :might".to_string(),

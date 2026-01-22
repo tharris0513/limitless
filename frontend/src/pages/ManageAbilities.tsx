@@ -146,6 +146,7 @@ const AbilityForm: React.FC<{
     abilityType: string;
     manaCost: number;
     cooldown: number;
+    duration: number;
     effects: AbilityEffect[];
   }>(
     initialData ? {
@@ -154,6 +155,7 @@ const AbilityForm: React.FC<{
       abilityType: initialData.abilityType || 'combat',
       manaCost: initialData.manaCost || 0,
       cooldown: initialData.cooldown || 0,
+      duration: initialData.duration || 0,
       effects: initialData.effects || [],
     } : {
       name: '',
@@ -161,6 +163,7 @@ const AbilityForm: React.FC<{
       abilityType: 'combat',
       manaCost: 0,
       cooldown: 0,
+      duration: 0,
       effects: [],
     }
   );
@@ -221,9 +224,10 @@ const AbilityForm: React.FC<{
       id: initialData?.id || formData.name.toLowerCase().replace(/\s+/g, '_'),
       name: formData.name,
       description: formData.description,
-      abilityType: formData.abilityType as 'combat' | 'passive',
+      abilityType: formData.abilityType as 'combat' | 'passive' | 'noncombat',
       manaCost: formData.abilityType === 'passive' ? 0 : formData.manaCost,
-      cooldown: formData.abilityType === 'passive' ? 0 : formData.cooldown,
+      cooldown: (formData.abilityType === 'passive' || formData.abilityType === 'noncombat') ? 0 : formData.cooldown,
+      duration: formData.abilityType === 'noncombat' ? formData.duration : undefined,
       effects: formData.effects,
     };
     
@@ -265,8 +269,9 @@ const AbilityForm: React.FC<{
                 onChange={(e) => setFormData({ ...formData, abilityType: e.target.value })}
                 required
               >
-                <option value="combat">Combat - Shows in action bar</option>
+                <option value="combat">Combat - Shows in action bar during combat</option>
                 <option value="passive">Passive - Automatic effect</option>
+                <option value="noncombat">Noncombat - Buff used before combat</option>
               </select>
             </label>
 
@@ -274,19 +279,42 @@ const AbilityForm: React.FC<{
               <>
                 <label>
                   <span>Mana Cost</span>
-                  <input 
-                    type="number" 
-                    value={formData.manaCost} 
-                    onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })} 
+                  <input
+                    type="number"
+                    value={formData.manaCost}
+                    onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })}
                   />
                 </label>
-                
+
                 <label>
                   <span>Cooldown (turns)</span>
-                  <input 
-                    type="number" 
-                    value={formData.cooldown} 
-                    onChange={(e) => setFormData({ ...formData, cooldown: parseInt(e.target.value) || 0 })} 
+                  <input
+                    type="number"
+                    value={formData.cooldown}
+                    onChange={(e) => setFormData({ ...formData, cooldown: parseInt(e.target.value) || 0 })}
+                  />
+                </label>
+              </>
+            )}
+
+            {formData.abilityType === 'noncombat' && (
+              <>
+                <label>
+                  <span>Mana Cost</span>
+                  <input
+                    type="number"
+                    value={formData.manaCost}
+                    onChange={(e) => setFormData({ ...formData, manaCost: parseInt(e.target.value) || 0 })}
+                  />
+                </label>
+
+                <label>
+                  <span>Duration</span>
+                  <input
+                    type="number"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
+                    placeholder="Adventures"
                   />
                 </label>
               </>
@@ -393,10 +421,11 @@ const EffectEditor: React.FC<{
             value={effect.effectType}
             onChange={(e) => {
               const newType = e.target.value as 'active' | 'passive';
-              onUpdate({ 
+              onUpdate({
                 effectType: newType,
                 // Reset type-specific fields
                 activeType: newType === 'active' ? 'damage' : undefined,
+                passiveMode: newType === 'passive' ? 'effect' : undefined,
                 passiveType: newType === 'passive' ? '' : undefined,
                 formula: newType === 'active' ? '' : undefined,
                 attackDescription: newType === 'active' ? '' : undefined,
@@ -451,25 +480,125 @@ const EffectEditor: React.FC<{
             </label>
           </>
         ) : (
-          <label style={{ gridColumn: '1 / -1' }}>
-            <span>Passive Type *</span>
-            {loadingEffects ? (
-              <p>Loading effects...</p>
-            ) : (
+          <>
+            <label style={{ gridColumn: '1 / -1' }}>
+              <span>Passive Mode *</span>
               <select
-                value={effect.passiveType || ''}
-                onChange={(e) => onUpdate({ passiveType: e.target.value })}
+                value={effect.passiveMode || 'effect'}
+                onChange={(e) => {
+                  const mode = e.target.value as 'effect' | 'stat_modifier';
+                  onUpdate({
+                    passiveMode: mode,
+                    // Clear the other mode's data
+                    passiveType: mode === 'effect' ? effect.passiveType : undefined,
+                    statModifier: mode === 'stat_modifier' ? (effect.statModifier || {
+                      stat: 'might',
+                      value: 0,
+                      type: 'flat'
+                    }) : undefined,
+                  });
+                }}
                 required
               >
-                <option value="">-- Select a passive effect --</option>
-                {passiveEffects.map(pe => (
-                  <option key={pe.id} value={pe.id}>
-                    {pe.description}
-                  </option>
-                ))}
+                <option value="effect">Predefined Effect</option>
+                <option value="stat_modifier">Stat Modifier</option>
               </select>
+            </label>
+
+            {effect.passiveMode === 'stat_modifier' ? (
+              <>
+                <label>
+                  <span>Stat to Modify *</span>
+                  <select
+                    value={effect.statModifier?.stat || 'might'}
+                    onChange={(e) => onUpdate({
+                      statModifier: {
+                        ...effect.statModifier!,
+                        stat: e.target.value as any,
+                      }
+                    })}
+                    required
+                  >
+                    <option value="might">Might</option>
+                    <option value="defense">Defense</option>
+                    <option value="magic">Magic</option>
+                    <option value="resistance">Resistance</option>
+                    <option value="agility">Agility</option>
+                    <option value="maxHealth">Max Health</option>
+                    <option value="maxMana">Max Mana</option>
+                  </select>
+                </label>
+
+                <label>
+                  <span>Modifier Type *</span>
+                  <select
+                    value={effect.statModifier?.type || 'flat'}
+                    onChange={(e) => onUpdate({
+                      statModifier: {
+                        ...effect.statModifier!,
+                        type: e.target.value as 'flat' | 'percentage' | 'set',
+                      }
+                    })}
+                    required
+                  >
+                    <option value="flat">Flat Bonus (+10)</option>
+                    <option value="percentage">Percentage (+10%)</option>
+                    <option value="set">Set Value (=50)</option>
+                  </select>
+                </label>
+
+                <label style={{ gridColumn: '1 / -1' }}>
+                  <span>Value *</span>
+                  <input
+                    type="number"
+                    step={effect.statModifier?.type === 'percentage' ? '0.1' : '1'}
+                    placeholder={
+                      effect.statModifier?.type === 'percentage'
+                        ? 'e.g., 10 for +10%'
+                        : effect.statModifier?.type === 'set'
+                        ? 'e.g., 50 to set stat to 50'
+                        : 'e.g., 5 for +5'
+                    }
+                    value={effect.statModifier?.value || 0}
+                    onChange={(e) => onUpdate({
+                      statModifier: {
+                        ...effect.statModifier!,
+                        value: parseFloat(e.target.value) || 0,
+                      }
+                    })}
+                    required
+                  />
+                  <small style={{ color: '#888', fontSize: '0.85em', marginTop: '4px', display: 'block' }}>
+                    {effect.statModifier?.type === 'percentage'
+                      ? 'Enter the percentage value (e.g., 10 for +10%)'
+                      : effect.statModifier?.type === 'set'
+                      ? 'Enter the value to set the stat to (e.g., 50 to set stat = 50)'
+                      : 'Enter the flat bonus value (e.g., 5 for +5)'}
+                  </small>
+                </label>
+              </>
+            ) : (
+              <label style={{ gridColumn: '1 / -1' }}>
+                <span>Passive Effect *</span>
+                {loadingEffects ? (
+                  <p>Loading effects...</p>
+                ) : (
+                  <select
+                    value={effect.passiveType || ''}
+                    onChange={(e) => onUpdate({ passiveType: e.target.value })}
+                    required
+                  >
+                    <option value="">-- Select a passive effect --</option>
+                    {passiveEffects.map(pe => (
+                      <option key={pe.id} value={pe.id}>
+                        {pe.description}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </label>
             )}
-          </label>
+          </>
         )}
       </div>
     </div>

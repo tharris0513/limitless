@@ -80,6 +80,27 @@ impl PassiveEffectType {
     }
 }
 
+/// Stat modifier for passive effects
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatModifier {
+    pub stat: String, // 'might', 'defense', 'magic', 'resistance', 'agility', 'maxHealth', 'maxMana'
+    pub value: f64,
+    #[serde(rename = "type")]
+    pub modifier_type: String, // 'flat', 'percentage', 'set'
+}
+
+/// Active buff tracking for noncombat abilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveBuff {
+    #[serde(rename = "abilityId")]
+    pub ability_id: String,
+    #[serde(rename = "abilityName")]
+    pub ability_name: String,
+    #[serde(rename = "remainingAdventures")]
+    pub remaining_adventures: i64,
+    pub effects: Vec<AbilityEffect>,
+}
+
 /// Represents a single effect within an ability
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbilityEffect {
@@ -101,6 +122,12 @@ pub struct AbilityEffect {
     // For passive effects
     #[serde(rename = "passiveType", skip_serializing_if = "Option::is_none")]
     pub passive_type: Option<PassiveEffectType>,
+
+    #[serde(rename = "passiveMode", skip_serializing_if = "Option::is_none")]
+    pub passive_mode: Option<String>, // 'effect' or 'stat_modifier'
+
+    #[serde(rename = "statModifier", skip_serializing_if = "Option::is_none")]
+    pub stat_modifier: Option<StatModifier>,
 }
 
 /// Default ability type for backward compatibility
@@ -115,7 +142,7 @@ pub struct Ability {
     pub name: String,
     pub description: String,
 
-    // Ability type: "combat" = shows in combat action bar, "passive" = hidden/automatic
+    // Ability type: "combat" = shows in combat action bar, "passive" = hidden/automatic, "noncombat" = buff used before combat
     #[serde(rename = "abilityType", default = "default_ability_type")]
     pub ability_type: String,
 
@@ -127,6 +154,10 @@ pub struct Ability {
     pub mana_cost: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cooldown: Option<i64>,
+
+    // For noncombat abilities - how many adventures the buff lasts
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<i64>,
 
     // Legacy fields (deprecated but kept for backward compatibility)
     #[serde(rename = "damageFormula", skip_serializing_if = "Option::is_none")]

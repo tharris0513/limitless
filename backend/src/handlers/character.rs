@@ -155,6 +155,92 @@ pub async fn update_character_last_played(
     }
 }
 
+/// Use a noncombat ability (activate buff)
+pub async fn use_noncombat_ability(
+    State(repo): State<Arc<UserRepository>>,
+    Path((character_id, ability_id)): Path<(String, String)>,
+    AuthClaims(claims): AuthClaims,
+) -> Result<Json<Character>, AppError> {
+    // Verify character belongs to authenticated user
+    let mut character = repo
+        .get_character(&character_id, &claims.sub)
+        .await
+        .map_err(|_| AppError::character_not_found(&character_id))?;
+
+    // Get the ability
+    let ability = repo
+        .get_ability(&ability_id)
+        .await
+        .map_err(|_| AppError::BadRequest("Ability not found".to_string()))?;
+
+    // Verify it's a noncombat ability
+    if ability.ability_type != "noncombat" {
+        return Err(AppError::BadRequest(
+            "Only noncombat abilities can be used this way".to_string(),
+        ));
+    }
+
+    // Check if character has enough mana
+    let mana_cost = ability.mana_cost.unwrap_or(0);
+    if character.mana < mana_cost {
+        return Err(AppError::BadRequest(format!(
+            "Not enough mana. Required: {}, Available: {}",
+            mana_cost, character.mana
+        )));
+    }
+
+    // Deduct mana (both from stats and top-level field)
+    character.mana -= mana_cost;
+    character.mana = character.mana;
+
+    // Check if ability is already active - if so, extend duration instead of adding new buff
+    let duration = ability.duration.unwrap_or(1);
+    let mut buff_extended = false;
+
+    if let Some(active_buffs) = &mut character.active_buffs {
+        if let Some(existing_buff) = active_buffs
+            .iter_mut()
+            .find(|buff| buff.ability_id == ability_id)
+        {
+            existing_buff.remaining_adventures += duration;
+            buff_extended = true;
+        }
+    }
+
+    // If buff wasn't extended, add it as new
+    if !buff_extended {
+        let new_buff = crate::models::ActiveBuff {
+            ability_id: ability_id.clone(),
+            ability_name: ability.name.clone(),
+            remaining_adventures: duration,
+            effects: ability.effects.clone(),
+        };
+
+        if let Some(active_buffs) = &mut character.active_buffs {
+            active_buffs.push(new_buff);
+        } else {
+            character.active_buffs = Some(vec![new_buff]);
+        }
+    }
+
+    // Save character
+    repo.update_character_state(&character_id, &character)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update character after using ability: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    tracing::info!(
+        "Character {} used noncombat ability {} ({})",
+        character_id,
+        ability.name,
+        ability_id
+    );
+
+    Ok(Json(character))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct GrantExperienceRequest {
     pub amount: i64,

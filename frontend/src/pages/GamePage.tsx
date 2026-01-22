@@ -124,13 +124,11 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
             level: creature.level,
             experienceReward: creature.experienceReward,
             attackDescription: creature.attackDescription,
-            stats: {
-              might: creature.might,
-              defense: creature.defense,
-              magic: creature.magic,
-              resistance: creature.resistance,
-              agility: creature.agility,
-            },
+            might: creature.might,
+            defense: creature.defense,
+            magic: creature.magic,
+            resistance: creature.resistance,
+            agility: creature.agility,
           },
           combatLog: [],
         };
@@ -194,8 +192,8 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
           <button 
             className={styles.actionButton}
             onClick={handleRest}
-            disabled={resting || character.stats.adventures <= 0}
-            title={character.stats.adventures <= 0 ? "No adventures remaining" : "Restore HP and MP (costs 1 adventure)"}
+            disabled={resting || character.adventures <= 0}
+            title={character.adventures <= 0 ? "No adventures remaining" : "Restore HP and MP (costs 1 adventure)"}
           >
             🛌 {resting ? 'Resting...' : 'Rest'}
           </button>

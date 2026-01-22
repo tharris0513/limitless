@@ -83,35 +83,11 @@ export const useApiWithLoading = () => {
       ),
   };
 
-  // Shop API calls with loading
-  const shop = {
-    purchaseItem: (shopId: string, itemId: string, quantity: number = 1) =>
-      withLoading(LoadingKeys.SHOP_PURCHASE, () =>
-        GameAPI.purchaseItem(shopId, itemId, quantity)
-      ),
-  };
-
-  // Item API calls with loading
-  const items = {
-    useItem: (itemId: string, quantity: number = 1) =>
-      withLoading(LoadingKeys.ITEM_USE, () =>
-        GameAPI.useItem(itemId, quantity)
-      ),
-
-    equipItem: (itemId: string) =>
-      withLoading(LoadingKeys.ITEM_EQUIP, () => GameAPI.equipItem(itemId)),
-
-    unequipItem: (slot: string) =>
-      withLoading(LoadingKeys.ITEM_EQUIP, () => GameAPI.unequipItem(slot)),
-  };
-
   return {
     auth,
     user,
     characters,
     adventures,
-    shop,
-    items,
     withLoading, // Export for custom use cases
   };
 };

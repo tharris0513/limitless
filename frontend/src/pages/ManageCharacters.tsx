@@ -32,17 +32,15 @@ interface Character {
   level: number;
   experience: number;
   experienceToNext: number;
-  stats: {
-    health: number;
-    maxHealth: number;
-    mana: number;
-    maxMana: number;
-    might: number;
-    defense: number;
-    magic: number;
-    resistance: number;
-    agility: number;
-  };
+  health: number;
+  maxHealth: number;
+  mana: number;
+  maxMana: number;
+  might: number;
+  defense: number;
+  magic: number;
+  resistance: number;
+  agility: number;
   createdAt: string;
   lastPlayed: string;
   adventures: number;
@@ -139,10 +137,18 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
             level: char.level,
             experience: char.experience,
             experienceToNext: char.experienceToNext || char.experience_to_next,
-            stats: char.stats,
+            health: char.health,
+            maxHealth: char.maxHealth || char.max_health,
+            mana: char.mana,
+            maxMana: char.maxMana || char.max_mana,
+            might: char.might,
+            defense: char.defense,
+            magic: char.magic,
+            resistance: char.resistance,
+            agility: char.agility,
             createdAt: char.createdAt || char.created_at,
             lastPlayed: char.lastPlayed || char.last_played,
-            adventures: char.stats?.adventures || 0,
+            adventures: char.adventures || 0,
           })
         );
 
@@ -278,7 +284,7 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
       setCharacters(
         characters.map(c =>
           c.id === character.id
-            ? { ...c, stats: { ...c.stats, adventures }, adventures }
+            ? { ...c, adventures }
             : c
         )
       );
@@ -594,45 +600,45 @@ export const ManageCharacters: React.FC<ManageCharactersProps> = ({
                   <div>
                     <div className={styles.detailLabel}>Health</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.health}/
-                      {selectedCharacter.stats?.maxHealth}
+                      {selectedCharacter?.health}/
+                      {selectedCharacter?.maxHealth}
                     </div>
                   </div>
                   <div>
                     <div className={styles.detailLabel}>Mana</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.mana}/
-                      {selectedCharacter.stats?.maxMana}
+                      {selectedCharacter?.mana}/
+                      {selectedCharacter?.maxMana}
                     </div>
                   </div>
                   <div>
                     <div className={styles.detailLabel}>Might</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.might}
+                      {selectedCharacter?.might}
                     </div>
                   </div>
                   <div>
                     <div className={styles.detailLabel}>Defense</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.defense}
+                      {selectedCharacter?.defense}
                     </div>
                   </div>
                   <div>
                     <div className={styles.detailLabel}>Magic</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.magic}
+                      {selectedCharacter?.magic}
                     </div>
                   </div>
                   <div>
                     <div className={styles.detailLabel}>Resistance</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.resistance}
+                      {selectedCharacter?.resistance}
                     </div>
                   </div>
                   <div>
                     <div className={styles.detailLabel}>Agility</div>
                     <div className={styles.detailValue}>
-                      {selectedCharacter.stats?.agility}
+                      {selectedCharacter?.agility}
                     </div>
                   </div>
                   <div>

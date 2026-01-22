@@ -118,10 +118,10 @@ impl UserRepository {
     ) -> Result<()> {
         // First get current adventures and max stats
         let character = self.get_character(character_id, user_id).await?;
-        let current_adventures = character.stats.adventures;
+        let current_adventures = character.adventures;
         let new_adventures = (current_adventures as i32 + amount).min(max_adventures);
-        let max_health = character.stats.max_health;
-        let max_mana = character.stats.max_mana;
+        let max_health = character.max_health;
+        let max_mana = character.max_mana;
 
         // Update adventures, health, and mana (stored as top-level attributes)
         self.client

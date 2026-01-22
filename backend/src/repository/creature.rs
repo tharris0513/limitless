@@ -29,8 +29,8 @@ impl UserRepository {
             AttributeValue::N(creature.level.to_string()),
         );
         item.insert(
-            "health".to_string(),
-            AttributeValue::N(creature.health.to_string()),
+            "max_health".to_string(),
+            AttributeValue::N(creature.max_health.to_string()),
         );
         item.insert(
             "might".to_string(),
@@ -171,9 +171,8 @@ impl UserRepository {
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
             level: get_i64("level")?,
-            health: get_i64("health")?,
+            max_health: get_i64("max_health")?,
             might: get_i64("might")?,
-
             defense: get_i64("defense")?,
             magic: get_i64("magic")?,
             resistance: get_i64("resistance")?,

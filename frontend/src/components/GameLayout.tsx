@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
-import { type Player, type User } from '../types/game';
+import { type Character, type User } from '../types/game';
 import { Heart, Zap, Star, Settings, Shield, Swords, Dumbbell, ShieldCheck } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import styles from './GameLayout.module.css';
 
 interface GameLayoutProps {
-  player: Player | null;
+  character: Character | null;
   user?: User | null;
   children: React.ReactNode;
   onLogout?: () => void;
@@ -15,15 +15,15 @@ interface GameLayoutProps {
   hideCharacterInfo?: boolean;
 }
 
-export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, onLogout, onSettingsClick, isAdmin, onAdminClick, hideCharacterInfo }) => {
+export const GameLayout: React.FC<GameLayoutProps> = ({ character, user, children, onLogout, onSettingsClick, isAdmin, onAdminClick, hideCharacterInfo }) => {
   // Use experience and experienceToNext directly from the character
   const expProgress = useMemo(() => {
-    if (!player) return { current: 0, needed: 100 };
+    if (!character) return { current: 0, needed: 100 };
     return { 
-      current: player.experience, 
-      needed: player.experienceToNext 
+      current: character.experience, 
+      needed: character.experienceToNext 
     };
-  }, [player]);
+  }, [character]);
 
   return (
     <div className={styles.layoutContainer}>
@@ -61,13 +61,13 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
       </header>
 
       <div className={styles.layoutBody}>
-        {player && player.stats && !hideCharacterInfo && (
+        {character && !hideCharacterInfo && (
           <aside className={styles.sidebar}>
             <div className={styles.sidebarContent}>
               <div className={styles.characterHeader}>
-                <h2 className={styles.characterName}>{player.name}</h2>
-                <div className={styles.characterLevel}>Level {player.level}</div>
-                <div className={styles.characterClass}>{player.classId}</div>
+                <h2 className={styles.characterName}>{character.name}</h2>
+                <div className={styles.characterLevel}>Level {character.level}</div>
+                <div className={styles.characterClass}>{character.classId}</div>
                 
                 <div className={styles.experienceSection}>
                   <div className={styles.experienceLabel}>
@@ -86,67 +86,83 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ player, user, children, 
                 <div className={styles.statItem}>
                   <Heart size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.health}/{player.maxHealth}</span>
+                    <span className={styles.statValue}>{character.health}/{character.maxHealth}</span>
                     <span className={styles.statLabel}>Health</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Star size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.mana}/{player.maxMana}</span>
+                    <span className={styles.statValue}>{character.mana}/{character.maxMana}</span>
                     <span className={styles.statLabel}>Mana</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Dumbbell size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats?.might || 0}</span>
+                    <span className={styles.statValue}>{character.might || 0}</span>
                     <span className={styles.statLabel}>Might</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Shield size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats?.defense || 0}</span>
+                    <span className={styles.statValue}>{character.defense || 0}</span>
                     <span className={styles.statLabel}>Defense</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Star size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats?.magic || 0}</span>
+                    <span className={styles.statValue}>{character.magic || 0}</span>
                     <span className={styles.statLabel}>Magic</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <ShieldCheck size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats?.resistance || 0}</span>
+                    <span className={styles.statValue}>{character.resistance || 0}</span>
                     <span className={styles.statLabel}>Resistance</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Zap size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats?.agility || 0}</span>
+                    <span className={styles.statValue}>{character.agility || 0}</span>
                     <span className={styles.statLabel}>Agility</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Swords size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{player.stats?.adventures || 0}</span>
+                    <span className={styles.statValue}>{character.adventures || 0}</span>
                     <span className={styles.statLabel}>Adventures</span>
                   </div>
                 </div>
               </div>
+
+              {character.activeBuffs && character.activeBuffs.length > 0 && (
+                <div className={styles.activeBuffsSection}>
+                  <h3 className={styles.activeBuffsTitle}>Active Buffs</h3>
+                  <div className={styles.activeBuffsList}>
+                    {character.activeBuffs.map((buff) => (
+                      <div key={buff.abilityId} className={styles.buffItem}>
+                        <div className={styles.buffName}>{buff.abilityName}</div>
+                        <div className={styles.buffDuration}>
+                          {buff.remainingAdventures} adv
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </aside>
         )}
 
         <main className={styles.mainContent}>{children}</main>
 
-        {player && player.stats && user && !hideCharacterInfo && (
+        {user && (
           <ChatPanel username={user.username || user.discordName} />
         )}
       </div>

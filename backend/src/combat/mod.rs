@@ -5,14 +5,16 @@ use crate::error::AppError;
 use crate::level_system::{
     calculate_level_from_experience, calculate_stat_increases_for_level, experience_for_level,
 };
-use crate::models::{Ability, ActiveEffectType, Character, EffectType, PassiveEffectType};
+use crate::models::{
+    Ability, ActiveEffectType, Character, CreatureInCombat, EffectType, PassiveEffectType,
+};
 use crate::repository::UserRepository;
 use serde::{Deserialize, Serialize};
 
 pub use helpers::{
-    parse_attack_description, AbilityProcessor, EnemyHelper, GameStateHelper, GS_ABILITY_COOLDOWNS,
-    GS_ENEMY, GS_ENEMY_HEALTH, GS_PLAYER_HEALTH, GS_PRIMARY_WEAPON_ENCHANTED,
-    GS_SECONDARY_WEAPON_ENCHANTED, GS_STATUS, GS_TURN_NUMBER,
+    parse_attack_description, AbilityProcessor, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY,
+    GS_PLAYER_HEALTH, GS_PRIMARY_WEAPON_ENCHANTED, GS_SECONDARY_WEAPON_ENCHANTED, GS_STATUS,
+    GS_TURN_NUMBER,
 };
 
 /// Combat action request
@@ -32,14 +34,14 @@ pub enum CombatActionRequest {
 #[serde(rename_all = "camelCase")]
 pub struct CombatActionResult {
     pub attacks: Vec<SingleAttack>,
-    pub total_damage: i32,
-    pub enemy_health: i32,
+    pub total_damage: i64,
+    pub enemy_health: i64,
     pub enemy_attacks: Vec<SingleAttack>,
-    pub player_health: i32,
-    pub player_mana: i32,
+    pub player_health: i64,
+    pub player_mana: i64,
     pub victory: bool,
     pub defeat: bool,
-    pub experience_gained: Option<i32>,
+    pub experience_gained: Option<i64>,
     pub victory_message: Option<String>,
     pub defeat_message: Option<String>,
     pub level_up: Option<LevelUpInfo>,
@@ -78,7 +80,7 @@ pub struct StatIncreases {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SingleAttack {
-    pub damage: i32,
+    pub damage: i64,
     pub description: String,
     pub is_dual_wield: bool,
 }
@@ -91,7 +93,7 @@ pub fn apply_weapon_enchantment(
     attacks: &mut Vec<SingleAttack>,
     enchantment_type: Option<PassiveEffectType>,
     _weapon: &str, // "primary" or "secondary"
-) -> Option<i32> {
+) -> Option<i64> {
     // Find abilities that provide enchantment damage for this type
     let enchant_abilities = processor.get_enchantment_damage_abilities(enchantment_type);
 
@@ -137,7 +139,7 @@ pub fn process_melee_attacks(
     let has_dual_wield = processor.has_passive(PassiveEffectType::DualWield);
 
     // First attack (main hand)
-    let damage = DamageCalculator::calculate_melee_attack(character.stats.might, enemy_defense);
+    let damage = DamageCalculator::calculate_melee_attack(character.might, enemy_defense);
     attacks.push(SingleAttack {
         damage,
         description: format!(
@@ -157,7 +159,7 @@ pub fn process_melee_attacks(
 
     // Second attack if dual wielding
     if has_dual_wield {
-        let damage = DamageCalculator::calculate_melee_attack(character.stats.might, enemy_defense);
+        let damage = DamageCalculator::calculate_melee_attack(character.might, enemy_defense);
         attacks.push(SingleAttack {
             damage,
             description: format!(
@@ -184,21 +186,19 @@ pub fn process_ability_attacks(
     character: &Character,
     processor: &AbilityProcessor,
     game_state: &mut serde_json::Value,
-    enemy_defense: i64,
-    enemy_resistance: i64,
 ) -> Result<Vec<SingleAttack>, AppError> {
     let mut attacks = Vec::new();
 
-    // Get enemy stats from game state for formula context
-    let enemy_helper = EnemyHelper::new(
+    // Get enemy Creature object from gate state
+    let enemy: CreatureInCombat = serde_json::from_value(
         game_state
             .get(GS_ENEMY)
-            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?,
-    );
-    let enemy_level = enemy_helper.level()?;
-    let enemy_health = enemy_helper.health()?;
-    let enemy_max_health = enemy_helper.max_health()?;
-
+            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?
+            .clone(),
+    )
+    .map_err(|e| {
+        AppError::validation_error(&format!("Failed to parse enemy from game state: {}", e))
+    })?;
     if !ability.effects.is_empty() {
         // Use new effects system
         for effect in &ability.effects {
@@ -210,14 +210,7 @@ pub fn process_ability_attacks(
                             // Calculate damage from this effect's formula
                             if let Some(ref formula) = effect.formula {
                                 let damage = DamageCalculator::test_formula_with_enemy(
-                                    formula,
-                                    &character.stats,
-                                    character.level,
-                                    enemy_defense,
-                                    enemy_resistance,
-                                    enemy_level as i64,
-                                    enemy_health as i64,
-                                    enemy_max_health as i64,
+                                    formula, &character, &enemy,
                                 )
                                 .map_err(|e| {
                                     AppError::validation_error(&format!(
@@ -314,7 +307,7 @@ pub fn process_ability_attacks(
             })?
         } else {
             // Fallback to might-based if no formula (won't apply defense here as this is legacy)
-            DamageCalculator::calculate_melee_attack(character.stats.might, 0)
+            DamageCalculator::calculate_melee_attack(character.might, 0)
         };
 
         // Use ability's attack description template
@@ -378,8 +371,8 @@ pub async fn handle_victory(
     user_id: &str,
     character: &mut Character,
     enemy_name: String,
-    enemy_exp_reward: i32,
-) -> Result<(Option<i32>, Option<String>, Option<LevelUpInfo>), AppError> {
+    enemy_exp_reward: i64,
+) -> Result<(Option<i64>, Option<String>, Option<LevelUpInfo>), AppError> {
     let experience_gained = Some(enemy_exp_reward);
 
     // Calculate total accumulated experience
@@ -463,20 +456,20 @@ pub async fn handle_victory(
         });
 
         // Fully restore health and mana on level up
-        character.stats.health = character.stats.max_health + max_health;
-        character.stats.mana = character.stats.max_mana + max_mana;
+        character.health = character.max_health + max_health;
+        character.mana = character.max_mana + max_mana;
     }
 
     // Update health and mana in database
-    repo.update_character_health(character_id, user_id, character.stats.health)
+    repo.update_character_health(character_id, user_id, character.health)
         .await
         .map_err(AppError::from)?;
-    repo.update_character_mana(character_id, user_id, character.stats.mana)
+    repo.update_character_mana(character_id, user_id, character.mana)
         .await
         .map_err(AppError::from)?;
 
     // Deduct adventure
-    let new_adventures = (character.stats.adventures - 1).max(0);
+    let new_adventures = (character.adventures - 1).max(0);
     repo.update_character_adventures_with_user(character_id, user_id, new_adventures)
         .await
         .map_err(AppError::from)?;
@@ -500,10 +493,10 @@ pub async fn handle_defeat(
     character_id: &str,
     user_id: &str,
     character: &Character,
-    enemy_name: String,
+    enemy_name: &String,
 ) -> Result<Option<String>, AppError> {
     // Deduct adventure
-    let new_adventures = (character.stats.adventures - 1).max(0);
+    let new_adventures = (character.adventures - 1).max(0);
     repo.update_character_adventures_with_user(character_id, user_id, new_adventures)
         .await
         .map_err(AppError::from)?;
@@ -526,8 +519,8 @@ pub fn apply_enemy_attack(
     enemy_might: i64,
     player_defense: i64,
     enemy_name: &str,
-    enemy_attack_template: Option<String>,
-) -> (Vec<SingleAttack>, i32) {
+    enemy_attack_template: String,
+) -> (Vec<SingleAttack>, i64) {
     // Enemy melee attack reduced by player defense
     let mitigated_damage = DamageCalculator::calculate_melee_attack(enemy_might, player_defense);
 
@@ -538,8 +531,8 @@ pub fn apply_enemy_attack(
         mitigated_damage
     );
 
-    let attack_description = if let Some(template) = enemy_attack_template {
-        parse_attack_description(&template, mitigated_damage, enemy_name)
+    let attack_description = if !enemy_attack_template.is_empty() {
+        parse_attack_description(&enemy_attack_template, mitigated_damage, enemy_name)
     } else {
         format!(
             "{} counterattacks, dealing **{}** damage!",
@@ -559,7 +552,7 @@ pub fn apply_enemy_attack(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AbilityEffect, CharacterStats};
+    use crate::models::{AbilityEffect, Character};
 
     /// Helper to create a basic test character
     fn create_test_character() -> Character {
@@ -571,18 +564,17 @@ mod tests {
             level: 5,
             experience: 100,
             experience_to_next: 500,
-            stats: CharacterStats {
-                might: 15,
-                defense: 10,
-                magic: 8,
-                resistance: 6,
-                agility: 12,
-                health: 100,
-                max_health: 100,
-                mana: 50,
-                max_mana: 50,
-                adventures: 10,
-            },
+            might: 15,
+            defense: 10,
+            magic: 8,
+            resistance: 6,
+            agility: 12,
+            health: 100,
+            max_health: 100,
+            mana: 50,
+            max_mana: 50,
+            adventures: 10,
+            active_buffs: Some(vec![].into()),
             location: "town".to_string(),
             created_at: "2026-01-01T00:00:00Z".to_string(),
             last_played: "2026-01-01T00:00:00Z".to_string(),
@@ -613,6 +605,7 @@ mod tests {
             ability_type: "combat".to_string(),
             mana_cost: Some(10),
             cooldown: Some(2),
+            duration: None,
             damage_formula: Some("(magic * 1.5) + 10".to_string()),
             heal_formula: None,
             effect_formula: None,
@@ -625,6 +618,8 @@ mod tests {
                 passive_type: None,
                 formula: Some("(magic * 1.5) + 10".to_string()),
                 attack_description: Some("You hurl a fireball for ${damage} damage!".to_string()),
+                passive_mode: None,
+                stat_modifier: None,
             }],
         }
     }
@@ -680,6 +675,7 @@ mod tests {
             ability_type: "passive".to_string(),
             mana_cost: None,
             cooldown: None,
+            duration: None,
             damage_formula: None,
             heal_formula: None,
             effect_formula: None,
@@ -692,6 +688,8 @@ mod tests {
                 passive_type: Some(PassiveEffectType::DualWield),
                 formula: None,
                 attack_description: None,
+                passive_mode: None,
+                stat_modifier: None,
             }],
         };
 
@@ -725,6 +723,7 @@ mod tests {
             ability_type: "passive".to_string(),
             mana_cost: None,
             cooldown: None,
+            duration: None,
             damage_formula: None,
             heal_formula: None,
             effect_formula: None,
@@ -737,6 +736,8 @@ mod tests {
                 passive_type: Some(PassiveEffectType::EnchantWeapon),
                 formula: None,
                 attack_description: None,
+                passive_mode: None,
+                stat_modifier: None,
             }],
         };
 
@@ -748,6 +749,7 @@ mod tests {
             ability_type: "passive".to_string(),
             mana_cost: None,
             cooldown: None,
+            duration: None,
             damage_formula: None,
             heal_formula: None,
             effect_formula: None,
@@ -761,6 +763,8 @@ mod tests {
                     passive_type: Some(PassiveEffectType::EnchantWeaponFire),
                     formula: None,
                     attack_description: None,
+                    passive_mode: None,
+                    stat_modifier: None,
                 },
                 AbilityEffect {
                     id: "fire_enchant_damage".to_string(),
@@ -769,6 +773,8 @@ mod tests {
                     passive_type: None,
                     formula: Some("magic * 0.5".to_string()),
                     attack_description: None,
+                    passive_mode: None,
+                    stat_modifier: None,
                 },
             ],
         };
@@ -795,29 +801,35 @@ mod tests {
     #[test]
     fn test_process_ability_attacks_damage_effect() {
         let mut character = create_test_character();
-        character.stats.magic = 20; // Set magic for damage calculation
+        character.magic = 20; // Set magic for damage calculation
 
         let ability = create_damage_ability();
         let abilities = vec![];
         let processor = AbilityProcessor::new(&character, &abilities);
+        let enemey_in_combat = CreatureInCombat {
+            name: "Goblin".to_string(),
+            health: 50,
+            max_health: 50,
+            level: 3,
+            introduction_text: "Intro".to_string(),
+            might: 5,
+            defense: 5,
+            magic: 3,
+            resistance: 3,
+            agility: 3,
+            creature_type: "humanoid".to_string(),
+            experience_reward: 200,
+            attack_description: "Rawr!".to_string(),
+        };
+
         let mut game_state = serde_json::json!({
-            "enemy": {
-                "name": "Goblin",
-                "health": 50,
-                "maxHealth": 50,
-                "level": 3,
-                "stats": {
-                    "defense": 5,
-                    "resistance": 3
-                }
-            },
+            "enemy": enemey_in_combat,
             "turnNumber": 1
         });
 
-        let result =
-            process_ability_attacks(&ability, &character, &processor, &mut game_state, 5, 3);
+        let result = process_ability_attacks(&ability, &character, &processor, &mut game_state);
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Ability processing failed: {:?}", result);
         let attacks = result.unwrap();
         assert_eq!(attacks.len(), 1);
         assert!(attacks[0].damage > 0);

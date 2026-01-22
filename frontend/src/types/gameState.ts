@@ -9,13 +9,11 @@ export interface EnemyState {
   mana?: number;
   maxMana?: number;
   level: number;
-  stats: {
-    might: number;
-    defense: number;
-    magic: number;
-    resistance: number;
-    agility: number;
-  };
+  might: number;
+  defense: number;
+  magic: number;
+  resistance: number;
+  agility: number;
   abilities?: string[];
 }
 

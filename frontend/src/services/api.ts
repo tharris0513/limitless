@@ -1,6 +1,5 @@
 import axios from 'axios';
 import type {
-  Player,
   User,
   Character,
   CharacterAbility,
@@ -80,19 +79,6 @@ function transformUserToBackend(frontendUser: any): any {
   };
 }
 
-function transformCharacterFromBackend(backendChar: any): Character {
-  return {
-    ...backendChar,
-    // Flatten health/mana from stats to top level for backward compatibility
-    health: backendChar.stats?.health ?? backendChar.health ?? 0,
-    maxHealth: backendChar.stats?.maxHealth ?? backendChar.maxHealth ?? 0,
-    mana: backendChar.stats?.mana ?? backendChar.mana ?? 0,
-    maxMana: backendChar.stats?.maxMana ?? backendChar.maxMana ?? 0,
-    inventory: backendChar.inventory || [],
-    equipment: backendChar.equipment || {},
-  };
-}
-
 export class GameAPI {
   // Check if user is authenticated via cookie
   static async getAuthFromCookie(): Promise<{ token: string; user: User }> {
@@ -112,7 +98,7 @@ export class GameAPI {
   static async handleDiscordCallback(
     code: string,
     state?: string
-  ): Promise<{ token: string; player: Player }> {
+  ): Promise<{ token: string; player: Character }> {
     const params = new URLSearchParams({ code });
     if (state) {
       params.append('state', state);
@@ -128,7 +114,7 @@ export class GameAPI {
   static async login(
     username: string,
     password: string
-  ): Promise<{ token: string; player: Player }> {
+  ): Promise<{ token: string; player: Character }> {
     const response = await api.post('/auth/login', { username, password });
     return response.data;
   }
@@ -137,7 +123,7 @@ export class GameAPI {
     username: string,
     email: string,
     password: string
-  ): Promise<{ token: string; player: Player }> {
+  ): Promise<{ token: string; player: Character }> {
     const response = await api.post('/auth/register', {
       username,
       email,
@@ -202,14 +188,13 @@ export class GameAPI {
   // Character endpoints
   static async getUserCharacters(): Promise<Character[]> {
     const response = await api.get('/characters');
-    return response.data.map((char: any) =>
-      transformCharacterFromBackend(char)
-    );
+    // directly map into the Character structure
+    return response.data.map((c: any) => c as Character);
   }
 
   static async getCharacter(characterId: string): Promise<Character> {
     const response = await api.get(`/characters/${characterId}`);
-    return transformCharacterFromBackend(response.data);
+    return response.data as Character;
   }
 
   static async createCharacter(characterData: {
@@ -218,7 +203,7 @@ export class GameAPI {
     classId: string;
   }): Promise<Character> {
     const response = await api.post('/characters', characterData);
-    return transformCharacterFromBackend(response.data);
+    return response.data as Character;
   }
 
   static async updateCharacter(
@@ -226,7 +211,7 @@ export class GameAPI {
     updates: Partial<Character>
   ): Promise<Character> {
     const response = await api.patch(`/characters/${characterId}`, updates);
-    return transformCharacterFromBackend(response.data);
+    return response.data as Character;
   }
 
   static async updateCharacterLastPlayed(characterId: string): Promise<void> {
@@ -235,12 +220,12 @@ export class GameAPI {
 
   static async fleeCombat(characterId: string): Promise<Character> {
     const response = await api.post(`/characters/${characterId}/flee`);
-    return transformCharacterFromBackend(response.data);
+    return response.data as Character;
   }
 
   static async restCharacter(characterId: string): Promise<Character> {
     const response = await api.post(`/characters/${characterId}/rest`);
-    return transformCharacterFromBackend(response.data);
+    return response.data as Character;
   }
 
   static async performCombatAction(
@@ -283,6 +268,16 @@ export class GameAPI {
     }));
   }
 
+  static async activateNoncombatAbility(
+    characterId: string,
+    abilityId: string
+  ): Promise<Character> {
+    const response = await api.post(
+      `/characters/${characterId}/abilities/${abilityId}/use`
+    );
+    return response.data;
+  }
+
   // Class endpoints
   static async getClasses(): Promise<Class[]> {
     const response = await api.get('/classes');
@@ -298,17 +293,6 @@ export class GameAPI {
       ability: item[0],
       unlockLevel: item[1],
     }));
-  }
-
-  // Legacy Player endpoints (for backward compatibility)
-  static async getPlayer(): Promise<Player> {
-    const response = await api.get('/player');
-    return response.data;
-  }
-
-  static async updatePlayer(updates: Partial<Player>): Promise<Player> {
-    const response = await api.patch('/player', updates);
-    return response.data;
   }
 
   // Game world endpoints
@@ -341,7 +325,7 @@ export class GameAPI {
   static async completeAdventure(
     adventureId: string,
     choices?: Record<string, ItemType[]>
-  ): Promise<{ rewards: ItemType[]; player: Player }> {
+  ): Promise<{ rewards: ItemType[]; player: Character }> {
     const response = await api.post(`/adventures/${adventureId}/complete`, {
       choices,
     });
@@ -351,34 +335,6 @@ export class GameAPI {
   // Shop endpoints
   static async getShop(shopId: string): Promise<Shop> {
     const response = await api.get(`/shops/${shopId}`);
-    return response.data;
-  }
-
-  static async purchaseItem(
-    shopId: string,
-    itemId: string,
-    quantity: number = 1
-  ): Promise<Player> {
-    const response = await api.post(`/shops/${shopId}/purchase`, {
-      itemId,
-      quantity,
-    });
-    return response.data;
-  }
-
-  // Inventory endpoints
-  static async useItem(itemId: string, quantity: number = 1): Promise<Player> {
-    const response = await api.post('/inventory/use', { itemId, quantity });
-    return response.data;
-  }
-
-  static async equipItem(itemId: string): Promise<Player> {
-    const response = await api.post('/inventory/equip', { itemId });
-    return response.data;
-  }
-
-  static async unequipItem(slot: string): Promise<Player> {
-    const response = await api.post('/inventory/unequip', { slot });
     return response.data;
   }
 

@@ -42,6 +42,14 @@ impl UserRepository {
             AttributeValue::N(ability.cooldown.unwrap_or(0).to_string()),
         );
 
+        // Store duration for noncombat abilities
+        if let Some(duration) = ability.duration {
+            item.insert(
+                "duration".to_string(),
+                AttributeValue::N(duration.to_string()),
+            );
+        }
+
         // Store effects as JSON
         if !ability.effects.is_empty() {
             let effects_json =
@@ -200,6 +208,10 @@ impl UserRepository {
             effects,
             mana_cost: Some(get_i64("mana_cost")?),
             cooldown: Some(get_i64("cooldown")?),
+            duration: item
+                .get("duration")
+                .and_then(|v| v.as_n().ok())
+                .and_then(|s| s.parse::<i64>().ok()),
             damage_formula: item
                 .get("damage_formula")
                 .and_then(|v| v.as_s().ok())
@@ -425,6 +437,10 @@ impl UserRepository {
             effects,
             mana_cost: Some(get_i64("mana_cost")?),
             cooldown: Some(get_i64("cooldown")?),
+            duration: item
+                .get("duration")
+                .and_then(|v| v.as_n().ok())
+                .and_then(|s| s.parse::<i64>().ok()),
             damage_formula: item
                 .get("damage_formula")
                 .and_then(|v| v.as_s().ok())

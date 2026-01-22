@@ -52,8 +52,8 @@ impl<'a> AbilityProcessor<'a> {
     }
 
     /// Calculate enchantment damage using standardized formula
-    pub fn calculate_enchantment_damage(&self) -> i32 {
-        (self.character.stats.magic as f64 * 0.5).round() as i32
+    pub fn calculate_enchantment_damage(&self) -> i64 {
+        (self.character.magic as f64 * 0.5).round() as i64
     }
 
     /// Check if character has the base weapon enchantment passive
@@ -161,11 +161,11 @@ impl<'a> GameStateHelper<'a> {
     }
 
     /// Get player health
-    pub fn player_health(&self, default: i64) -> i32 {
+    pub fn player_health(&self, default: i64) -> i64 {
         self.state
             .get(GS_PLAYER_HEALTH)
             .and_then(|v| v.as_i64())
-            .unwrap_or(default) as i32
+            .unwrap_or(default)
     }
 
     /// Get enemy object
@@ -177,98 +177,8 @@ impl<'a> GameStateHelper<'a> {
     }
 }
 
-/// Helper to extract enemy details from enemy JSON object
-pub struct EnemyHelper<'a> {
-    enemy: &'a serde_json::Value,
-}
-
-impl<'a> EnemyHelper<'a> {
-    pub fn new(enemy: &'a serde_json::Value) -> Self {
-        Self { enemy }
-    }
-
-    /// Get enemy health
-    pub fn health(&self) -> Result<i32, AppError> {
-        self.enemy
-            .get(GS_ENEMY_HEALTH)
-            .and_then(|v| v.as_i64())
-            .ok_or_else(|| AppError::validation_error("Invalid enemy health"))
-            .map(|h| h as i32)
-    }
-
-    /// Get enemey max health
-    pub fn max_health(&self) -> Result<i32, AppError> {
-        self.enemy
-            .get(GS_ENEMY_MAX_HEALTH)
-            .and_then(|v| v.as_i64())
-            .ok_or_else(|| AppError::validation_error("Invalid enemy health"))
-            .map(|h| h as i32)
-    }
-
-    /// Get enemy level
-    pub fn level(&self) -> Result<i32, AppError> {
-        self.enemy
-            .get(GS_ENEMY_LEVEL)
-            .and_then(|v| v.as_i64())
-            .ok_or_else(|| AppError::validation_error("Invalid enemy level"))
-            .map(|l| l as i32)
-    }
-
-    /// Get enemy name
-    pub fn name(&self) -> String {
-        self.enemy
-            .get(GS_ENEMY_NAME)
-            .and_then(|v| v.as_str())
-            .unwrap_or("enemy")
-            .to_string()
-    }
-
-    /// Get enemy experience reward
-    pub fn exp_reward(&self) -> i32 {
-        self.enemy
-            .get(GS_ENEMY_EXP_REWARD)
-            .and_then(|v| v.as_i64())
-            .unwrap_or(50) as i32
-    }
-
-    /// Get enemy might stat
-    pub fn might(&self) -> i64 {
-        self.enemy
-            .get(GS_ENEMY_STATS)
-            .and_then(|s| s.get(GS_ENEMY_MIGHT))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(10)
-    }
-
-    /// Get enemy defense stat
-    pub fn defense(&self) -> i64 {
-        self.enemy
-            .get(GS_ENEMY_STATS)
-            .and_then(|s| s.get(GS_ENEMY_DEFENSE))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0)
-    }
-
-    /// Get enemy resistance stat
-    pub fn resistance(&self) -> i64 {
-        self.enemy
-            .get(GS_ENEMY_STATS)
-            .and_then(|s| s.get(GS_ENEMY_RESISTANCE))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0)
-    }
-
-    /// Get enemy attack description template
-    pub fn attack_description(&self) -> Option<String> {
-        self.enemy
-            .get(GS_ENEMY_ATTACK_DESC)
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-    }
-}
-
 /// Parse attack description template, replacing placeholders with actual values
-pub fn parse_attack_description(template: &str, damage: i32, name: &str) -> String {
+pub fn parse_attack_description(template: &str, damage: i64, name: &str) -> String {
     template
         .replace("${damage}", &damage.to_string())
         .replace("${x}", &damage.to_string())
@@ -288,7 +198,7 @@ pub fn parse_enchantment_from_state(enchant_str: &str) -> Option<PassiveEffectTy
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AbilityEffect, CharacterStats, EffectType};
+    use crate::models::{AbilityEffect, EffectType};
 
     /// Helper to create a basic test character
     fn create_test_character() -> Character {
@@ -300,18 +210,17 @@ mod tests {
             level: 5,
             experience: 100,
             experience_to_next: 500,
-            stats: CharacterStats {
-                might: 15,
-                defense: 10,
-                magic: 8,
-                resistance: 6,
-                agility: 12,
-                health: 100,
-                max_health: 100,
-                mana: 50,
-                max_mana: 50,
-                adventures: 10,
-            },
+            might: 15,
+            defense: 10,
+            magic: 8,
+            resistance: 6,
+            agility: 12,
+            health: 100,
+            max_health: 100,
+            mana: 50,
+            max_mana: 50,
+            adventures: 10,
+            active_buffs: Some(vec![].into()),
             location: "town".to_string(),
             created_at: "2026-01-01T00:00:00Z".to_string(),
             last_played: "2026-01-01T00:00:00Z".to_string(),
@@ -345,6 +254,7 @@ mod tests {
             ability_type: "passive".to_string(),
             mana_cost: None,
             cooldown: None,
+            duration: None,
             damage_formula: None,
             heal_formula: None,
             effect_formula: None,
@@ -357,6 +267,8 @@ mod tests {
                 passive_type: Some(PassiveEffectType::DualWield),
                 formula: None,
                 attack_description: None,
+                passive_mode: None,
+                stat_modifier: None,
             }],
         };
 
@@ -407,30 +319,6 @@ mod tests {
     }
 
     #[test]
-    fn test_enemy_helper_accessors() {
-        let enemy = serde_json::json!({
-            "name": "Orc Warrior",
-            "health": 120,
-            "experienceReward": 200,
-            "stats": {
-                "might": 15
-            },
-            "attackDescription": "${name} swings for ${damage}!"
-        });
-
-        let helper = EnemyHelper::new(&enemy);
-
-        assert_eq!(helper.name(), "Orc Warrior");
-        assert_eq!(helper.health().unwrap(), 120);
-        assert_eq!(helper.exp_reward(), 200);
-        assert_eq!(helper.might(), 15);
-        assert_eq!(
-            helper.attack_description().unwrap(),
-            "${name} swings for ${damage}!"
-        );
-    }
-
-    #[test]
     fn test_parse_enchantment_from_state() {
         assert_eq!(
             parse_enchantment_from_state("fire"),
@@ -450,7 +338,7 @@ mod tests {
     #[test]
     fn test_ability_processor_calculate_enchantment_damage() {
         let mut character = create_test_character();
-        character.stats.magic = 20;
+        character.magic = 20;
 
         let abilities = vec![];
         let processor = AbilityProcessor::new(&character, &abilities);
@@ -471,6 +359,7 @@ mod tests {
             ability_type: "passive".to_string(),
             mana_cost: None,
             cooldown: None,
+            duration: None,
             damage_formula: None,
             heal_formula: None,
             effect_formula: None,
@@ -483,6 +372,8 @@ mod tests {
                 passive_type: Some(PassiveEffectType::EnchantWeaponFire),
                 formula: None,
                 attack_description: None,
+                passive_mode: None,
+                stat_modifier: None,
             }],
         };
 

@@ -360,7 +360,7 @@ function App() {
           <Route path="/banned" element={<BannedUser />} />
           <Route path="/login" element={
             isAuthenticated ? <Navigate to="/" replace /> : 
-            <GameLayout player={null} user={null} onLogout={undefined}>
+            <GameLayout character={null} user={null} onLogout={undefined}>
               <LoginPage onLogin={handleLogin} />
             </GameLayout>
           } />
@@ -379,12 +379,12 @@ function App() {
               <div>Loading user data...</div>
             )
           ) : showSettings ? (
-            <GameLayout player={selectedCharacter} user={user} onLogout={handleLogout} isAdmin={user?.admin}>
+            <GameLayout character={selectedCharacter} user={user} onLogout={handleLogout} isAdmin={user?.admin}>
               <Settings onBack={() => setShowSettings(false)} />
             </GameLayout>
           ) : showAbilities ? (
             <GameLayout
-              player={selectedCharacter}
+              character={selectedCharacter}
               user={user}
               onLogout={handleLogout}
               onSettingsClick={() => setShowSettings(true)}
@@ -398,13 +398,14 @@ function App() {
                 <AbilitiesPage
                   character={selectedCharacter!}
                   onBack={() => setShowAbilities(false)}
+                  onCharacterUpdate={handleCharacterUpdate}
                 />
               </GameStateProvider>
             </GameLayout>
           ) : showAdminPanel ? (
             <GameLayout 
               key={adminView} // Force re-render when adminView changes
-              player={selectedCharacter}
+              character={selectedCharacter}
               user={user}
               onLogout={handleLogout} 
               isAdmin={user?.admin}
@@ -424,7 +425,7 @@ function App() {
           ) : needsCharacterCreation || characters.length === 0 ? (
             user ? (
               <GameLayout 
-                player={selectedCharacter}
+                character={selectedCharacter}
                 user={user}
                 onLogout={handleLogout} 
                 onSettingsClick={() => setShowSettings(true)} 
@@ -442,7 +443,7 @@ function App() {
           ) : !selectedCharacter ? (
             user ? (
               <GameLayout 
-                player={null}
+                character={null}
                 user={user}
                 onLogout={handleLogout} 
                 onSettingsClick={() => setShowSettings(true)} 
@@ -462,7 +463,7 @@ function App() {
             )
           ) : (
             <GameLayout
-              player={selectedCharacter}
+              character={selectedCharacter}
               user={user}
               onLogout={handleLogout}
               onSettingsClick={() => setShowSettings(true)}
@@ -487,7 +488,7 @@ function App() {
             <Navigate to="/banned" replace />
           ) : user ? (
             <GameLayout 
-              player={null}
+              character={null}
               user={user}
               onLogout={handleLogout} 
               onSettingsClick={() => setShowSettings(true)} 
@@ -513,7 +514,7 @@ function App() {
             <Navigate to="/banned" replace />
           ) : user ? (
             <GameLayout 
-              player={selectedCharacter}
+              character={selectedCharacter}
               user={user}
               onLogout={handleLogout} 
               onSettingsClick={() => setShowSettings(true)} 

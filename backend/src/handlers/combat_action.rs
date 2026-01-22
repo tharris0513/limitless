@@ -1,7 +1,7 @@
-use crate::error::AppError;
 use crate::middleware::AuthClaims;
-use crate::models::CharacterAbility;
+use crate::models::{CharacterAbility, CreatureInCombat};
 use crate::repository::UserRepository;
+use crate::{error::AppError, models::Creature};
 use axum::{
     extract::{Path, State},
     Json,
@@ -11,8 +11,8 @@ use std::sync::Arc;
 use crate::combat::{
     apply_enemy_attack, handle_defeat, handle_victory, process_ability_attacks,
     process_melee_attacks, update_cooldowns, AbilityProcessor, CombatActionRequest,
-    CombatActionResult, EnemyHelper, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY,
-    GS_ENEMY_HEALTH, GS_PLAYER_HEALTH, GS_STATUS, GS_TURN_NUMBER,
+    CombatActionResult, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY, GS_PLAYER_HEALTH,
+    GS_STATUS, GS_TURN_NUMBER,
 };
 
 // Save character's game state
@@ -90,12 +90,12 @@ pub async fn flee_combat(
         .ok_or_else(|| AppError::character_not_found(&character_id))?;
 
     // Check if character has adventures available
-    if character.stats.adventures <= 0 {
+    if character.adventures <= 0 {
         return Err(AppError::validation_error("No adventures remaining"));
     }
 
     // Decrease adventures by 1
-    let new_adventures = character.stats.adventures - 1;
+    let new_adventures = character.adventures - 1;
 
     // Update character adventures
     let _updated_character = repo
@@ -143,21 +143,19 @@ pub async fn rest_character(
         .ok_or_else(|| AppError::character_not_found(&character_id))?;
 
     // Check if character has adventures available
-    if character.stats.adventures <= 0 {
+    if character.adventures <= 0 {
         return Err(AppError::validation_error("No adventures remaining"));
     }
 
     // Check if already at full HP and MP
-    if character.stats.health >= character.stats.max_health
-        && character.stats.mana >= character.stats.max_mana
-    {
+    if character.health >= character.max_health && character.mana >= character.max_mana {
         return Err(AppError::validation_error(
             "Already at full health and mana",
         ));
     }
 
     // Decrease adventures by 1
-    let new_adventures = character.stats.adventures - 1;
+    let new_adventures = character.adventures - 1;
 
     // Update character adventures
     repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
@@ -168,7 +166,7 @@ pub async fn rest_character(
         })?;
 
     // Restore HP and MP to maximum
-    repo.update_character_health(&character_id, &claims.sub, character.stats.max_health)
+    repo.update_character_health(&character_id, &claims.sub, character.max_health)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update health: {:?}", e);
@@ -176,7 +174,7 @@ pub async fn rest_character(
         })?;
 
     // Update mana
-    repo.update_character_mana(&character_id, &claims.sub, character.stats.max_mana)
+    repo.update_character_mana(&character_id, &claims.sub, character.max_mana)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update mana: {:?}", e);
@@ -229,18 +227,20 @@ pub async fn perform_combat_action(
     // Create ability processor
     let processor = AbilityProcessor::new(&character, &abilities);
 
-    // Get enemy stats before generating attacks
-    let enemy = game_state
-        .get(GS_ENEMY)
-        .ok_or_else(|| AppError::validation_error("No enemy in game state"))?;
-    let enemy_helper = EnemyHelper::new(enemy);
-    let enemy_defense = enemy_helper.defense();
-    let enemy_resistance = enemy_helper.resistance();
+    let enemy: Creature = serde_json::from_value(
+        game_state
+            .get(GS_ENEMY)
+            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?
+            .clone(),
+    )
+    .map_err(|e| {
+        AppError::validation_error(&format!("Failed to parse enemy from game state: {}", e))
+    })?;
 
     // === Generate player attacks based on action type ===
     let (attacks, mana_cost) = match action {
         CombatActionRequest::Melee => {
-            let attacks = process_melee_attacks(&processor, &character, &game_state, enemy_defense);
+            let attacks = process_melee_attacks(&processor, &character, &game_state, enemy.defense);
             (attacks, 0i64)
         }
         CombatActionRequest::Ability { ref ability_id } => {
@@ -270,33 +270,27 @@ pub async fn perform_combat_action(
 
             // Check mana cost
             let mana_cost_required = ability.mana_cost.unwrap_or(0);
-            if character.stats.mana < mana_cost_required {
+            if character.mana < mana_cost_required {
                 return Err(AppError::validation_error(&format!(
                     "Not enough mana. Required: {}, Available: {}",
-                    mana_cost_required, character.stats.mana
+                    mana_cost_required, character.mana
                 )));
             }
 
             // Process ability effects
-            let attacks = process_ability_attacks(
-                ability,
-                &character,
-                &processor,
-                &mut game_state,
-                enemy_defense,
-                enemy_resistance,
-            )?;
+            let attacks =
+                process_ability_attacks(ability, &character, &processor, &mut game_state)?;
 
             (attacks, mana_cost_required)
         }
     };
 
-    let total_damage: i32 = attacks.iter().map(|a| a.damage).sum();
+    let total_damage: i64 = attacks.iter().map(|a| a.damage).sum();
 
     // === Apply combat round changes ===
 
     // Apply mana cost
-    character.stats.mana -= mana_cost;
+    character.mana -= mana_cost;
 
     // Increment turn number
     let gs_helper = GameStateHelper::new(&game_state);
@@ -315,28 +309,23 @@ pub async fn perform_combat_action(
     let cooldowns = update_cooldowns(&mut game_state, &action, &abilities);
 
     // Update enemy health
-    let enemy = game_state
-        .get_mut(GS_ENEMY)
-        .ok_or_else(|| AppError::validation_error("No enemy in game state"))?;
+    let enemy: CreatureInCombat = serde_json::from_value(
+        game_state
+            .get(GS_ENEMY)
+            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?
+            .clone(),
+    )
+    .map_err(|e| {
+        AppError::validation_error(&format!("Failed to parse enemy from game state: {}", e))
+    })?;
 
-    let enemy_helper = EnemyHelper::new(enemy);
-    let current_enemy_health = enemy_helper.health()?;
-
-    let new_enemy_health = (current_enemy_health - total_damage).max(0);
-    enemy[GS_ENEMY_HEALTH] = serde_json::json!(new_enemy_health);
-
-    // Get enemy details before we potentially modify game_state further
-    let enemy_helper = EnemyHelper::new(enemy);
-    let enemy_name = enemy_helper.name();
-    let enemy_exp_reward = enemy_helper.exp_reward();
-    let enemy_might = enemy_helper.might();
-    let enemy_attack_template = enemy_helper.attack_description();
+    let new_enemy_health = (enemy.health - total_damage).max(0);
 
     // === Handle combat outcome ===
 
     let victory = new_enemy_health <= 0;
     let gs_helper = GameStateHelper::new(&game_state);
-    let mut player_health = gs_helper.player_health(character.stats.health);
+    let mut player_health = gs_helper.player_health(character.health);
 
     let (experience_gained, victory_message, level_up, enemy_attacks, defeat, defeat_message) =
         if victory {
@@ -345,8 +334,8 @@ pub async fn perform_combat_action(
                 &character_id,
                 &claims.sub,
                 &mut character,
-                enemy_name,
-                enemy_exp_reward,
+                enemy.name,
+                enemy.experience_reward,
             )
             .await?;
 
@@ -354,25 +343,25 @@ pub async fn perform_combat_action(
         } else {
             // Enemy counterattacks (with player defense mitigation)
             let (attacks, counter_damage) = apply_enemy_attack(
-                enemy_might,
-                character.stats.defense,
-                &enemy_name,
-                enemy_attack_template,
+                enemy.might,
+                character.defense,
+                &enemy.name,
+                enemy.attack_description,
             );
 
             // Update player health
             player_health = (player_health - counter_damage).max(0);
             game_state[GS_PLAYER_HEALTH] = serde_json::json!(player_health);
-            character.stats.health = player_health as i64;
+            character.health = player_health as i64;
 
             // Update character health in database
-            repo.update_character_health(&character_id, &claims.sub, character.stats.health)
+            repo.update_character_health(&character_id, &claims.sub, character.health)
                 .await
                 .map_err(AppError::from)?;
 
             // Check for defeat
             let (defeat, defeat_msg) = if player_health <= 0 {
-                let msg = handle_defeat(&repo, &character_id, &claims.sub, &character, enemy_name)
+                let msg = handle_defeat(&repo, &character_id, &claims.sub, &character, &enemy.name)
                     .await?;
                 (true, msg)
             } else {
@@ -384,7 +373,7 @@ pub async fn perform_combat_action(
 
     // Update mana if it was consumed (ability use)
     if mana_cost > 0 && !victory && !defeat {
-        repo.update_character_mana(&character_id, &claims.sub, character.stats.mana)
+        repo.update_character_mana(&character_id, &claims.sub, character.mana)
             .await
             .map_err(AppError::from)?;
     }
@@ -416,7 +405,7 @@ pub async fn perform_combat_action(
         enemy_health: new_enemy_health,
         enemy_attacks,
         player_health,
-        player_mana: character.stats.mana as i32,
+        player_mana: character.mana,
         victory,
         defeat,
         experience_gained,

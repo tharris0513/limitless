@@ -10,6 +10,14 @@ export interface User {
   createdAt: string; // When user first logged in
 }
 
+// Active buff tracking for noncombat abilities
+export interface ActiveBuff {
+  abilityId: string;
+  abilityName: string;
+  remainingAdventures: number;
+  effects: AbilityEffect[];
+}
+
 // Character represents a game character that belongs to a user
 export interface Character {
   id: string; // Character UUID
@@ -23,11 +31,17 @@ export interface Character {
   maxMana: number;
   experience: number;
   experienceToNext: number;
-  stats: CharacterStats;
+  might: number; // Physical power
+  defense: number; // Physical defense
+  magic: number; // Magical power
+  resistance: number; // Magical defense
+  agility: number; // Speed
+  adventures: number;
   inventory: InventoryItem[];
   equipment: Equipment;
   location: string;
   gameState?: string; // JSON string storing current game state
+  activeBuffs?: ActiveBuff[]; // Currently active noncombat ability buffs
   createdAt: string;
   lastPlayed: string;
 }
@@ -58,6 +72,19 @@ export interface AbilityEffect {
 
   // For passive effects
   passiveType?: string; // e.g., "dual_wield", "increased_crit"
+  passiveMode?: 'effect' | 'stat_modifier'; // Mode for passive effects
+  statModifier?: {
+    stat:
+      | 'might'
+      | 'defense'
+      | 'magic'
+      | 'resistance'
+      | 'agility'
+      | 'maxHealth'
+      | 'maxMana';
+    value: number;
+    type: 'flat' | 'percentage' | 'set';
+  };
 }
 
 // Ability represents a skill or spell that characters can use
@@ -71,9 +98,10 @@ export interface Ability {
 
   manaCost: number;
   cooldown: number;
+  duration?: number; // For noncombat abilities - how many adventures the buff lasts
 
   // Ability type determines visibility in combat
-  abilityType: 'combat' | 'passive';
+  abilityType: 'combat' | 'passive' | 'noncombat';
 
   // Legacy fields (deprecated but kept for backward compatibility)
   damageFormula?: string;
@@ -148,21 +176,6 @@ export interface AuthResponse {
   user: User;
   characters: Character[];
 }
-
-// Legacy Player type - alias for Character for backward compatibility
-export type Player = Character;
-
-export interface CharacterStats {
-  might: number; // Physical power
-  defense: number; // Physical defense
-  magic: number; // Magical power
-  resistance: number; // Magical defense
-  agility: number; // Speed
-  adventures: number;
-}
-
-// Legacy PlayerStats type - alias for CharacterStats for backward compatibility
-export type PlayerStats = CharacterStats;
 
 export interface InventoryItem {
   id: string;

@@ -6,6 +6,7 @@ import styles from './AbilitiesPage.module.css';
 interface AbilitiesPageProps {
   character: Character;
   onBack?: () => void;
+  onCharacterUpdate?: (character: Character) => void;
 }
 
 interface AbilityWithLevel {
@@ -13,10 +14,11 @@ interface AbilityWithLevel {
   unlockLevel: number;
 }
 
-export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack }) => {
+export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack, onCharacterUpdate }) => {
   const [abilities, setAbilities] = useState<AbilityWithLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usingAbility, setUsingAbility] = useState<string | null>(null);
 
   useEffect(() => {
     loadAbilities();
@@ -42,9 +44,33 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack 
     }
   };
 
+  const handleUseAbility = async (ability: Ability) => {
+    if (!ability.manaCost || character.mana < ability.manaCost) {
+      setError(`Not enough mana! This ability costs ${ability.manaCost} mana.`);
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    try {
+      setUsingAbility(ability.id);
+      setError(null);
+
+      const updatedCharacter = await GameAPI.activateNoncombatAbility(character.id, ability.id);
+
+      if (onCharacterUpdate) {
+        onCharacterUpdate(updatedCharacter);
+      }
+    } catch (error) {
+      console.error('Failed to use ability:', error);
+      setError('Failed to use ability. Please try again.');
+    } finally {
+      setUsingAbility(null);
+    }
+  };
+
   // Categorize abilities by type
   const noncombatAbilities = abilities.filter(
-    a => a.ability.abilityType !== 'combat' && a.ability.abilityType !== 'passive'
+    a => a.ability.abilityType === 'noncombat'
   );
 
   const passiveAbilities = abilities.filter(
@@ -55,13 +81,48 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack 
     a => a.ability.abilityType === 'combat'
   );
 
-  const renderAbilityCard = (abilityData: AbilityWithLevel) => {
+  const renderAbilityCard = (abilityData: AbilityWithLevel, isNoncombat: boolean = false) => {
     const { ability } = abilityData;
+    const activeBuff = character.activeBuffs?.find(buff => buff.abilityId === ability.id);
+    const isActive = !!activeBuff;
+    // Double-check: only allow use if it's truly a noncombat ability
+    const isTrulyNoncombat = isNoncombat && ability.abilityType === 'noncombat';
+    const canUse = isTrulyNoncombat && character.mana >= (ability.manaCost || 0);
 
     return (
-      <div key={ability.id} className={styles.abilityCard}>
-        <h3 className={styles.abilityName}>{ability.name}</h3>
+      <div key={ability.id} className={`${styles.abilityCard} ${isActive ? styles.active : ''}`}>
+        <div className={styles.abilityHeader}>
+          <h3 className={styles.abilityName}>{ability.name}</h3>
+          {isTrulyNoncombat && (
+            <div className={styles.abilityMeta}>
+              <span className={styles.manaCost}>⚡ {ability.manaCost} MP</span>
+              <span className={styles.duration}>⏱ {ability.duration} adv</span>
+            </div>
+          )}
+        </div>
         <p className={styles.abilityDescription}>{ability.description}</p>
+        {isTrulyNoncombat && (
+          <>
+            {isActive && (
+              <div className={styles.activeStatus}>
+                ✓ Active ({activeBuff.remainingAdventures} adventures remaining)
+              </div>
+            )}
+            <button
+              className={`${styles.useButton} ${!canUse ? styles.disabled : ''}`}
+              onClick={() => handleUseAbility(ability)}
+              disabled={!canUse || usingAbility === ability.id}
+            >
+              {usingAbility === ability.id
+                ? 'Using...'
+                : isActive
+                ? `Extend Duration (+${ability.duration} adv)`
+                : canUse
+                ? 'Use Ability'
+                : 'Not Enough Mana'}
+            </button>
+          </>
+        )}
       </div>
     );
   };
@@ -105,7 +166,7 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack 
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Noncombat Abilities</h2>
               <div className={styles.abilitiesGrid}>
-                {noncombatAbilities.map(renderAbilityCard)}
+                {noncombatAbilities.map(a => renderAbilityCard(a, true))}
               </div>
             </div>
           )}
@@ -114,7 +175,7 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack 
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Passive Abilities</h2>
               <div className={styles.abilitiesGrid}>
-                {passiveAbilities.map(renderAbilityCard)}
+                {passiveAbilities.map(a => renderAbilityCard(a, false))}
               </div>
             </div>
           )}
@@ -123,7 +184,7 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack 
             <div className={styles.section}>
               <h2 className={styles.sectionTitle}>Combat Abilities</h2>
               <div className={styles.abilitiesGrid}>
-                {combatAbilities.map(renderAbilityCard)}
+                {combatAbilities.map(a => renderAbilityCard(a, false))}
               </div>
             </div>
           )}
