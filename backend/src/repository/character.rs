@@ -743,6 +743,7 @@ impl UserRepository {
                 .and_then(|v| v.as_s().ok())
                 .context("Missing user_id")?;
 
+            // Delete the main character record
             self.client
                 .delete_item()
                 .table_name(&self.table_name)
@@ -752,7 +753,34 @@ impl UserRepository {
                 .await
                 .context("Failed to delete character")?;
 
-            tracing::info!("Deleted character {}", character_id);
+            // Delete all related records with PK = CHAR#<character_id>
+            let related = self
+                .client
+                .query()
+                .table_name(&self.table_name)
+                .key_condition_expression("PK = :pk")
+                .expression_attribute_values(
+                    ":pk",
+                    AttributeValue::S(format!("CHAR#{}", character_id)),
+                )
+                .send()
+                .await
+                .context("Failed to query related character records")?;
+
+            for item in related.items() {
+                if let (Some(pk), Some(sk)) = (item.get("PK"), item.get("SK")) {
+                    self.client
+                        .delete_item()
+                        .table_name(&self.table_name)
+                        .key("PK", pk.clone())
+                        .key("SK", sk.clone())
+                        .send()
+                        .await
+                        .context("Failed to delete related character record")?;
+                }
+            }
+
+            tracing::info!("Deleted character {} and all related records", character_id);
             return Ok(());
         }
 

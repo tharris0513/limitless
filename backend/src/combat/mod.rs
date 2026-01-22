@@ -817,7 +817,7 @@ mod tests {
             magic: 3,
             resistance: 3,
             agility: 3,
-            creature_type: "humanoid".to_string(),
+            creature_type: Some("humanoid".to_string()),
             experience_reward: 200,
             attack_description: "Rawr!".to_string(),
         };

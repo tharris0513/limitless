@@ -1,7 +1,7 @@
+use crate::error::AppError;
 use crate::middleware::AuthClaims;
 use crate::models::{CharacterAbility, CreatureInCombat};
 use crate::repository::UserRepository;
-use crate::{error::AppError, models::Creature};
 use axum::{
     extract::{Path, State},
     Json,
@@ -14,6 +14,8 @@ use crate::combat::{
     CombatActionResult, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY, GS_PLAYER_HEALTH,
     GS_STATUS, GS_TURN_NUMBER,
 };
+
+use crate::combat::helpers::GS_ENEMY_HEALTH;
 
 // Save character's game state
 pub async fn save_game_state(
@@ -227,7 +229,7 @@ pub async fn perform_combat_action(
     // Create ability processor
     let processor = AbilityProcessor::new(&character, &abilities);
 
-    let enemy: Creature = serde_json::from_value(
+    let enemy: CreatureInCombat = serde_json::from_value(
         game_state
             .get(GS_ENEMY)
             .ok_or_else(|| AppError::validation_error("No enemy in game state"))?
@@ -320,6 +322,16 @@ pub async fn perform_combat_action(
     })?;
 
     let new_enemy_health = (enemy.health - total_damage).max(0);
+
+    // Write updated enemy health into game_state for persistence and frontend
+    if let Some(enemy_obj) = game_state.get_mut(GS_ENEMY) {
+        if let Some(obj) = enemy_obj.as_object_mut() {
+            obj.insert(
+                GS_ENEMY_HEALTH.to_string(),
+                serde_json::json!(new_enemy_health),
+            );
+        }
+    }
 
     // === Handle combat outcome ===
 

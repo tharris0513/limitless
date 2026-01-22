@@ -131,6 +131,18 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       // Update game state (this includes enemy health at 0 on victory)
       if (result.gameState) {
         setGameState(result.gameState);
+      } else if (typeof result.enemyHealth === 'number') {
+        // Patch enemy health in local gameState if backend didn't return a new gameState
+        setGameState((prev: any) => {
+          if (!prev || !prev.enemy) return prev;
+          return {
+            ...prev,
+            enemy: {
+              ...prev.enemy,
+              health: result.enemyHealth,
+            },
+          };
+        });
       }
       
       // Refresh character to update HP in sidebar
@@ -253,6 +265,18 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
       // Update game state (includes enemy health and updated mana)
       if (result.gameState) {
         setGameState(result.gameState);
+      } else if (typeof result.enemyHealth === 'number') {
+        // Patch enemy health in local gameState if backend didn't return a new gameState
+        setGameState((prev: any) => {
+          if (!prev || !prev.enemy) return prev;
+          return {
+            ...prev,
+            enemy: {
+              ...prev.enemy,
+              health: result.enemyHealth,
+            },
+          };
+        });
       }
       
       // Refresh character to update HP and mana in sidebar

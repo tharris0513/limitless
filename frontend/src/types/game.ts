@@ -233,7 +233,8 @@ export interface Creature {
   name: string;
   introductionText: string;
   level: number;
-  health: number;
+  health?: number;
+  maxHealth: number;
   might: number;
   defense: number;
   magic: number;

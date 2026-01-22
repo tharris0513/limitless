@@ -1,4 +1,4 @@
-use crate::models::{Ability, Character, Creature, CreatureInCombat};
+use crate::models::{Ability, Character, CreatureInCombat};
 use evalexpr::*;
 use rand::Rng;
 
@@ -335,7 +335,7 @@ mod tests {
             resistance: 4,
             agility: 12,
             experience_reward: 20,
-            creature_type: "beast".to_string(),
+            creature_type: Some("beast".to_string()),
             attack_description: "The creature lunges forward!".to_string(),
         }
     }
@@ -353,7 +353,7 @@ mod tests {
             resistance: 4,
             agility: 12,
             experience_reward: 20,
-            creature_type: "beast".to_string(),
+            creature_type: Some("beast".to_string()),
             attack_description: "The creature stands firm!".to_string(),
         }
     }

@@ -11,6 +11,7 @@ import type {
   Shop,
   ItemType,
   AttackResult,
+  Creature,
 } from '../types/game';
 
 // Configure axios instance
@@ -495,25 +496,27 @@ export class GameAPI {
   }
 
   // ===== CREATURE MANAGEMENT =====
-  static async adminGetAllCreatures(): Promise<any[]> {
+  static async adminGetAllCreatures(): Promise<Creature[]> {
     const response = await api.get('/admin/creatures');
     return response.data;
   }
 
-  static async adminGetCreature(creatureId: string): Promise<any> {
+  static async adminGetCreature(creatureId: string): Promise<Creature> {
     const response = await api.get(`/admin/creatures/${creatureId}`);
     return response.data;
   }
 
-  static async adminCreateCreature(creatureData: any): Promise<any> {
+  static async adminCreateCreature(
+    creatureData: Partial<Creature>
+  ): Promise<Creature> {
     const response = await api.post('/admin/creatures', creatureData);
     return response.data;
   }
 
   static async adminUpdateCreature(
     creatureId: string,
-    creatureData: any
-  ): Promise<any> {
+    creatureData: Partial<Creature>
+  ): Promise<Creature> {
     const response = await api.patch(
       `/admin/creatures/${creatureId}`,
       creatureData

@@ -18,7 +18,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
     name: '',
     introductionText: '',
     level: 1,
-    health: 100,
+    maxHealth: 100,
     might: 10,
     defense: 5,
     magic: 5,
@@ -55,7 +55,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
         name: '',
         introductionText: '',
         level: 1,
-        health: 100,
+        maxHealth: 100,
         might: 10,
         defense: 5,
         magic: 5,
@@ -106,7 +106,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
       name: '',
       introductionText: '',
       level: 1,
-      health: 100,
+      maxHealth: 100,
       might: 10,
       defense: 5,
       magic: 5,
@@ -214,11 +214,11 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Health *</label>
+                  <label>Max Health *</label>
                   <input
                     type="number"
-                    value={formData.health}
-                    onChange={e => setFormData({ ...formData, health: parseInt(e.target.value) })}
+                    value={formData.maxHealth}
+                    onChange={e => setFormData({ ...formData, maxHealth: parseInt(e.target.value) })}
                     min="1"
                     required
                   />
@@ -303,7 +303,7 @@ export default function ManageCreatures({ onBack }: ManageCreaturesProps) {
             </div>
             <div className={styles.stats}>
               <div className={styles.statRow}>
-                <span>HP: {creature.health}</span>
+                <span>HP: {creature.maxHealth}</span>
                 <span>Might: {creature.might}</span>
               </div>
               <div className={styles.statRow}>

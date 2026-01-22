@@ -35,7 +35,7 @@ pub struct CreatureInCombat {
     pub magic: i64,
     pub resistance: i64,
     pub agility: i64,
-    pub creature_type: String,
+    pub creature_type: Option<String>,
     pub experience_reward: i64,
     pub attack_description: String,
 }
