@@ -12,9 +12,10 @@ interface GamePageProps {
   character: Character;
   onCharacterUpdate?: (character: Character) => void;
   onCharacterDeleted?: () => void;
+  onAbilitiesClick?: () => void;
 }
 
-export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate, onCharacterDeleted }) => {
+export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate, onCharacterDeleted, onAbilitiesClick }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -198,10 +199,10 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
           >
             🛌 {resting ? 'Resting...' : 'Rest'}
           </button>
-          <button 
-            className={`${styles.actionButton} ${styles.disabledButton}`}
-            disabled
-            title="Coming soon"
+          <button
+            className={styles.actionButton}
+            onClick={onAbilitiesClick}
+            title="View your abilities"
           >
             ✨ Abilities
           </button>

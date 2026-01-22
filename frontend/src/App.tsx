@@ -8,6 +8,7 @@ import { ErrorScreen, LoadingOverlay } from './components/LoadingStates';
 import { GameStateProvider } from './contexts/GameStateContext';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { AccountSetup } from './pages/AccountSetup';
+import { AbilitiesPage } from './pages/AbilitiesPage';
 import { AdminPanel } from './pages/AdminPanel';
 import AuthCallback from './pages/AuthCallback';
 import { BannedUser } from './pages/BannedUser';
@@ -36,6 +37,7 @@ function App() {
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showAbilities, setShowAbilities] = useState(false);
   const [adminView, setAdminView] = useState<'menu' | 'users' | 'classes'>('menu');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
@@ -380,6 +382,25 @@ function App() {
             <GameLayout player={selectedCharacter} user={user} onLogout={handleLogout} isAdmin={user?.admin}>
               <Settings onBack={() => setShowSettings(false)} />
             </GameLayout>
+          ) : showAbilities ? (
+            <GameLayout
+              player={selectedCharacter}
+              user={user}
+              onLogout={handleLogout}
+              onSettingsClick={() => setShowSettings(true)}
+              isAdmin={user?.admin}
+              onAdminClick={() => {
+                setShowAbilities(false);
+                setShowAdminPanel(true);
+              }}
+            >
+              <GameStateProvider character={selectedCharacter!}>
+                <AbilitiesPage
+                  character={selectedCharacter!}
+                  onBack={() => setShowAbilities(false)}
+                />
+              </GameStateProvider>
+            </GameLayout>
           ) : showAdminPanel ? (
             <GameLayout 
               key={adminView} // Force re-render when adminView changes
@@ -440,11 +461,11 @@ function App() {
               <div>Loading user data...</div>
             )
           ) : (
-            <GameLayout 
+            <GameLayout
               player={selectedCharacter}
               user={user}
-              onLogout={handleLogout} 
-              onSettingsClick={() => setShowSettings(true)} 
+              onLogout={handleLogout}
+              onSettingsClick={() => setShowSettings(true)}
               isAdmin={user?.admin}
               onAdminClick={() => setShowAdminPanel(true)}
             >
@@ -453,6 +474,7 @@ function App() {
                   character={selectedCharacter}
                   onCharacterUpdate={handleCharacterUpdate}
                   onCharacterDeleted={() => setSelectedCharacter(null)}
+                  onAbilitiesClick={() => setShowAbilities(true)}
                 />
               </GameStateProvider>
             </GameLayout>
