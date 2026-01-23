@@ -601,4 +601,315 @@ mod tests {
         // might=12, target_defense=99999, so 12-99999=-99987, max(1, -99987)=1
         assert_eq!(damage, 1);
     }
+
+    // Tests for calculated stats integration
+
+    #[test]
+    fn test_calculated_stats_might_buff() {
+        let mut character = create_test_character();
+        // Base might is 12, add calculated stats with might = 20
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 20,
+            defense: 8,
+            magic: 10,
+            resistance: 6,
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        // Test that formulas use calculated might (20) instead of base might (12)
+        let result = DamageCalculator::test_formula("might * 2 + rand()", &character);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // Calculated might is 20, so 20 * 2 = 40
+        assert_eq!(damage, 40);
+    }
+
+    #[test]
+    fn test_calculated_stats_magic_buff() {
+        let mut character = create_test_character();
+        // Base magic is 10, add calculated stats with magic = 25
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 12,
+            defense: 8,
+            magic: 25,
+            resistance: 6,
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        // Test that formulas use calculated magic (25) instead of base magic (10)
+        let result = DamageCalculator::test_formula("(magic * 1.5) + rand()", &character);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // Calculated magic is 25, so 25 * 1.5 = 37.5 ≈ 38
+        assert_eq!(damage, 38);
+    }
+
+    #[test]
+    fn test_calculated_stats_all_stats_buffed() {
+        let mut character = create_test_character();
+        // Apply buffs to all stats
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 20,    // was 12
+            defense: 15,  // was 8
+            magic: 18,    // was 10
+            resistance: 12, // was 6
+            agility: 25,  // was 15
+            max_health: 150, // was 100
+            max_mana: 80, // was 50
+        });
+
+        // Test hybrid formula using multiple stats
+        let result = DamageCalculator::test_formula("(might * 0.5) + (magic * 0.5) + agility + rand()", &character);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // (20 * 0.5) + (18 * 0.5) + 25 = 10 + 9 + 25 = 44
+        assert_eq!(damage, 44);
+    }
+
+    #[test]
+    fn test_calculated_stats_defense_mitigation() {
+        let character = create_test_character();
+        let mut target = create_test_character();
+
+        // Buff the target's defense to 20
+        target.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 12,
+            defense: 20, // was 8
+            magic: 10,
+            resistance: 6,
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        // Use calculate_damage with a formula that factors in target defense
+        let ability = Ability {
+            id: "test_ability".to_string(),
+            name: "Test Attack".to_string(),
+            description: "Test".to_string(),
+            ability_type: "active".to_string(),
+            damage_formula: Some("max(1, might - target_defense)".to_string()),
+            heal_formula: None,
+            effect_formula: None,
+            mana_cost: Some(0),
+            cooldown: Some(0),
+            duration: None,
+            passive_effect: None,
+            attack_description: None,
+            effects: vec![],
+        };
+
+        let result = DamageCalculator::calculate_damage(&ability, &character, Some(&target));
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // might=12, target_defense=20, so max(1, 12-20) = max(1, -8) = 1
+        // Plus automatic ±10% variation on the 1
+        assert!(damage >= 0 && damage <= 2);
+    }
+
+    #[test]
+    fn test_calculated_stats_resistance_mitigation() {
+        let mut character = create_test_character();
+        let mut target = create_test_character();
+
+        // Buff the caster's magic and target's resistance
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 12,
+            defense: 8,
+            magic: 30, // was 10
+            resistance: 6,
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        target.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 12,
+            defense: 8,
+            magic: 10,
+            resistance: 15, // was 6
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        // Create an ability with resistance mitigation
+        let ability = Ability {
+            id: "test_spell".to_string(),
+            name: "Magic Missile".to_string(),
+            description: "Test".to_string(),
+            ability_type: "active".to_string(),
+            damage_formula: Some("max(1, magic - target_resistance)".to_string()),
+            heal_formula: None,
+            effect_formula: None,
+            mana_cost: Some(10),
+            cooldown: Some(0),
+            duration: None,
+            passive_effect: None,
+            attack_description: None,
+            effects: vec![],
+        };
+
+        let result = DamageCalculator::calculate_damage(&ability, &character, Some(&target));
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // magic=30, target_resistance=15, so max(1, 30-15) = 15
+        // Plus automatic ±10% variation (13.5 to 16.5)
+        assert!(damage >= 13 && damage <= 17);
+    }
+
+    #[test]
+    fn test_calculated_stats_vs_base_stats() {
+        let mut character_with_calc = create_test_character();
+        let character_without_calc = create_test_character();
+
+        // Add calculated stats with significantly higher might
+        character_with_calc.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 30,
+            defense: 8,
+            magic: 10,
+            resistance: 6,
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        // Test the same formula with both characters
+        let result_with_calc = DamageCalculator::test_formula("might * 2 + rand()", &character_with_calc);
+        let result_without_calc = DamageCalculator::test_formula("might * 2 + rand()", &character_without_calc);
+
+        assert!(result_with_calc.is_ok());
+        assert!(result_without_calc.is_ok());
+
+        let damage_with_calc = result_with_calc.unwrap();
+        let damage_without_calc = result_without_calc.unwrap();
+
+        // Character with calculated stats should do more damage (30*2=60 vs 12*2=24)
+        assert_eq!(damage_with_calc, 60);
+        assert_eq!(damage_without_calc, 24);
+    }
+
+    #[test]
+    fn test_calculated_stats_with_target_max_health() {
+        let mut character = create_test_character();
+        let mut target = create_test_character();
+
+        // Set calculated max_health higher than base for the target
+        target.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 12,
+            defense: 8,
+            magic: 10,
+            resistance: 6,
+            agility: 15,
+            max_health: 200, // was 100
+            max_mana: 50,
+        });
+
+        // Buff caster's magic
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 12,
+            defense: 8,
+            magic: 20, // was 10
+            resistance: 6,
+            agility: 15,
+            max_health: 100,
+            max_mana: 50,
+        });
+
+        // Test a damage formula that considers target's max health (e.g., execute ability)
+        let ability = Ability {
+            id: "test_execute".to_string(),
+            name: "Execute".to_string(),
+            description: "Test".to_string(),
+            ability_type: "active".to_string(),
+            damage_formula: Some("magic + (target_max_health * 0.05)".to_string()),
+            heal_formula: None,
+            effect_formula: None,
+            mana_cost: Some(15),
+            cooldown: Some(0),
+            duration: None,
+            passive_effect: None,
+            attack_description: None,
+            effects: vec![],
+        };
+
+        let result = DamageCalculator::calculate_damage(&ability, &character, Some(&target));
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // magic=20, target_max_health=200, so 20 + (200 * 0.05) = 20 + 10 = 30
+        // Plus automatic ±10% variation (27 to 33)
+        assert!(damage >= 27 && damage <= 33);
+    }
+
+    #[test]
+    fn test_melee_attack_with_calculated_stats() {
+        let calculated_might = 25;
+        let target_defense = 10;
+
+        // Run melee attack calculation multiple times to account for variance
+        let mut all_in_range = true;
+        for _ in 0..10 {
+            let damage = DamageCalculator::calculate_melee_attack(calculated_might, target_defense);
+            // Raw damage: 25 * (0.9 to 1.1) = 22.5 to 27.5
+            // After defense: (22.5 to 27.5) - 10 = 12.5 to 17.5
+            // Minimum 1 damage
+            if damage < 12 || damage > 18 {
+                all_in_range = false;
+                break;
+            }
+        }
+        assert!(all_in_range);
+    }
+
+    #[test]
+    fn test_calculated_stats_level_scaling() {
+        let mut character = create_test_character(); // level 5
+
+        // Buff stats significantly
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 25,
+            defense: 15,
+            magic: 20,
+            resistance: 12,
+            agility: 20,
+            max_health: 150,
+            max_mana: 80,
+        });
+
+        // Test formula that combines stats with level
+        let result = DamageCalculator::test_formula("(might + magic) + (level * 2) + rand()", &character);
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // (25 + 20) + (5 * 2) = 45 + 10 = 55
+        assert_eq!(damage, 55);
+    }
+
+    #[test]
+    fn test_calculated_stats_complex_formula() {
+        let mut character = create_test_character();
+
+        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
+            might: 20,
+            defense: 15,
+            magic: 25,
+            resistance: 10,
+            agility: 30,
+            max_health: 150,
+            max_mana: 80,
+        });
+
+        // Test a complex formula using multiple calculated stats
+        let result = DamageCalculator::test_formula(
+            "max(might, magic) + (agility * 0.5) + min(defense, resistance) + rand()",
+            &character
+        );
+        assert!(result.is_ok());
+        let damage = result.unwrap();
+        // max(20, 25) + (30 * 0.5) + min(15, 10) = 25 + 15 + 10 = 50
+        assert_eq!(damage, 50);
+    }
 }
