@@ -54,24 +54,12 @@ pub async fn clear_game_state(
     Path(character_id): Path<String>,
     AuthClaims(claims): AuthClaims,
 ) -> Result<Json<crate::models::Character>, AppError> {
-    // Get character to check ownership and current state
-    let mut character = repo
-        .get_character(&character_id, &claims.sub)
+    // Verify character ownership
+    repo.get_character(&character_id, &claims.sub)
         .await
         .map_err(|_| AppError::character_not_found("Character not found or access denied"))?;
 
-    // Decrement buff durations when exiting combat
-    character.active_buffs = decrement_buff_durations(character.active_buffs);
-
-    // Update active buffs
-    repo.update_character_state(&character_id, &character)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to update active buffs: {:?}", e);
-            AppError::from(e)
-        })?;
-
-    // Clear game state
+    // Clear game state (buffs were already decremented in handle_victory/handle_defeat)
     repo.update_character_game_state(&character_id, &claims.sub, None)
         .await
         .map_err(|e| {
