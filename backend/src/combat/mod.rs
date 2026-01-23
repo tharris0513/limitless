@@ -12,9 +12,9 @@ use crate::repository::UserRepository;
 use serde::{Deserialize, Serialize};
 
 pub use helpers::{
-    parse_attack_description, AbilityProcessor, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY,
-    GS_PLAYER_HEALTH, GS_PRIMARY_WEAPON_ENCHANTED, GS_SECONDARY_WEAPON_ENCHANTED, GS_STATUS,
-    GS_TURN_NUMBER,
+    decrement_buff_durations, parse_attack_description, AbilityProcessor, GameStateHelper,
+    GS_ABILITY_COOLDOWNS, GS_ENEMY, GS_PLAYER_HEALTH, GS_PRIMARY_WEAPON_ENCHANTED,
+    GS_SECONDARY_WEAPON_ENCHANTED, GS_STATUS, GS_TURN_NUMBER,
 };
 
 /// Combat action request
@@ -474,6 +474,14 @@ pub async fn handle_victory(
         .await
         .map_err(AppError::from)?;
 
+    // Decrement buff durations and remove expired buffs
+    character.active_buffs = decrement_buff_durations(character.active_buffs.clone());
+
+    // Update active buffs
+    repo.update_character_state(character_id, character)
+        .await
+        .map_err(AppError::from)?;
+
     // Clear game state (combat is over)
     repo.update_character_game_state(character_id, user_id, None)
         .await
@@ -492,12 +500,20 @@ pub async fn handle_defeat(
     repo: &UserRepository,
     character_id: &str,
     user_id: &str,
-    character: &Character,
+    character: &mut Character,
     enemy_name: &String,
 ) -> Result<Option<String>, AppError> {
     // Deduct adventure
     let new_adventures = (character.adventures - 1).max(0);
     repo.update_character_adventures_with_user(character_id, user_id, new_adventures)
+        .await
+        .map_err(AppError::from)?;
+
+    // Decrement buff durations and remove expired buffs
+    character.active_buffs = decrement_buff_durations(character.active_buffs.clone());
+
+    // Update active buffs
+    repo.update_character_state(character_id, character)
         .await
         .map_err(AppError::from)?;
 

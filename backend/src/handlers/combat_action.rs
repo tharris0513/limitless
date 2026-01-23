@@ -9,10 +9,10 @@ use axum::{
 use std::sync::Arc;
 
 use crate::combat::{
-    apply_enemy_attack, handle_defeat, handle_victory, process_ability_attacks,
-    process_melee_attacks, update_cooldowns, AbilityProcessor, CombatActionRequest,
-    CombatActionResult, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY, GS_PLAYER_HEALTH,
-    GS_STATUS, GS_TURN_NUMBER,
+    apply_enemy_attack, decrement_buff_durations, handle_defeat, handle_victory,
+    process_ability_attacks, process_melee_attacks, update_cooldowns, AbilityProcessor,
+    CombatActionRequest, CombatActionResult, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY,
+    GS_PLAYER_HEALTH, GS_STATUS, GS_TURN_NUMBER,
 };
 
 use crate::combat::helpers::GS_ENEMY_HEALTH;
@@ -86,9 +86,10 @@ pub async fn flee_combat(
         .await
         .map_err(AppError::from)?;
 
-    let character = characters
+    let mut character = characters
         .iter()
         .find(|c| c.id == character_id)
+        .cloned()
         .ok_or_else(|| AppError::character_not_found(&character_id))?;
 
     // Check if character has adventures available
@@ -99,12 +100,23 @@ pub async fn flee_combat(
     // Decrease adventures by 1
     let new_adventures = character.adventures - 1;
 
+    // Decrement buff durations and remove expired buffs
+    character.active_buffs = decrement_buff_durations(character.active_buffs);
+
     // Update character adventures
     let _updated_character = repo
         .update_character_adventures(&character_id, new_adventures)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update adventures: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Update active buffs
+    repo.update_character_state(&character_id, &character)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update active buffs: {:?}", e);
             AppError::from(e)
         })?;
 
@@ -139,9 +151,10 @@ pub async fn rest_character(
         .await
         .map_err(AppError::from)?;
 
-    let character = characters
+    let mut character = characters
         .iter()
         .find(|c| c.id == character_id)
+        .cloned()
         .ok_or_else(|| AppError::character_not_found(&character_id))?;
 
     // Check if character has adventures available
@@ -158,6 +171,9 @@ pub async fn rest_character(
 
     // Decrease adventures by 1
     let new_adventures = character.adventures - 1;
+
+    // Decrement buff durations and remove expired buffs
+    character.active_buffs = decrement_buff_durations(character.active_buffs);
 
     // Update character adventures
     repo.update_character_adventures_with_user(&character_id, &claims.sub, new_adventures)
@@ -180,6 +196,14 @@ pub async fn rest_character(
         .await
         .map_err(|e| {
             tracing::error!("Failed to update mana: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Update active buffs
+    repo.update_character_state(&character_id, &character)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update active buffs: {:?}", e);
             AppError::from(e)
         })?;
 
@@ -373,7 +397,7 @@ pub async fn perform_combat_action(
 
             // Check for defeat
             let (defeat, defeat_msg) = if player_health <= 0 {
-                let msg = handle_defeat(&repo, &character_id, &claims.sub, &character, &enemy.name)
+                let msg = handle_defeat(&repo, &character_id, &claims.sub, &mut character, &enemy.name)
                     .await?;
                 (true, msg)
             } else {

@@ -363,6 +363,63 @@
   margin-left: auto;
 }
 
+/* Active Buffs Section */
+.activeBuffsSection {
+  margin-top: 1.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #00ff00;
+  padding: 1rem;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.activeBuffsTitle {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #00ff00;
+  text-shadow: 0 0 10px #00ff00;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.activeBuffsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.buffItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(0, 255, 0, 0.05);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.buffItem:hover {
+  background: rgba(0, 255, 0, 0.1);
+  border-color: rgba(0, 255, 0, 0.5);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+}
+
+.buffName {
+  font-size: 0.875rem;
+  color: #ffd700;
+  text-shadow: 0 0 8px #ffd700;
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+.buffDuration {
+  font-size: 0.75rem;
+  color: #00ff00;
+  text-shadow: 0 0 5px #00ff00;
+  font-weight: 500;
+}
+
 .mainContent {
   flex: 1;
   padding: 2rem;

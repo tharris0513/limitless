@@ -1,18 +1,9 @@
 use crate::error::AppError;
-use crate::models::{Ability, Character, PassiveEffectType};
+use crate::models::{ActiveBuff, Ability, Character, PassiveEffectType};
 
 // Game state field name constants
 pub const GS_ENEMY: &str = "enemy";
 pub const GS_ENEMY_HEALTH: &str = "health";
-pub const GS_ENEMY_MAX_HEALTH: &str = "maxHealth";
-pub const GS_ENEMY_NAME: &str = "name";
-pub const GS_ENEMY_LEVEL: &str = "level";
-pub const GS_ENEMY_STATS: &str = "stats";
-pub const GS_ENEMY_MIGHT: &str = "might";
-pub const GS_ENEMY_DEFENSE: &str = "defense";
-pub const GS_ENEMY_RESISTANCE: &str = "resistance";
-pub const GS_ENEMY_EXP_REWARD: &str = "experienceReward";
-pub const GS_ENEMY_ATTACK_DESC: &str = "attackDescription";
 pub const GS_PRIMARY_WEAPON_ENCHANTED: &str = "primaryWeaponEnchanted";
 pub const GS_SECONDARY_WEAPON_ENCHANTED: &str = "secondaryWeaponEnchanted";
 pub const GS_ABILITY_COOLDOWNS: &str = "abilityCooldowns";
@@ -193,6 +184,24 @@ pub fn parse_enchantment_from_state(enchant_str: &str) -> Option<PassiveEffectTy
         "lightning" => Some(PassiveEffectType::EnchantWeaponLightning),
         _ => None,
     }
+}
+
+/// Decrement buff durations and remove expired buffs when an adventure is consumed
+/// Returns the updated list of active buffs
+pub fn decrement_buff_durations(active_buffs: Option<Vec<ActiveBuff>>) -> Option<Vec<ActiveBuff>> {
+    active_buffs.map(|buffs| {
+        buffs
+            .into_iter()
+            .filter_map(|mut buff| {
+                buff.remaining_adventures -= 1;
+                if buff.remaining_adventures > 0 {
+                    Some(buff)
+                } else {
+                    None // Remove buffs that have expired
+                }
+            })
+            .collect()
+    })
 }
 
 #[cfg(test)]
@@ -384,5 +393,61 @@ mod tests {
             processor.get_weapon_enchantment_type(),
             Some(PassiveEffectType::EnchantWeaponFire)
         );
+    }
+
+    #[test]
+    fn test_decrement_buff_durations() {
+        use crate::models::ActiveBuff;
+
+        // Create test buffs with different durations
+        let buffs = vec![
+            ActiveBuff {
+                ability_id: "buff1".to_string(),
+                ability_name: "Buff 1".to_string(),
+                remaining_adventures: 3,
+                effects: vec![],
+            },
+            ActiveBuff {
+                ability_id: "buff2".to_string(),
+                ability_name: "Buff 2".to_string(),
+                remaining_adventures: 1,
+                effects: vec![],
+            },
+            ActiveBuff {
+                ability_id: "buff3".to_string(),
+                ability_name: "Buff 3".to_string(),
+                remaining_adventures: 2,
+                effects: vec![],
+            },
+        ];
+
+        let result = decrement_buff_durations(Some(buffs));
+
+        assert!(result.is_some());
+        let updated_buffs = result.unwrap();
+
+        // Should have 2 buffs remaining (buff2 with duration 1 should be removed)
+        assert_eq!(updated_buffs.len(), 2);
+
+        // Check buff1 duration decreased to 2
+        assert_eq!(updated_buffs[0].ability_id, "buff1");
+        assert_eq!(updated_buffs[0].remaining_adventures, 2);
+
+        // Check buff3 duration decreased to 1
+        assert_eq!(updated_buffs[1].ability_id, "buff3");
+        assert_eq!(updated_buffs[1].remaining_adventures, 1);
+    }
+
+    #[test]
+    fn test_decrement_buff_durations_none() {
+        let result = decrement_buff_durations(None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_decrement_buff_durations_empty() {
+        let result = decrement_buff_durations(Some(vec![]));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().len(), 0);
     }
 }

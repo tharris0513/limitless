@@ -189,9 +189,8 @@ pub async fn use_noncombat_ability(
         )));
     }
 
-    // Deduct mana (both from stats and top-level field)
+    // Deduct mana
     character.mana -= mana_cost;
-    character.mana = character.mana;
 
     // Check if ability is already active - if so, extend duration instead of adding new buff
     let duration = ability.duration.unwrap_or(1);
