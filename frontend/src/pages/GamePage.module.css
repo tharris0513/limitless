@@ -44,14 +44,14 @@
   font-family: 'Courier New', monospace;
   cursor: pointer;
   border-radius: 4px;
-  transition: all 0.2s;
+  transition: background 0.2s ease, transform 0.1s ease;
   text-shadow: 0 0 5px #00ff00;
   font-weight: bold;
+  will-change: background, transform;
 }
 
 .actionButton:hover:not(:disabled) {
   background: rgba(0, 255, 0, 0.2);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
   transform: translateY(-2px);
 }
 
@@ -76,13 +76,13 @@
   padding: 1rem;
   margin-bottom: 1rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
   text-align: center;
+  will-change: background, transform;
 }
 
 .locationCard:hover {
   background: rgba(0, 255, 0, 0.1);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
   transform: translateY(-2px);
 }
 
@@ -132,12 +132,12 @@
   padding: 1rem;
   margin-bottom: 1rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
+  will-change: background, transform;
 }
 
 .adventureCard:hover {
   background: rgba(255, 215, 0, 0.1);
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
   transform: translateY(-2px);
 }
 
@@ -173,16 +173,13 @@
   text-transform: uppercase;
   cursor: pointer;
   text-shadow: 0 0 5px #00ff00;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
   margin-top: 1rem;
+  will-change: background, transform;
 }
 
 .button:hover {
-  background: rgba(0, 255, 0, 0.1);
-  box-shadow:
-    0 0 20px rgba(0, 255, 0, 0.5),
-    inset 0 0 10px rgba(0, 255, 0, 0.2);
-  text-shadow: 0 0 10px #00ff00;
+  background: rgba(0, 255, 0, 0.15);
 }
 
 .button:active {
@@ -203,11 +200,7 @@
 }
 
 .logoutButton:hover {
-  background: rgba(255, 107, 107, 0.1);
-  box-shadow:
-    0 0 20px rgba(255, 107, 107, 0.5),
-    inset 0 0 10px rgba(255, 107, 107, 0.2);
-  text-shadow: 0 0 10px #ff6b6b;
+  background: rgba(255, 107, 107, 0.15);
 }
 
 /* Responsive Design */

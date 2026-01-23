@@ -19,51 +19,10 @@
   background-size: 100px 100px;
   color: #00ff00;
   font-family: 'Courier New', 'Lucida Console', monospace;
-  animation: crt-flicker 0.15s infinite linear alternate;
+  /* Removed expensive constant flicker animation */
 }
 
-@keyframes crt-flicker {
-  0% {
-    opacity: 1;
-  }
-  98% {
-    opacity: 1;
-  }
-  99% {
-    opacity: 0.98;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.layoutContainer::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    transparent 0%,
-    rgba(0, 255, 0, 0.02) 50%,
-    transparent 100%
-  );
-  background-size: 100% 4px;
-  background-repeat: repeat;
-  animation: scanlines 0.1s linear infinite;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-@keyframes scanlines {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(4px);
-  }
-}
+/* Removed expensive scanline animation overlay */
 
 .header {
   background: rgba(0, 0, 0, 0.9);
@@ -91,20 +50,7 @@
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 2px;
-  animation: title-glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes title-glow {
-  from {
-    text-shadow:
-      0 0 20px #00ff00,
-      0 0 30px #00ff00;
-  }
-  to {
-    text-shadow:
-      0 0 10px #00ff00,
-      0 0 20px #00ff00;
-  }
+  /* Static glow for performance */
 }
 
 .headerButtons {
@@ -128,31 +74,22 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
   text-shadow: 0 0 5px #ff0000;
+  will-change: background, transform;
 }
 
 .adminButton svg {
-  filter: drop-shadow(0 0 5px #ff0000);
+  /* Removed expensive drop-shadow filter */
 }
 
 .adminButton:hover {
-  background: rgba(255, 0, 0, 0.1);
-  box-shadow: 
-    0 0 20px rgba(255, 0, 0, 0.5),
-    inset 0 0 10px rgba(255, 0, 0, 0.2);
-  text-shadow: 0 0 10px #ff0000;
-}
-
-.adminButton:hover svg {
-  filter: drop-shadow(0 0 10px #ff0000);
+  background: rgba(255, 0, 0, 0.15);
+  /* Simplified hover effect */
 }
 
 .adminButton:active {
-  transform: translateY(0);
-  box-shadow: 
-    0 0 10px rgba(255, 0, 0, 0.3),
-    inset 0 0 5px rgba(255, 0, 0, 0.2);
+  transform: translateY(1px);
 }
 
 .settingsButton {
@@ -161,27 +98,22 @@
   background: transparent;
   color: #00ff00;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 40px;
   height: 40px;
+  will-change: background;
 }
 
 .settingsButton svg {
-  filter: drop-shadow(0 0 5px #00ff00);
+  /* Removed expensive drop-shadow filter */
 }
 
 .settingsButton:hover {
-  background: rgba(0, 255, 0, 0.1);
-  box-shadow: 
-    0 0 20px rgba(0, 255, 0, 0.5),
-    inset 0 0 10px rgba(0, 255, 0, 0.2);
-}
-
-.settingsButton:hover svg {
-  filter: drop-shadow(0 0 10px #00ff00);
+  background: rgba(0, 255, 0, 0.15);
+  /* Simplified hover effect */
 }
 
 .logoutButton {
@@ -194,16 +126,14 @@
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, transform 0.1s ease;
   text-shadow: 0 0 5px #00ff00;
   border-radius: 4px;
+  will-change: background, transform;
 }
 
 .logoutButton:hover {
-  background: rgba(0, 255, 0, 0.1);
-  box-shadow: 
-    0 0 10px #00ff00,
-    inset 0 0 10px rgba(0, 255, 0, 0.1);
+  background: rgba(0, 255, 0, 0.15);
   transform: translateY(-1px);
 }
 
@@ -298,16 +228,8 @@
   background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
   box-shadow: 0 0 10px #00ff00;
   transition: width 0.5s ease-out;
-  animation: exp-glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes exp-glow {
-  from {
-    box-shadow: 0 0 10px #00ff00;
-  }
-  to {
-    box-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00;
-  }
+  will-change: width;
+  /* Removed constant glow animation for performance */
 }
 
 .characterStats {
@@ -325,7 +247,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 0;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease;
 }
 
 .statItem:hover {
@@ -335,7 +257,7 @@
 .statIcon {
   color: #00ff00;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 5px #00ff00);
+  /* Removed expensive drop-shadow filter */
 }
 
 .statInfo {
@@ -396,13 +318,12 @@
   padding: 0.5rem;
   background: rgba(0, 255, 0, 0.05);
   border: 1px solid rgba(0, 255, 0, 0.3);
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .buffItem:hover {
   background: rgba(0, 255, 0, 0.1);
   border-color: rgba(0, 255, 0, 0.5);
-  box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
 }
 
 .buffName {
