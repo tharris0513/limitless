@@ -19,6 +19,7 @@ mod middleware;
 mod models;
 mod repository;
 mod routes;
+mod stat_calculator;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

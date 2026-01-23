@@ -63,9 +63,13 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
 
   const handleRest = async () => {
     if (resting) return;
-    
+
+    // Get calculated max values (or base values if not calculated)
+    const maxHealth = character.calculatedStats?.maxHealth ?? character.maxHealth;
+    const maxMana = character.calculatedStats?.maxMana ?? character.maxMana;
+
     // Check if already at full health and mana before making API call
-    if (character.health >= character.maxHealth && character.mana >= character.maxMana) {
+    if (character.health >= maxHealth && character.mana >= maxMana) {
       setShowRestModal(true);
       return;
     }

@@ -86,49 +86,49 @@ export const GameLayout: React.FC<GameLayoutProps> = ({ character, user, childre
                 <div className={styles.statItem}>
                   <Heart size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.health}/{character.maxHealth}</span>
+                    <span className={styles.statValue}>{character.health}/{character.calculatedStats?.maxHealth ?? character.maxHealth}</span>
                     <span className={styles.statLabel}>Health</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Star size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.mana}/{character.maxMana}</span>
+                    <span className={styles.statValue}>{character.mana}/{character.calculatedStats?.maxMana ?? character.maxMana}</span>
                     <span className={styles.statLabel}>Mana</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Dumbbell size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.might || 0}</span>
+                    <span className={styles.statValue}>{character.calculatedStats?.might ?? character.might ?? 0}</span>
                     <span className={styles.statLabel}>Might</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Shield size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.defense || 0}</span>
+                    <span className={styles.statValue}>{character.calculatedStats?.defense ?? character.defense ?? 0}</span>
                     <span className={styles.statLabel}>Defense</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Star size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.magic || 0}</span>
+                    <span className={styles.statValue}>{character.calculatedStats?.magic ?? character.magic ?? 0}</span>
                     <span className={styles.statLabel}>Magic</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <ShieldCheck size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.resistance || 0}</span>
+                    <span className={styles.statValue}>{character.calculatedStats?.resistance ?? character.resistance ?? 0}</span>
                     <span className={styles.statLabel}>Resistance</span>
                   </div>
                 </div>
                 <div className={styles.statItem}>
                   <Zap size={16} className={styles.statIcon} />
                   <div className={styles.statInfo}>
-                    <span className={styles.statValue}>{character.agility || 0}</span>
+                    <span className={styles.statValue}>{character.calculatedStats?.agility ?? character.agility ?? 0}</span>
                     <span className={styles.statLabel}>Agility</span>
                   </div>
                 </div>

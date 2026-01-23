@@ -32,6 +32,9 @@ pub struct Character {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "activeBuffs")]
     pub active_buffs: Option<Vec<crate::models::ActiveBuff>>, // Currently active noncombat ability buffs
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "calculatedStats")]
+    pub calculated_stats: Option<crate::stat_calculator::CalculatedStats>, // Stats including all modifiers
     #[serde(rename = "createdAt")]
     pub created_at: String,
     #[serde(rename = "lastPlayed")]

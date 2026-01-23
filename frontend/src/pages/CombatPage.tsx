@@ -316,7 +316,10 @@ export const CombatPage: React.FC<CombatPageProps> = ({ character, onCharacterUp
   };
 
   const handleFinish = async () => {
-    await clearGameState();
+    const updatedCharacter = await clearGameState();
+    if (updatedCharacter && onCharacterUpdate) {
+      onCharacterUpdate(updatedCharacter);
+    }
   };
 
   const handleFlee = async () => {

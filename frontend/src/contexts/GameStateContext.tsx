@@ -7,7 +7,7 @@ interface GameStateContextType {
   gameState: GameState;
   setGameState: (state: GameState) => void;
   saveGameState: () => Promise<void>;
-  clearGameState: () => Promise<void>;
+  clearGameState: () => Promise<Character | undefined>;
   isLoading: boolean;
   lastSaved: Date | null;
   autoSaveEnabled: boolean;
@@ -97,7 +97,7 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({ children, 
   }, [character?.id, gameState]);
 
   // Clear game state (return to idle)
-  const clearGameState = useCallback(async () => {
+  const clearGameState = useCallback(async (): Promise<Character | undefined> => {
     if (!character?.id) {
       console.warn('Cannot clear game state: no character selected');
       return;
@@ -108,7 +108,7 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({ children, 
       const token = localStorage.getItem('authToken');
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-      await axios.delete(
+      const response = await axios.delete(
         `${API_BASE_URL}/characters/${character.id}/state`,
         {
           headers: {
@@ -121,6 +121,9 @@ export const GameStateProvider: React.FC<GameStateProviderProps> = ({ children, 
       lastStateRef.current = JSON.stringify(DEFAULT_IDLE_STATE);
       setLastSaved(new Date());
       console.log('Game state cleared successfully');
+
+      // Return the updated character from the response
+      return response.data as Character;
     } catch (error) {
       console.error('Failed to clear game state:', error);
       throw error;

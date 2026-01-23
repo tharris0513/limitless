@@ -25,7 +25,9 @@ impl UserRepository {
 
         let item = result.item().context("Character not found")?;
 
-        self.parse_character(item)
+        let mut character = self.parse_character(item)?;
+        self.populate_calculated_stats(&mut character).await?;
+        Ok(character)
     }
 
     pub async fn get_user_characters(&self, user_id: &str) -> Result<Vec<Character>> {
@@ -43,7 +45,9 @@ impl UserRepository {
 
         let mut characters = Vec::new();
         for item in result.items() {
-            characters.push(self.parse_character(item)?);
+            let mut character = self.parse_character(item)?;
+            self.populate_calculated_stats(&mut character).await?;
+            characters.push(character);
         }
 
         Ok(characters)
@@ -181,6 +185,7 @@ impl UserRepository {
             location: "starting_area".to_string(),
             game_state: None,
             active_buffs: None,
+            calculated_stats: None, // Will be populated on first get
             created_at,
             last_played,
         })
@@ -366,6 +371,7 @@ impl UserRepository {
                 .and_then(|v| v.as_s().ok())
                 .map(|s| s.to_string()),
             active_buffs,
+            calculated_stats: None, // Will be populated by populate_calculated_stats
             created_at: get_string("created_at")?,
             last_played: get_string("last_played")?,
         };
@@ -380,6 +386,25 @@ impl UserRepository {
         );
 
         Ok(character)
+    }
+
+    /// Populate calculated stats for a character based on their abilities and active buffs
+    pub async fn populate_calculated_stats(&self, character: &mut Character) -> Result<()> {
+        // Get all abilities for this character
+        let abilities = self.get_character_unlocked_abilities(&character.id).await?;
+
+        // Extract just the Ability structs
+        let ability_list: Vec<crate::models::Ability> = abilities.into_iter().map(|(ability, _)| ability).collect();
+
+        // Calculate stats
+        let calculated = crate::stat_calculator::calculate_character_stats(
+            character,
+            &ability_list,
+            character.active_buffs.as_ref(),
+        );
+
+        character.calculated_stats = Some(calculated);
+        Ok(())
     }
 
     // Admin only - get all characters from all users
@@ -415,11 +440,14 @@ impl UserRepository {
             .await
             .context("Failed to find character by ID")?;
 
-        result
+        let mut character = result
             .items()
             .first()
             .context("Character not found")
-            .and_then(|item| self.parse_character(item))
+            .and_then(|item| self.parse_character(item))?;
+
+        self.populate_calculated_stats(&mut character).await?;
+        Ok(character)
     }
 
     // Admin only - update character name

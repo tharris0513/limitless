@@ -7,6 +7,7 @@
 
 # Backend
 
+- The backend is a Rust binary crate using axum.
 - The backend should always be in control of everything related to state and progression.
 
 # Frontend

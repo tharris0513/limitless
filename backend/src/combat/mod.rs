@@ -138,8 +138,15 @@ pub fn process_melee_attacks(
     let mut attacks = Vec::new();
     let has_dual_wield = processor.has_passive(PassiveEffectType::DualWield);
 
+    // Get calculated might (or base might if not calculated)
+    let might = character
+        .calculated_stats
+        .as_ref()
+        .map(|s| s.might)
+        .unwrap_or(character.might);
+
     // First attack (main hand)
-    let damage = DamageCalculator::calculate_melee_attack(character.might, enemy_defense);
+    let damage = DamageCalculator::calculate_melee_attack(might, enemy_defense);
     attacks.push(SingleAttack {
         damage,
         description: format!(
@@ -159,7 +166,7 @@ pub fn process_melee_attacks(
 
     // Second attack if dual wielding
     if has_dual_wield {
-        let damage = DamageCalculator::calculate_melee_attack(character.might, enemy_defense);
+        let damage = DamageCalculator::calculate_melee_attack(might, enemy_defense);
         attacks.push(SingleAttack {
             damage,
             description: format!(
@@ -307,7 +314,12 @@ pub fn process_ability_attacks(
             })?
         } else {
             // Fallback to might-based if no formula (won't apply defense here as this is legacy)
-            DamageCalculator::calculate_melee_attack(character.might, 0)
+            let might = character
+                .calculated_stats
+                .as_ref()
+                .map(|s| s.might)
+                .unwrap_or(character.might);
+            DamageCalculator::calculate_melee_attack(might, 0)
         };
 
         // Use ability's attack description template
@@ -589,6 +601,7 @@ mod tests {
             max_health: 100,
             mana: 50,
             max_mana: 50,
+            calculated_stats: None,
             adventures: 10,
             active_buffs: Some(vec![].into()),
             location: "town".to_string(),

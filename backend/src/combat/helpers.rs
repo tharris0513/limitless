@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::models::{ActiveBuff, Ability, Character, PassiveEffectType};
+use crate::models::{Ability, ActiveBuff, Character, PassiveEffectType};
 
 // Game state field name constants
 pub const GS_ENEMY: &str = "enemy";
@@ -44,7 +44,13 @@ impl<'a> AbilityProcessor<'a> {
 
     /// Calculate enchantment damage using standardized formula
     pub fn calculate_enchantment_damage(&self) -> i64 {
-        (self.character.magic as f64 * 0.5).round() as i64
+        let magic = self
+            .character
+            .calculated_stats
+            .as_ref()
+            .map(|s| s.magic)
+            .unwrap_or(self.character.magic);
+        (magic as f64 * 0.5).round() as i64
     }
 
     /// Check if character has the base weapon enchantment passive
@@ -228,6 +234,7 @@ mod tests {
             max_health: 100,
             mana: 50,
             max_mana: 50,
+            calculated_stats: None,
             adventures: 10,
             active_buffs: Some(vec![].into()),
             location: "town".to_string(),

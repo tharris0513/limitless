@@ -67,6 +67,7 @@ impl DamageCalculator {
             location: "sample_location".to_string(),
             game_state: Some("{}".to_string()),
             active_buffs: Some(vec![].into()),
+            calculated_stats: None,
             created_at: "".to_string(),
             last_played: "".to_string(),
             might: 10,
@@ -203,21 +204,43 @@ impl DamageCalculator {
     fn build_context(caster: &Character, target: Option<&Character>) -> HashMapContext {
         let mut context = HashMapContext::new();
 
+        // Use calculated stats if available, otherwise fall back to base stats
+        let caster_stats = caster.calculated_stats.as_ref();
+
         // Caster stats
         context
-            .set_value("might".into(), Value::from(caster.might))
+            .set_value(
+                "might".into(),
+                Value::from(caster_stats.map(|s| s.might).unwrap_or(caster.might)),
+            )
             .unwrap();
         context
-            .set_value("defense".into(), Value::from(caster.defense))
+            .set_value(
+                "defense".into(),
+                Value::from(caster_stats.map(|s| s.defense).unwrap_or(caster.defense)),
+            )
             .unwrap();
         context
-            .set_value("magic".into(), Value::from(caster.magic))
+            .set_value(
+                "magic".into(),
+                Value::from(caster_stats.map(|s| s.magic).unwrap_or(caster.magic)),
+            )
             .unwrap();
         context
-            .set_value("resistance".into(), Value::from(caster.resistance))
+            .set_value(
+                "resistance".into(),
+                Value::from(
+                    caster_stats
+                        .map(|s| s.resistance)
+                        .unwrap_or(caster.resistance),
+                ),
+            )
             .unwrap();
         context
-            .set_value("agility".into(), Value::from(caster.agility))
+            .set_value(
+                "agility".into(),
+                Value::from(caster_stats.map(|s| s.agility).unwrap_or(caster.agility)),
+            )
             .unwrap();
         context
             .set_value("level".into(), Value::from(caster.level))
@@ -225,11 +248,22 @@ impl DamageCalculator {
 
         // Target stats (if available)
         if let Some(target) = target {
+            let target_stats = target.calculated_stats.as_ref();
             context
-                .set_value("target_defense".into(), Value::from(target.defense))
+                .set_value(
+                    "target_defense".into(),
+                    Value::from(target_stats.map(|s| s.defense).unwrap_or(target.defense)),
+                )
                 .unwrap();
             context
-                .set_value("target_resistance".into(), Value::from(target.resistance))
+                .set_value(
+                    "target_resistance".into(),
+                    Value::from(
+                        target_stats
+                            .map(|s| s.resistance)
+                            .unwrap_or(target.resistance),
+                    ),
+                )
                 .unwrap();
             context
                 .set_value("target_level".into(), Value::from(target.level))
@@ -238,7 +272,14 @@ impl DamageCalculator {
                 .set_value("target_health".into(), Value::from(target.health))
                 .unwrap();
             context
-                .set_value("target_max_health".into(), Value::from(target.max_health))
+                .set_value(
+                    "target_max_health".into(),
+                    Value::from(
+                        target_stats
+                            .map(|s| s.max_health)
+                            .unwrap_or(target.max_health),
+                    ),
+                )
                 .unwrap();
         }
 
@@ -248,27 +289,49 @@ impl DamageCalculator {
     fn build_context_with_enemy(caster: &Character, target: &CreatureInCombat) -> HashMapContext {
         let mut context = HashMapContext::new();
 
+        // Use calculated stats if available, otherwise fall back to base stats
+        let caster_stats = caster.calculated_stats.as_ref();
+
         // Caster stats
         context
-            .set_value("might".into(), Value::from(caster.might))
+            .set_value(
+                "might".into(),
+                Value::from(caster_stats.map(|s| s.might).unwrap_or(caster.might)),
+            )
             .unwrap();
         context
-            .set_value("defense".into(), Value::from(caster.defense))
+            .set_value(
+                "defense".into(),
+                Value::from(caster_stats.map(|s| s.defense).unwrap_or(caster.defense)),
+            )
             .unwrap();
         context
-            .set_value("magic".into(), Value::from(caster.magic))
+            .set_value(
+                "magic".into(),
+                Value::from(caster_stats.map(|s| s.magic).unwrap_or(caster.magic)),
+            )
             .unwrap();
         context
-            .set_value("resistance".into(), Value::from(caster.resistance))
+            .set_value(
+                "resistance".into(),
+                Value::from(
+                    caster_stats
+                        .map(|s| s.resistance)
+                        .unwrap_or(caster.resistance),
+                ),
+            )
             .unwrap();
         context
-            .set_value("agility".into(), Value::from(caster.agility))
+            .set_value(
+                "agility".into(),
+                Value::from(caster_stats.map(|s| s.agility).unwrap_or(caster.agility)),
+            )
             .unwrap();
         context
             .set_value("level".into(), Value::from(caster.level))
             .unwrap();
 
-        // Enemy stats
+        // Enemy stats (enemies don't have calculated stats, use raw stats)
         context
             .set_value("target_defense".into(), Value::from(target.defense))
             .unwrap();
@@ -319,6 +382,7 @@ mod tests {
             max_health: 100,
             mana: 30,
             max_mana: 50,
+            calculated_stats: None,
         }
     }
 

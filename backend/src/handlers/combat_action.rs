@@ -53,25 +53,39 @@ pub async fn clear_game_state(
     State(repo): State<Arc<UserRepository>>,
     Path(character_id): Path<String>,
     AuthClaims(claims): AuthClaims,
-) -> Result<Json<serde_json::Value>, AppError> {
-    // Verify character ownership
-    repo.get_character(&character_id, &claims.sub)
+) -> Result<Json<crate::models::Character>, AppError> {
+    // Get character to check ownership and current state
+    let mut character = repo
+        .get_character(&character_id, &claims.sub)
         .await
         .map_err(|_| AppError::character_not_found("Character not found or access denied"))?;
 
-    match repo
-        .update_character_game_state(&character_id, &claims.sub, None)
+    // Decrement buff durations when exiting combat
+    character.active_buffs = decrement_buff_durations(character.active_buffs);
+
+    // Update active buffs
+    repo.update_character_state(&character_id, &character)
         .await
-    {
-        Ok(()) => Ok(Json(serde_json::json!({
-            "message": "Game state cleared",
-            "timestamp": chrono::Utc::now().to_rfc3339()
-        }))),
-        Err(e) => {
+        .map_err(|e| {
+            tracing::error!("Failed to update active buffs: {:?}", e);
+            AppError::from(e)
+        })?;
+
+    // Clear game state
+    repo.update_character_game_state(&character_id, &claims.sub, None)
+        .await
+        .map_err(|e| {
             tracing::error!("Failed to clear game state: {:?}", e);
-            Err(AppError::from(e))
-        }
-    }
+            AppError::from(e)
+        })?;
+
+    // Fetch the character again to get the cleared game state and updated calculated stats
+    let final_character = repo
+        .get_character(&character_id, &claims.sub)
+        .await
+        .map_err(AppError::from)?;
+
+    Ok(Json(final_character))
 }
 
 // Flee from combat - clear game state and consume 1 adventure
@@ -162,8 +176,16 @@ pub async fn rest_character(
         return Err(AppError::validation_error("No adventures remaining"));
     }
 
+    // Get calculated max values (or base values if not calculated)
+    let max_health = character.calculated_stats.as_ref()
+        .map(|s| s.max_health)
+        .unwrap_or(character.max_health);
+    let max_mana = character.calculated_stats.as_ref()
+        .map(|s| s.max_mana)
+        .unwrap_or(character.max_mana);
+
     // Check if already at full HP and MP
-    if character.health >= character.max_health && character.mana >= character.max_mana {
+    if character.health >= max_health && character.mana >= max_mana {
         return Err(AppError::validation_error(
             "Already at full health and mana",
         ));
@@ -183,23 +205,27 @@ pub async fn rest_character(
             AppError::from(e)
         })?;
 
-    // Restore HP and MP to maximum
-    repo.update_character_health(&character_id, &claims.sub, character.max_health)
+    // Update character's health and mana in memory before saving
+    character.health = max_health;
+    character.mana = max_mana;
+
+    // Restore HP and MP to calculated maximum (includes buff bonuses)
+    repo.update_character_health(&character_id, &claims.sub, max_health)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update health: {:?}", e);
             AppError::from(e)
         })?;
 
-    // Update mana
-    repo.update_character_mana(&character_id, &claims.sub, character.max_mana)
+    // Update mana to calculated maximum (includes buff bonuses)
+    repo.update_character_mana(&character_id, &claims.sub, max_mana)
         .await
         .map_err(|e| {
             tracing::error!("Failed to update mana: {:?}", e);
             AppError::from(e)
         })?;
 
-    // Update active buffs
+    // Update active buffs (this also updates mana, so we set it in memory first)
     repo.update_character_state(&character_id, &character)
         .await
         .map_err(|e| {
@@ -378,9 +404,10 @@ pub async fn perform_combat_action(
             (exp, vic_msg, lvl_up, Vec::new(), false, None)
         } else {
             // Enemy counterattacks (with player defense mitigation)
+            let defense = character.calculated_stats.as_ref().map(|s| s.defense).unwrap_or(character.defense);
             let (attacks, counter_damage) = apply_enemy_attack(
                 enemy.might,
-                character.defense,
+                defense,
                 &enemy.name,
                 enemy.attack_description,
             );

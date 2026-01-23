@@ -18,6 +18,17 @@ export interface ActiveBuff {
   effects: AbilityEffect[];
 }
 
+// Calculated stats including all modifiers from buffs and passive abilities
+export interface CalculatedStats {
+  might: number;
+  defense: number;
+  magic: number;
+  resistance: number;
+  agility: number;
+  maxHealth: number;
+  maxMana: number;
+}
+
 // Character represents a game character that belongs to a user
 export interface Character {
   id: string; // Character UUID
@@ -42,6 +53,7 @@ export interface Character {
   location: string;
   gameState?: string; // JSON string storing current game state
   activeBuffs?: ActiveBuff[]; // Currently active noncombat ability buffs
+  calculatedStats?: CalculatedStats; // Stats including all modifiers
   createdAt: string;
   lastPlayed: string;
 }

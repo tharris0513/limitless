@@ -237,6 +237,11 @@ pub async fn use_noncombat_ability(
         ability_id
     );
 
+    // Recalculate stats with the new buff before returning
+    repo.populate_calculated_stats(&mut character)
+        .await
+        .map_err(AppError::from)?;
+
     Ok(Json(character))
 }
 
