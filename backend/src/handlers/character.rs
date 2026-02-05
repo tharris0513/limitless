@@ -141,13 +141,10 @@ pub async fn update_character_last_played(
 ) -> Result<Json<serde_json::Value>, AppError> {
     // TODO: Verify character belongs to authenticated user
     match repo.update_character_last_played(&character_id).await {
-        Ok(()) => {
-            tracing::info!("Updated last played for character: {}", character_id);
-            Ok(Json(serde_json::json!({
-                "message": "Character last played updated",
-                "timestamp": chrono::Utc::now().to_rfc3339()
-            })))
-        }
+        Ok(()) => Ok(Json(serde_json::json!({
+            "message": "Character last played updated",
+            "timestamp": chrono::Utc::now().to_rfc3339()
+        }))),
         Err(e) => {
             tracing::error!("Failed to update character last played: {:?}", e);
             Err(AppError::from(e))
@@ -230,13 +227,6 @@ pub async fn use_noncombat_ability(
             AppError::from(e)
         })?;
 
-    tracing::info!(
-        "Character {} used noncombat ability {} ({})",
-        character_id,
-        ability.name,
-        ability_id
-    );
-
     // Recalculate stats with the new buff before returning
     repo.populate_calculated_stats(&mut character)
         .await
@@ -293,14 +283,6 @@ pub async fn grant_experience(
                 levels_gained: levels_gained.clone(),
                 experience_granted: payload.amount,
             };
-
-            if !levels_gained.is_empty() {
-                tracing::info!(
-                    "Character {} leveled up to level(s): {:?}",
-                    character_id,
-                    levels_gained
-                );
-            }
 
             Ok(Json(response))
         }

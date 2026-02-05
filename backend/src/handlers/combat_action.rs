@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::middleware::AuthClaims;
-use crate::models::{CharacterAbility, CreatureInCombat};
+use crate::models::CharacterAbility;
 use crate::repository::UserRepository;
 use axum::{
     extract::{Path, State},
@@ -11,11 +11,8 @@ use std::sync::Arc;
 use crate::combat::{
     apply_enemy_attack, decrement_buff_durations, handle_defeat, handle_victory,
     process_ability_attacks, process_melee_attacks, update_cooldowns, AbilityProcessor,
-    CombatActionRequest, CombatActionResult, GameStateHelper, GS_ABILITY_COOLDOWNS, GS_ENEMY,
-    GS_PLAYER_HEALTH, GS_STATUS, GS_TURN_NUMBER,
+    CombatActionRequest, CombatActionResult, CombatOutcome, CombatState,
 };
-
-use crate::combat::helpers::GS_ENEMY_HEALTH;
 
 // Save character's game state
 pub async fn save_game_state(
@@ -248,8 +245,27 @@ pub async fn perform_combat_action(
         .as_ref()
         .ok_or_else(|| AppError::validation_error("No active combat"))?;
 
-    let mut game_state: serde_json::Value = serde_json::from_str(game_state_str)
+    let game_state_json: serde_json::Value = serde_json::from_str(game_state_str)
         .map_err(|e| AppError::validation_error(&format!("Invalid game state: {}", e)))?;
+
+    tracing::debug!("Raw game_state JSON: {}", game_state_json);
+
+    // Get player max health for combat state
+    let player_max_health = character
+        .calculated_stats
+        .as_ref()
+        .map(|s| s.max_health)
+        .unwrap_or(character.max_health);
+
+    // Parse into CombatState - this encapsulates all health-related operations
+    let mut combat_state = CombatState::from_json(&game_state_json, player_max_health)?;
+
+    tracing::debug!(
+        "Combat state parsed - enemy: {} hp={}, player hp={}",
+        combat_state.enemy_name(),
+        combat_state.enemy_health(),
+        combat_state.player_health()
+    );
 
     // Get character abilities for passive checks and ability validation
     let character_abilities: Vec<CharacterAbility> = repo
@@ -267,20 +283,18 @@ pub async fn perform_combat_action(
     // Create ability processor
     let processor = AbilityProcessor::new(&character, &abilities);
 
-    let enemy: CreatureInCombat = serde_json::from_value(
-        game_state
-            .get(GS_ENEMY)
-            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?
-            .clone(),
-    )
-    .map_err(|e| {
-        AppError::validation_error(&format!("Failed to parse enemy from game state: {}", e))
-    })?;
+    // We need a mutable JSON representation for ability processing (enchantments modify it)
+    let mut game_state = combat_state.to_json();
 
     // === Generate player attacks based on action type ===
     let (attacks, mana_cost) = match action {
         CombatActionRequest::Melee => {
-            let attacks = process_melee_attacks(&processor, &character, &game_state, enemy.defense);
+            let attacks = process_melee_attacks(
+                &processor,
+                &character,
+                &game_state,
+                combat_state.enemy_defense(),
+            );
             (attacks, 0i64)
         }
         CombatActionRequest::Ability { ref ability_id } => {
@@ -292,17 +306,14 @@ pub async fn perform_combat_action(
             // Check if ability is on cooldown
             if let Some(cooldown) = ability.cooldown {
                 if cooldown > 0 {
-                    if let Some(cooldowns) = game_state.get(GS_ABILITY_COOLDOWNS) {
-                        if let Some(cooldown_turns) =
-                            cooldowns.get(&ability.id).and_then(|v| v.as_i64())
-                        {
-                            if cooldown_turns > 0 {
-                                return Err(AppError::validation_error(&format!(
-                                    "Ability is on cooldown for {} more turn{}",
-                                    cooldown_turns,
-                                    if cooldown_turns == 1 { "" } else { "s" }
-                                )));
-                            }
+                    if let Some(&cooldown_turns) = combat_state.ability_cooldowns().get(&ability.id)
+                    {
+                        if cooldown_turns > 0 {
+                            return Err(AppError::validation_error(&format!(
+                                "Ability is on cooldown for {} more turn{}",
+                                cooldown_turns,
+                                if cooldown_turns == 1 { "" } else { "s" }
+                            )));
                         }
                     }
                 }
@@ -317,7 +328,7 @@ pub async fn perform_combat_action(
                 )));
             }
 
-            // Process ability effects
+            // Process ability effects (may modify game_state for enchantments)
             let attacks =
                 process_ability_attacks(ability, &character, &processor, &mut game_state)?;
 
@@ -332,91 +343,90 @@ pub async fn perform_combat_action(
     // Apply mana cost
     character.mana -= mana_cost;
 
-    // Increment turn number
-    let gs_helper = GameStateHelper::new(&game_state);
-    let current_turn = gs_helper.turn_number();
-    let new_turn = current_turn + 1;
-    game_state[GS_TURN_NUMBER] = serde_json::json!(new_turn);
-
-    // Update combat status based on turn number (if not already finished)
-    if new_turn == 1 {
-        game_state[GS_STATUS] = serde_json::json!("started");
-    } else if new_turn > 1 {
-        game_state[GS_STATUS] = serde_json::json!("ongoing");
-    }
+    // Advance turn (automatically updates status)
+    combat_state.advance_turn();
 
     // Update ability cooldowns
     let cooldowns = update_cooldowns(&mut game_state, &action, &abilities);
 
-    // Update enemy health
-    let enemy: CreatureInCombat = serde_json::from_value(
-        game_state
-            .get(GS_ENEMY)
-            .ok_or_else(|| AppError::validation_error("No enemy in game state"))?
-            .clone(),
-    )
-    .map_err(|e| {
-        AppError::validation_error(&format!("Failed to parse enemy from game state: {}", e))
-    })?;
+    // Sync cooldowns back to combat state
+    *combat_state.ability_cooldowns_mut() = cooldowns.clone();
 
-    let new_enemy_health = (enemy.health - total_damage).max(0);
-
-    // Write updated enemy health into game_state for persistence and frontend
-    if let Some(enemy_obj) = game_state.get_mut(GS_ENEMY) {
-        if let Some(obj) = enemy_obj.as_object_mut() {
-            obj.insert(
-                GS_ENEMY_HEALTH.to_string(),
-                serde_json::json!(new_enemy_health),
-            );
-        }
+    // Sync any enchantment changes from ability processing back to combat state
+    if let Some(primary) = game_state.get("primaryWeaponEnchanted").and_then(|v| v.as_str()) {
+        combat_state.set_primary_weapon_enchanted(Some(primary.to_string()));
+    }
+    if let Some(secondary) = game_state.get("secondaryWeaponEnchanted").and_then(|v| v.as_str()) {
+        combat_state.set_secondary_weapon_enchanted(Some(secondary.to_string()));
     }
 
-    // === Handle combat outcome ===
-
-    let victory = new_enemy_health <= 0;
-    let gs_helper = GameStateHelper::new(&game_state);
-    let mut player_health = gs_helper.player_health(character.health);
+    // === Apply damage to enemy and check for victory ===
+    // This is the key observation point - damage_enemy automatically checks if health <= 0
+    tracing::debug!(
+        "Applying {} damage to enemy (current hp={})",
+        total_damage,
+        combat_state.enemy_health()
+    );
+    let enemy_outcome = combat_state.damage_enemy(total_damage);
+    let victory = enemy_outcome == CombatOutcome::Victory;
+    tracing::debug!(
+        "After damage: enemy hp={}, outcome={:?}, victory={}",
+        combat_state.enemy_health(),
+        enemy_outcome,
+        victory
+    );
 
     let (experience_gained, victory_message, level_up, enemy_attacks, defeat, defeat_message) =
         if victory {
+            // Update status to victory
+            combat_state.update_status(CombatOutcome::Victory);
+
             let (exp, vic_msg, lvl_up) = handle_victory(
                 &repo,
                 &character_id,
                 &claims.sub,
                 &mut character,
-                enemy.name,
-                enemy.experience_reward,
+                combat_state.enemy_name().to_string(),
+                combat_state.enemy_experience_reward(),
             )
             .await?;
 
             (exp, vic_msg, lvl_up, Vec::new(), false, None)
         } else {
             // Enemy counterattacks (with player defense mitigation)
-            let defense = character.calculated_stats.as_ref().map(|s| s.defense).unwrap_or(character.defense);
+            let defense = character
+                .calculated_stats
+                .as_ref()
+                .map(|s| s.defense)
+                .unwrap_or(character.defense);
             let (attacks, counter_damage) = apply_enemy_attack(
-                enemy.might,
+                combat_state.enemy_might(),
                 defense,
-                &enemy.name,
-                enemy.attack_description,
+                combat_state.enemy_name(),
+                combat_state.enemy_attack_description().to_string(),
             );
 
-            // Update player health
-            player_health = (player_health - counter_damage).max(0);
-            game_state[GS_PLAYER_HEALTH] = serde_json::json!(player_health);
-            character.health = player_health as i64;
+            // Apply damage to player and check for defeat
+            // This is the key observation point - damage_player automatically checks if health <= 0
+            let player_outcome = combat_state.damage_player(counter_damage);
+            let defeat = player_outcome == CombatOutcome::Defeat;
+
+            // Sync player health to character
+            character.health = combat_state.player_health();
 
             // Update character health in database
             repo.update_character_health(&character_id, &claims.sub, character.health)
                 .await
                 .map_err(AppError::from)?;
 
-            // Check for defeat
-            let (defeat, defeat_msg) = if player_health <= 0 {
-                let msg = handle_defeat(&repo, &character_id, &claims.sub, &mut character, &enemy.name)
-                    .await?;
-                (true, msg)
+            // Handle defeat if player health reached 0
+            let defeat_msg = if defeat {
+                combat_state.update_status(CombatOutcome::Defeat);
+                let enemy_name = combat_state.enemy_name().to_string();
+                handle_defeat(&repo, &character_id, &claims.sub, &mut character, &enemy_name)
+                    .await?
             } else {
-                (false, None)
+                None
             };
 
             (None, None, None, attacks, defeat, defeat_msg)
@@ -429,19 +439,21 @@ pub async fn perform_combat_action(
             .map_err(AppError::from)?;
     }
 
-    // Prepare game state for response
-    let mut response_game_state = game_state.clone();
+    // Prepare game state for response (serialize from CombatState)
+    let response_game_state = combat_state.to_json();
 
-    // Update combat status when it ends
-    if victory {
-        response_game_state[GS_STATUS] = serde_json::json!("victory");
-    } else if defeat {
-        response_game_state[GS_STATUS] = serde_json::json!("defeat");
-    }
+    tracing::debug!(
+        "Response: victory={}, defeat={}, enemy_hp={}, player_hp={}, status={}",
+        victory,
+        defeat,
+        combat_state.enemy_health(),
+        combat_state.player_health(),
+        response_game_state.get("status").and_then(|v| v.as_str()).unwrap_or("unknown")
+    );
 
     // Save updated game state if combat continues
     if !victory && !defeat {
-        let updated_game_state_str = serde_json::to_string(&game_state).map_err(|e| {
+        let updated_game_state_str = serde_json::to_string(&response_game_state).map_err(|e| {
             AppError::validation_error(&format!("Failed to serialize game state: {}", e))
         })?;
 
@@ -453,9 +465,9 @@ pub async fn perform_combat_action(
     Ok(Json(CombatActionResult {
         attacks,
         total_damage,
-        enemy_health: new_enemy_health,
+        enemy_health: combat_state.enemy_health(),
         enemy_attacks,
-        player_health,
+        player_health: combat_state.player_health(),
         player_mana: character.mana,
         victory,
         defeat,

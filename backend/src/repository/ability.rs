@@ -194,11 +194,6 @@ impl UserRepository {
             .unwrap_or_else(|| "combat".to_string());
 
         let ability_name = get_string("name")?;
-        tracing::info!(
-            "Parsed ability '{}' with ability_type from DB: '{}'",
-            ability_name,
-            ability_type_value
-        );
 
         Ok(Ability {
             id: get_string("id")?,
@@ -388,80 +383,6 @@ impl UserRepository {
         }
 
         Ok(unlocked_abilities)
-    }
-
-    pub(crate) fn parse_ability_from_class_item(
-        &self,
-        item: &HashMap<String, AttributeValue>,
-    ) -> Result<Ability> {
-        let get_string = |key: &str| -> Result<String> {
-            item.get(key)
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string())
-                .context(format!("Missing {}", key))
-        };
-
-        let get_i64 = |key: &str| -> Result<i64> {
-            item.get(key)
-                .and_then(|v| v.as_n().ok())
-                .and_then(|s| s.parse::<i64>().ok())
-                .context(format!("Missing {}", key))
-        };
-
-        // Parse effects from JSON
-        let effects = item
-            .get("effects")
-            .and_then(|v| v.as_s().ok())
-            .and_then(|s| serde_json::from_str::<Vec<AbilityEffect>>(s).ok())
-            .unwrap_or_default();
-
-        let ability_type_value = item
-            .get("ability_type")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "combat".to_string());
-
-        let ability_name = get_string("ability_name")?;
-        tracing::info!(
-            "Parsed ability '{}' from CLASS table with ability_type: '{}' (raw value present: {})",
-            ability_name,
-            ability_type_value,
-            item.get("ability_type").is_some()
-        );
-
-        Ok(Ability {
-            id: get_string("ability_id")?,
-            name: ability_name,
-            description: get_string("ability_description")?,
-            ability_type: ability_type_value,
-            effects,
-            mana_cost: Some(get_i64("mana_cost")?),
-            cooldown: Some(get_i64("cooldown")?),
-            duration: item
-                .get("duration")
-                .and_then(|v| v.as_n().ok())
-                .and_then(|s| s.parse::<i64>().ok()),
-            damage_formula: item
-                .get("damage_formula")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
-            heal_formula: item
-                .get("heal_formula")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
-            effect_formula: item
-                .get("effect_formula")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
-            passive_effect: item
-                .get("passive_effect")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
-            attack_description: item
-                .get("attack_description")
-                .and_then(|v| v.as_s().ok())
-                .map(|s| s.to_string()),
-        })
     }
 
     pub(crate) fn get_unlock_level(&self, item: &HashMap<String, AttributeValue>) -> Result<i64> {

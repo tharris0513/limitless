@@ -147,8 +147,6 @@ impl UserRepository {
             AttributeValue::S(last_played.clone()),
         );
 
-        tracing::info!("Creating character with experience: 0, experience_to_next: 100");
-
         self.client
             .put_item()
             .table_name(&self.table_name)
@@ -156,8 +154,6 @@ impl UserRepository {
             .send()
             .await
             .context("Failed to create character")?;
-
-        tracing::info!("Character created successfully in DynamoDB");
 
         // Unlock level 1 abilities for this class
         self.unlock_character_abilities(&character_id, class_id, 1)
@@ -329,12 +325,6 @@ impl UserRepository {
         let experience = get_i64("experience")?;
         let experience_to_next = get_i64("experience_to_next")?;
 
-        tracing::debug!(
-            "Parsing character - experience: {}, experience_to_next: {}",
-            experience,
-            experience_to_next
-        );
-
         // Parse active_buffs from JSON if present
         let active_buffs = item
             .get("active_buffs")
@@ -376,15 +366,6 @@ impl UserRepository {
             last_played: get_string("last_played")?,
         };
 
-        tracing::info!(
-            "Returning character {} - level: {}, exp: {}/{}, stats.health: {}",
-            character.name,
-            character.level,
-            character.experience,
-            character.experience_to_next,
-            character.health
-        );
-
         Ok(character)
     }
 
@@ -394,7 +375,8 @@ impl UserRepository {
         let abilities = self.get_character_unlocked_abilities(&character.id).await?;
 
         // Extract just the Ability structs
-        let ability_list: Vec<crate::models::Ability> = abilities.into_iter().map(|(ability, _)| ability).collect();
+        let ability_list: Vec<crate::models::Ability> =
+            abilities.into_iter().map(|(ability, _)| ability).collect();
 
         // Calculate stats
         let calculated = crate::stat_calculator::calculate_character_stats(
@@ -556,27 +538,6 @@ impl UserRepository {
         }
 
         Err(anyhow::anyhow!("Character not found"))
-    }
-
-    // Update character experience
-    pub async fn update_character_experience(
-        &self,
-        character_id: &str,
-        user_id: &str,
-        experience: i64,
-    ) -> Result<()> {
-        self.client
-            .update_item()
-            .table_name(&self.table_name)
-            .key("PK", AttributeValue::S(format!("USER#{}", user_id)))
-            .key("SK", AttributeValue::S(format!("CHAR#{}", character_id)))
-            .update_expression("SET experience = :experience")
-            .expression_attribute_values(":experience", AttributeValue::N(experience.to_string()))
-            .send()
-            .await
-            .context("Failed to update character experience")?;
-
-        Ok(())
     }
 
     // Update character experience and experience_to_next (for proper XP bar display)
@@ -854,12 +815,6 @@ impl UserRepository {
             let (new_level, exp_into_level, exp_for_next_level) =
                 calculate_level_from_experience(new_total_experience);
 
-            tracing::info!(
-                "grant_experience: char {} level {}, gained {} XP. total_accumulated_exp: {}, new_total: {}, new_level: {}, exp_into_level: {}, exp_for_next: {}",
-                character.name, character.level, experience_gain, total_accumulated_exp, new_total_experience,
-                new_level, exp_into_level, exp_for_next_level
-            );
-
             let old_level = character.level;
             let levels_gained: Vec<i64> = ((old_level + 1)..=new_level).collect();
 
@@ -1001,13 +956,6 @@ impl UserRepository {
 
             if let Some(updated_item) = updated_result.item() {
                 let updated_character = self.parse_character(updated_item)?;
-                tracing::info!(
-                    "Granted {} XP to character {}. Level {} -> {}",
-                    experience_gain,
-                    character_id,
-                    old_level,
-                    new_level
-                );
                 return Ok((updated_character, levels_gained));
             }
         }
@@ -1125,13 +1073,6 @@ impl UserRepository {
                         .send()
                         .await
                         .context("Failed to grant ability to character")?;
-
-                    tracing::info!(
-                        "Granted ability {} to character {} (level {})",
-                        ability.id,
-                        character_id,
-                        character.level
-                    );
                 }
             } else {
                 // Character should NOT have this ability (level too low)
@@ -1145,12 +1086,6 @@ impl UserRepository {
                         .send()
                         .await
                         .context("Failed to remove ability from character")?;
-
-                    tracing::info!(
-                        "Removed ability {} from character {} (level too low)",
-                        ability.id,
-                        character_id
-                    );
                 }
             }
         }
@@ -1173,12 +1108,6 @@ impl UserRepository {
                     .send()
                     .await
                     .context("Failed to remove obsolete ability from character")?;
-
-                tracing::info!(
-                    "Removed obsolete ability {} from character {}",
-                    current_ability_id,
-                    character_id
-                );
             }
         }
 
@@ -1199,13 +1128,6 @@ impl UserRepository {
                 );
             }
         }
-
-        tracing::info!(
-            "Synced abilities for {} characters of class {}",
-            count,
-            class_id
-        );
-
         Ok(count)
     }
 }
