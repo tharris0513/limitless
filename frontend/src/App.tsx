@@ -38,7 +38,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showAbilities, setShowAbilities] = useState(false);
-  const [adminView, setAdminView] = useState<'menu' | 'users' | 'classes'>('menu');
+  const [adminView, setAdminView] = useState<'menu' | 'users'>('menu');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   useEffect(() => {
@@ -418,7 +418,7 @@ function App() {
               <AdminPanel 
                 onBack={() => setShowAdminPanel(false)} 
                 onLogout={handleLogout}
-                onViewChange={(view) => setAdminView(view as 'menu' | 'users' | 'classes')}
+                onViewChange={(view) => setAdminView(view as 'menu' | 'users')}
                 requestedView={adminView}
               />
             </GameLayout>
