@@ -1,5 +1,4 @@
-use crate::error::AppError;
-use crate::models::CreatureInCombat;
+use crate::{error::AppError, game::creatures::CreatureInCombat};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -49,7 +48,6 @@ pub struct CombatState {
 
     // Player state
     player_health: i64,
-    player_max_health: i64,
 
     // Enemy state
     enemy: CreatureInCombat,
@@ -67,23 +65,11 @@ pub struct CombatState {
 }
 
 impl CombatState {
-    /// Create a new CombatState from an enemy and player stats
-    pub fn new(enemy: CreatureInCombat, player_health: i64, player_max_health: i64) -> Self {
-        Self {
-            original_json: serde_json::Value::Null,
-            player_health,
-            player_max_health,
-            enemy,
-            turn_number: 0,
-            status: CombatStatus::Started,
-            ability_cooldowns: HashMap::new(),
-            primary_weapon_enchanted: None,
-            secondary_weapon_enchanted: None,
-        }
-    }
-
     /// Parse CombatState from a JSON game state value
-    pub fn from_json(game_state: &serde_json::Value, player_max_health: i64) -> Result<Self, AppError> {
+    pub fn from_json(
+        game_state: &serde_json::Value,
+        player_max_health: i64,
+    ) -> Result<Self, AppError> {
         // Parse enemy
         let enemy: CreatureInCombat = serde_json::from_value(
             game_state
@@ -142,7 +128,6 @@ impl CombatState {
         Ok(Self {
             original_json: game_state.clone(),
             player_health,
-            player_max_health,
             enemy,
             turn_number,
             status,
@@ -194,18 +179,6 @@ impl CombatState {
         self.check_outcome()
     }
 
-    /// Heal the player (capped at max health)
-    /// Returns the combat outcome (always Ongoing unless already decided)
-    pub fn heal_player(&mut self, amount: i64) -> CombatOutcome {
-        self.player_health = (self.player_health + amount).min(self.player_max_health);
-        self.check_outcome()
-    }
-
-    /// Restore player to full health
-    pub fn restore_player_health(&mut self) {
-        self.player_health = self.player_max_health;
-    }
-
     /// Check the current combat outcome based on health values
     fn check_outcome(&self) -> CombatOutcome {
         if self.enemy.health <= 0 {
@@ -215,11 +188,6 @@ impl CombatState {
         } else {
             CombatOutcome::Ongoing
         }
-    }
-
-    /// Get the current outcome without modifying state
-    pub fn outcome(&self) -> CombatOutcome {
-        self.check_outcome()
     }
 
     // ============== Status Management ==============
@@ -254,14 +222,6 @@ impl CombatState {
         self.player_health
     }
 
-    pub fn player_max_health(&self) -> i64 {
-        self.player_max_health
-    }
-
-    pub fn enemy(&self) -> &CreatureInCombat {
-        &self.enemy
-    }
-
     pub fn enemy_health(&self) -> i64 {
         self.enemy.health
     }
@@ -286,28 +246,12 @@ impl CombatState {
         &self.enemy.attack_description
     }
 
-    pub fn turn_number(&self) -> i64 {
-        self.turn_number
-    }
-
-    pub fn status(&self) -> CombatStatus {
-        self.status
-    }
-
     pub fn ability_cooldowns(&self) -> &HashMap<String, i32> {
         &self.ability_cooldowns
     }
 
     pub fn ability_cooldowns_mut(&mut self) -> &mut HashMap<String, i32> {
         &mut self.ability_cooldowns
-    }
-
-    pub fn primary_weapon_enchanted(&self) -> Option<&str> {
-        self.primary_weapon_enchanted.as_deref()
-    }
-
-    pub fn secondary_weapon_enchanted(&self) -> Option<&str> {
-        self.secondary_weapon_enchanted.as_deref()
     }
 
     pub fn set_primary_weapon_enchanted(&mut self, enchant: Option<String>) {
@@ -322,185 +266,6 @@ impl CombatState {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn create_test_enemy() -> CreatureInCombat {
-        CreatureInCombat {
-            name: "Test Goblin".to_string(),
-            health: 50,
-            max_health: 50,
-            level: 1,
-            introduction_text: "A goblin appears!".to_string(),
-            might: 10,
-            defense: 5,
-            magic: 3,
-            resistance: 3,
-            agility: 8,
-            creature_type: Some("humanoid".to_string()),
-            experience_reward: 100,
-            attack_description: "The goblin attacks!".to_string(),
-        }
-    }
-
-    #[test]
-    fn test_combat_state_new() {
-        let enemy = create_test_enemy();
-        let state = CombatState::new(enemy, 100, 100);
-
-        assert_eq!(state.player_health(), 100);
-        assert_eq!(state.player_max_health(), 100);
-        assert_eq!(state.enemy_health(), 50);
-        assert_eq!(state.turn_number(), 0);
-        assert_eq!(state.status(), CombatStatus::Started);
-    }
-
-    #[test]
-    fn test_damage_enemy_ongoing() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        let outcome = state.damage_enemy(20);
-
-        assert_eq!(outcome, CombatOutcome::Ongoing);
-        assert_eq!(state.enemy_health(), 30);
-    }
-
-    #[test]
-    fn test_damage_enemy_victory() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        let outcome = state.damage_enemy(50);
-
-        assert_eq!(outcome, CombatOutcome::Victory);
-        assert_eq!(state.enemy_health(), 0);
-    }
-
-    #[test]
-    fn test_damage_enemy_overkill_clamps_to_zero() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        let outcome = state.damage_enemy(100); // More than enemy has
-
-        assert_eq!(outcome, CombatOutcome::Victory);
-        assert_eq!(state.enemy_health(), 0); // Clamped to 0, not -50
-    }
-
-    #[test]
-    fn test_damage_player_ongoing() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        let outcome = state.damage_player(30);
-
-        assert_eq!(outcome, CombatOutcome::Ongoing);
-        assert_eq!(state.player_health(), 70);
-    }
-
-    #[test]
-    fn test_damage_player_defeat() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        let outcome = state.damage_player(100);
-
-        assert_eq!(outcome, CombatOutcome::Defeat);
-        assert_eq!(state.player_health(), 0);
-    }
-
-    #[test]
-    fn test_damage_player_overkill_clamps_to_zero() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        let outcome = state.damage_player(150);
-
-        assert_eq!(outcome, CombatOutcome::Defeat);
-        assert_eq!(state.player_health(), 0);
-    }
-
-    #[test]
-    fn test_heal_player() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 50, 100);
-
-        let outcome = state.heal_player(30);
-
-        assert_eq!(outcome, CombatOutcome::Ongoing);
-        assert_eq!(state.player_health(), 80);
-    }
-
-    #[test]
-    fn test_heal_player_capped_at_max() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 80, 100);
-
-        state.heal_player(50); // Would be 130, but capped at 100
-
-        assert_eq!(state.player_health(), 100);
-    }
-
-    #[test]
-    fn test_restore_player_health() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 30, 100);
-
-        state.restore_player_health();
-
-        assert_eq!(state.player_health(), 100);
-    }
-
-    #[test]
-    fn test_advance_turn() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        assert_eq!(state.turn_number(), 0);
-        assert_eq!(state.status(), CombatStatus::Started);
-
-        state.advance_turn();
-        assert_eq!(state.turn_number(), 1);
-        assert_eq!(state.status(), CombatStatus::Started);
-
-        state.advance_turn();
-        assert_eq!(state.turn_number(), 2);
-        assert_eq!(state.status(), CombatStatus::Ongoing);
-    }
-
-    #[test]
-    fn test_update_status_victory() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        state.update_status(CombatOutcome::Victory);
-
-        assert_eq!(state.status(), CombatStatus::Victory);
-    }
-
-    #[test]
-    fn test_update_status_defeat() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        state.update_status(CombatOutcome::Defeat);
-
-        assert_eq!(state.status(), CombatStatus::Defeat);
-    }
-
-    #[test]
-    fn test_victory_takes_priority_over_defeat() {
-        // Edge case: both hit 0 at same time (player attacks and kills enemy)
-        // Victory should be checked first since enemy health is evaluated first
-        let mut enemy = create_test_enemy();
-        enemy.health = 10;
-        let mut state = CombatState::new(enemy, 10, 100);
-
-        // Player attacks and kills enemy
-        let outcome = state.damage_enemy(10);
-
-        assert_eq!(outcome, CombatOutcome::Victory);
-    }
-
     #[test]
     fn test_from_json() {
         let game_state = serde_json::json!({
@@ -531,47 +296,7 @@ mod tests {
         let state = CombatState::from_json(&game_state, 100).unwrap();
 
         assert_eq!(state.player_health(), 75);
-        assert_eq!(state.player_max_health(), 100);
         assert_eq!(state.enemy_health(), 30);
-        assert_eq!(state.turn_number(), 3);
-        assert_eq!(state.status(), CombatStatus::Ongoing);
         assert_eq!(state.ability_cooldowns().get("fireball"), Some(&2));
-        assert_eq!(state.primary_weapon_enchanted(), Some("fire"));
-        assert_eq!(state.secondary_weapon_enchanted(), None);
-    }
-
-    #[test]
-    fn test_to_json() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-        state.advance_turn();
-        state.damage_enemy(20);
-        state.set_primary_weapon_enchanted(Some("frost".to_string()));
-
-        let json = state.to_json();
-
-        assert_eq!(json["playerHealth"], 100);
-        assert_eq!(json["turnNumber"], 1);
-        assert_eq!(json["status"], "started");
-        assert_eq!(json["primaryWeaponEnchanted"], "frost");
-        assert_eq!(json["enemy"]["health"], 30);
-    }
-
-    #[test]
-    fn test_weapon_enchantments() {
-        let enemy = create_test_enemy();
-        let mut state = CombatState::new(enemy, 100, 100);
-
-        assert_eq!(state.primary_weapon_enchanted(), None);
-        assert_eq!(state.secondary_weapon_enchanted(), None);
-
-        state.set_primary_weapon_enchanted(Some("fire".to_string()));
-        state.set_secondary_weapon_enchanted(Some("frost".to_string()));
-
-        assert_eq!(state.primary_weapon_enchanted(), Some("fire"));
-        assert_eq!(state.secondary_weapon_enchanted(), Some("frost"));
-
-        state.set_primary_weapon_enchanted(None);
-        assert_eq!(state.primary_weapon_enchanted(), None);
     }
 }

@@ -1,3 +1,4 @@
+use crate::game::abilities::ActiveBuff;
 use serde::{Deserialize, Serialize};
 
 /// Character represents a game character that belongs to a user
@@ -31,7 +32,7 @@ pub struct Character {
     pub game_state: Option<String>, // JSON string storing current game state
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "activeBuffs")]
-    pub active_buffs: Option<Vec<crate::models::ActiveBuff>>, // Currently active noncombat ability buffs
+    pub active_buffs: Option<Vec<ActiveBuff>>, // Currently active noncombat ability buffs
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "calculatedStats")]
     pub calculated_stats: Option<crate::stat_calculator::CalculatedStats>, // Stats including all modifiers
@@ -39,26 +40,4 @@ pub struct Character {
     pub created_at: String,
     #[serde(rename = "lastPlayed")]
     pub last_played: String,
-}
-
-/// Class represents a character class with base stats
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Class {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    #[serde(rename = "startingMight")]
-    pub starting_might: i64,
-    #[serde(rename = "startingDefense")]
-    pub starting_defense: i64,
-    #[serde(rename = "startingMagic")]
-    pub starting_magic: i64,
-    #[serde(rename = "startingResistance")]
-    pub starting_resistance: i64,
-    #[serde(rename = "startingAgility")]
-    pub starting_agility: i64,
-    #[serde(rename = "startingHealth")]
-    pub starting_health: i64,
-    #[serde(rename = "startingMana")]
-    pub starting_mana: i64,
 }

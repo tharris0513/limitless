@@ -3,12 +3,13 @@ pub mod state;
 
 use crate::damage_calculator::DamageCalculator;
 use crate::error::AppError;
+use crate::game::abilities::Ability;
+use crate::game::ability_effects::{ActiveEffectType, EffectType, PassiveEffectType};
+use crate::game::creatures::CreatureInCombat;
 use crate::level_system::{
     calculate_level_from_experience, calculate_stat_increases_for_level, experience_for_level,
 };
-use crate::models::{
-    Ability, ActiveEffectType, Character, CreatureInCombat, EffectType, PassiveEffectType,
-};
+use crate::models::Character;
 use crate::repository::UserRepository;
 use serde::{Deserialize, Serialize};
 
@@ -208,134 +209,95 @@ pub fn process_ability_attacks(
     .map_err(|e| {
         AppError::validation_error(&format!("Failed to parse enemy from game state: {}", e))
     })?;
-    if !ability.effects.is_empty() {
-        // Use new effects system
-        for effect in &ability.effects {
-            if effect.effect_type == EffectType::Active {
-                // Only process active effects during combat
-                if let Some(ref active_type) = effect.active_type {
-                    match active_type {
-                        ActiveEffectType::Damage => {
-                            // Calculate damage from this effect's formula
-                            if let Some(ref formula) = effect.formula {
-                                let damage = DamageCalculator::test_formula_with_enemy(
-                                    formula, &character, &enemy,
-                                )
-                                .map_err(|e| {
-                                    AppError::validation_error(&format!(
-                                        "Damage calculation failed for effect {}: {}",
-                                        effect.id, e
-                                    ))
-                                })?;
+    // Use new effects system
+    for effect in ability.effects {
+        if effect.effect_type == EffectType::Active {
+            // Only process active effects during combat
+            if let Some(ref active_type) = effect.active_type {
+                match active_type {
+                    ActiveEffectType::Damage => {
+                        // Calculate damage from this effect's formula
+                        if let Some(ref formula) = effect.formula {
+                            let damage = DamageCalculator::test_formula_with_enemy(
+                                formula, &character, &enemy,
+                            )
+                            .map_err(|e| {
+                                AppError::validation_error(&format!(
+                                    "Damage calculation failed for effect {}: {}",
+                                    effect.id, e
+                                ))
+                            })?;
 
-                                // Use effect's attack description or create default
-                                let description = if let Some(ref template) =
-                                    effect.attack_description
-                                {
-                                    parse_attack_description(template, damage, &ability.name)
-                                } else {
-                                    format!("You use {} for **{}** damage!", ability.name, damage)
-                                };
+                            // Use effect's attack description or create default
+                            let description = if let Some(ref template) = effect.combat_description
+                            {
+                                parse_attack_description(template, damage, &ability.name)
+                            } else {
+                                format!("You use {} for **{}** damage!", ability.name, damage)
+                            };
 
-                                attacks.push(SingleAttack {
-                                    damage,
-                                    description,
-                                    is_dual_wield: false,
-                                });
-                            }
-                        }
-                        ActiveEffectType::Heal => {
-                            // TODO: Implement healing effects
-                        }
-                        ActiveEffectType::Buff | ActiveEffectType::Debuff => {
-                            // TODO: Implement buff/debuff effects
-                        }
-                    }
-                }
-            } else if effect.effect_type == EffectType::Passive {
-                // Check if this ability applies a weapon enchantment
-                if let Some(ref passive_type) = effect.passive_type {
-                    match passive_type {
-                        PassiveEffectType::EnchantWeaponFire
-                        | PassiveEffectType::EnchantWeaponFrost
-                        | PassiveEffectType::EnchantWeaponLightning => {
-                            // First, verify the character has the base "enchant_weapon" passive
-                            if !processor.has_base_weapon_enchant_passive() {
-                                continue;
-                            }
-
-                            // Get enchantment element name
-                            let ench_type = passive_type.enchantment_element().unwrap();
-
-                            // Check current enchantment status
-                            let gs_helper = GameStateHelper::new(game_state);
-                            let primary_enchanted = gs_helper.primary_enchantment_str();
-                            let secondary_enchanted = gs_helper.secondary_enchantment_str();
-
-                            // Check for dual wield
-                            let has_dual_wield =
-                                processor.has_passive(PassiveEffectType::DualWield);
-
-                            // Apply enchantment
-                            if primary_enchanted.is_empty() {
-                                game_state[GS_PRIMARY_WEAPON_ENCHANTED] =
-                                    serde_json::json!(ench_type);
-                                attacks.push(SingleAttack {
-                                    damage: 0,
-                                    description: format!(
-                                        "You enchant your primary weapon with the power of {}!",
-                                        ench_type
-                                    ),
-                                    is_dual_wield: false,
-                                });
-                            } else if has_dual_wield && secondary_enchanted.is_empty() {
-                                game_state[GS_SECONDARY_WEAPON_ENCHANTED] =
-                                    serde_json::json!(ench_type);
-                                attacks.push(SingleAttack {
-                                    damage: 0,
-                                    description: format!(
-                                        "You enchant your secondary weapon with the power of {}!",
-                                        ench_type
-                                    ),
-                                    is_dual_wield: false,
-                                });
-                            }
-                        }
-                        _ => {
-                            // Other passive types not handled in combat actions
+                            attacks.push(SingleAttack {
+                                damage,
+                                description,
+                                is_dual_wield: false,
+                            });
                         }
                     }
                 }
             }
+        } else if effect.effect_type == EffectType::Passive {
+            // Check if this ability applies a weapon enchantment
+            if let Some(ref passive_type) = effect.passive_type {
+                match passive_type {
+                    PassiveEffectType::EnchantWeaponFire
+                    | PassiveEffectType::EnchantWeaponFrost
+                    | PassiveEffectType::EnchantWeaponLightning => {
+                        // First, verify the character has the base "enchant_weapon" passive
+                        if !processor.has_base_weapon_enchant_passive() {
+                            continue;
+                        }
+
+                        // Get enchantment element name
+                        let ench_type = passive_type.enchantment_element().unwrap();
+
+                        // Check current enchantment status
+                        let gs_helper = GameStateHelper::new(game_state);
+                        let primary_enchanted = gs_helper.primary_enchantment_str();
+                        let secondary_enchanted = gs_helper.secondary_enchantment_str();
+
+                        // Check for dual wield
+                        let has_dual_wield = processor.has_passive(PassiveEffectType::DualWield);
+
+                        // Apply enchantment
+                        if primary_enchanted.is_empty() {
+                            game_state[GS_PRIMARY_WEAPON_ENCHANTED] = serde_json::json!(ench_type);
+                            attacks.push(SingleAttack {
+                                damage: 0,
+                                description: format!(
+                                    "You enchant your primary weapon with the power of {}!",
+                                    ench_type
+                                ),
+                                is_dual_wield: false,
+                            });
+                        } else if has_dual_wield && secondary_enchanted.is_empty() {
+                            game_state[GS_SECONDARY_WEAPON_ENCHANTED] =
+                                serde_json::json!(ench_type);
+                            attacks.push(SingleAttack {
+                                damage: 0,
+                                description: format!(
+                                    "You enchant your secondary weapon with the power of {}!",
+                                    ench_type
+                                ),
+                                is_dual_wield: false,
+                            });
+                        }
+                    }
+                    _ => {
+                        // Other passive types not handled in combat actions
+                    }
+                }
+            }
         }
-    } else {
-        // Fallback to legacy system if no effects defined
-        let damage = if ability.damage_formula.is_some() {
-            DamageCalculator::calculate_damage(ability, character, None).map_err(|e| {
-                AppError::validation_error(&format!("Damage calculation failed: {}", e))
-            })?
-        } else {
-            // Fallback to might-based if no formula (won't apply defense here as this is legacy)
-            let might = character
-                .calculated_stats
-                .as_ref()
-                .map(|s| s.might)
-                .unwrap_or(character.might);
-            DamageCalculator::calculate_melee_attack(might, 0)
-        };
-
-        // Use ability's attack description template
-        let description = if let Some(ref template) = ability.attack_description {
-            parse_attack_description(template, damage, &ability.name)
-        } else {
-            format!("You use {} for **{}** damage!", ability.name, damage)
-        };
-
-        attacks.push(SingleAttack {
-            damage,
-            description,
-            is_dual_wield: false,
-        });
     }
 
     Ok(attacks)
@@ -345,7 +307,7 @@ pub fn process_ability_attacks(
 pub fn update_cooldowns(
     game_state: &mut serde_json::Value,
     action: &CombatActionRequest,
-    abilities: &[Ability],
+    abilities: &Vec<&'static Ability>,
 ) -> std::collections::HashMap<String, i32> {
     let gs_helper = GameStateHelper::new(game_state);
     let mut cooldowns = gs_helper.ability_cooldowns();
@@ -368,7 +330,7 @@ pub fn update_cooldowns(
         if let Some(ability) = abilities.iter().find(|a| a.id == *ability_id) {
             if let Some(cooldown) = ability.cooldown {
                 if cooldown > 0 {
-                    cooldowns.insert(ability.id.clone(), cooldown as i32);
+                    cooldowns.insert(ability.id.to_string(), cooldown as i32);
                 }
             }
         }
@@ -440,9 +402,9 @@ pub async fn handle_victory(
             Ok(abilities) => abilities
                 .into_iter()
                 .map(|a| AbilityLearned {
-                    id: a.id,
-                    name: a.name,
-                    description: a.description,
+                    id: a.id.to_string(),
+                    name: a.name.to_string(),
+                    description: a.description.to_string(),
                 })
                 .collect(),
             Err(e) => {
@@ -582,7 +544,16 @@ pub fn apply_enemy_attack(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AbilityEffect, Character};
+    use crate::{
+        game::{
+            abilities::{
+                dual_wield::DUAL_WIELD, enchant_weapon::ENCHANT_WEAPON, fire_strike::FIRE_STRIKE,
+                AbilityType,
+            },
+            ability_effects::AbilityEffect,
+        },
+        models::Character,
+    };
 
     /// Helper to create a basic test character
     fn create_test_character() -> Character {
@@ -628,29 +599,23 @@ mod tests {
     }
 
     /// Helper to create a basic damage ability
-    fn create_damage_ability() -> Ability {
-        Ability {
-            id: "fireball".to_string(),
-            name: "Fireball".to_string(),
-            description: "A ball of fire".to_string(),
-            ability_type: "combat".to_string(),
+    fn create_damage_ability() -> &'static Ability {
+        &Ability {
+            id: "fireball",
+            name: "Fireball",
+            description: "A ball of fire",
+            ability_type: AbilityType::Combat,
             mana_cost: Some(10),
             cooldown: Some(2),
             duration: None,
-            damage_formula: Some("(magic * 1.5) + 10".to_string()),
-            heal_formula: None,
-            effect_formula: None,
-            passive_effect: None,
-            attack_description: Some("You hurl a fireball for ${damage} damage!".to_string()),
-            effects: vec![AbilityEffect {
-                id: "fireball_damage".to_string(),
+            effects: &[AbilityEffect {
+                id: "fireball_damage",
                 effect_type: EffectType::Active,
                 active_type: Some(ActiveEffectType::Damage),
                 passive_type: None,
-                formula: Some("(magic * 1.5) + 10".to_string()),
-                attack_description: Some("You hurl a fireball for ${damage} damage!".to_string()),
-                passive_mode: None,
-                stat_modifier: None,
+                formula: Some("(magic * 1.5) + 10"),
+                combat_description: Some("You hurl a fireball for ${damage} damage!"),
+                stat_modifiers: None,
             }],
         }
     }
@@ -698,33 +663,7 @@ mod tests {
     #[test]
     fn test_process_melee_attacks_with_dual_wield() {
         let character = create_test_character();
-
-        let dual_wield_ability = Ability {
-            id: "dual_wield".to_string(),
-            name: "Dual Wield".to_string(),
-            description: "Wield two weapons".to_string(),
-            ability_type: "passive".to_string(),
-            mana_cost: None,
-            cooldown: None,
-            duration: None,
-            damage_formula: None,
-            heal_formula: None,
-            effect_formula: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![AbilityEffect {
-                id: "dual_wield_passive".to_string(),
-                effect_type: EffectType::Passive,
-                active_type: None,
-                passive_type: Some(PassiveEffectType::DualWield),
-                formula: None,
-                attack_description: None,
-                passive_mode: None,
-                stat_modifier: None,
-            }],
-        };
-
-        let abilities = vec![dual_wield_ability];
+        let abilities = vec![&DUAL_WIELD];
         let processor = AbilityProcessor::new(&character, &abilities);
         let game_state = serde_json::json!({
             "enemy": {
@@ -745,72 +684,7 @@ mod tests {
     #[test]
     fn test_process_melee_attacks_with_enchantment() {
         let character = create_test_character();
-
-        // Create enchant weapon passive
-        let enchant_ability = Ability {
-            id: "enchant_weapon".to_string(),
-            name: "Enchant Weapon".to_string(),
-            description: "Enchant your weapon".to_string(),
-            ability_type: "passive".to_string(),
-            mana_cost: None,
-            cooldown: None,
-            duration: None,
-            damage_formula: None,
-            heal_formula: None,
-            effect_formula: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![AbilityEffect {
-                id: "enchant_passive".to_string(),
-                effect_type: EffectType::Passive,
-                active_type: None,
-                passive_type: Some(PassiveEffectType::EnchantWeapon),
-                formula: None,
-                attack_description: None,
-                passive_mode: None,
-                stat_modifier: None,
-            }],
-        };
-
-        // Create fire enchantment ability that provides damage
-        let fire_enchant_ability = Ability {
-            id: "fire_enchant".to_string(),
-            name: "Fire Enchantment".to_string(),
-            description: "Add fire damage".to_string(),
-            ability_type: "passive".to_string(),
-            mana_cost: None,
-            cooldown: None,
-            duration: None,
-            damage_formula: None,
-            heal_formula: None,
-            effect_formula: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![
-                AbilityEffect {
-                    id: "fire_enchant_passive".to_string(),
-                    effect_type: EffectType::Passive,
-                    active_type: None,
-                    passive_type: Some(PassiveEffectType::EnchantWeaponFire),
-                    formula: None,
-                    attack_description: None,
-                    passive_mode: None,
-                    stat_modifier: None,
-                },
-                AbilityEffect {
-                    id: "fire_enchant_damage".to_string(),
-                    effect_type: EffectType::Active,
-                    active_type: Some(ActiveEffectType::Damage),
-                    passive_type: None,
-                    formula: Some("magic * 0.5".to_string()),
-                    attack_description: None,
-                    passive_mode: None,
-                    stat_modifier: None,
-                },
-            ],
-        };
-
-        let abilities = vec![enchant_ability, fire_enchant_ability];
+        let abilities = vec![&ENCHANT_WEAPON, &FIRE_STRIKE];
         let processor = AbilityProcessor::new(&character, &abilities);
         let game_state = serde_json::json!({
             "enemy": {
@@ -894,9 +768,9 @@ mod tests {
         });
 
         let ability = create_damage_ability(); // Has cooldown of 2
-        let abilities = vec![ability.clone()];
+        let abilities = vec![ability];
         let action = CombatActionRequest::Ability {
-            ability_id: ability.id.clone(),
+            ability_id: ability.id.to_string(),
         };
 
         let cooldowns = update_cooldowns(&mut game_state, &action, &abilities);

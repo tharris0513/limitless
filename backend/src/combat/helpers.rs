@@ -1,9 +1,11 @@
 use crate::error::AppError;
-use crate::models::{Ability, ActiveBuff, Character, PassiveEffectType};
+use crate::game::abilities::ActiveBuff;
+use crate::game::ability_effects::EffectType;
+use crate::game::{abilities::Ability, ability_effects::PassiveEffectType};
+use crate::models::Character;
 
 // Game state field name constants
 pub const GS_ENEMY: &str = "enemy";
-pub const GS_ENEMY_HEALTH: &str = "health";
 pub const GS_PRIMARY_WEAPON_ENCHANTED: &str = "primaryWeaponEnchanted";
 pub const GS_SECONDARY_WEAPON_ENCHANTED: &str = "secondaryWeaponEnchanted";
 pub const GS_ABILITY_COOLDOWNS: &str = "abilityCooldowns";
@@ -14,11 +16,11 @@ pub const GS_STATUS: &str = "status"; // Combat status: "started", "ongoing", "v
 /// Helper struct to process abilities for a character
 pub struct AbilityProcessor<'a> {
     character: &'a Character,
-    abilities: &'a [Ability],
+    abilities: &'a Vec<&'static Ability>,
 }
 
 impl<'a> AbilityProcessor<'a> {
-    pub fn new(character: &'a Character, abilities: &'a [Ability]) -> Self {
+    pub fn new(character: &'a Character, abilities: &'a Vec<&'static Ability>) -> Self {
         Self {
             character,
             abilities,
@@ -62,13 +64,13 @@ impl<'a> AbilityProcessor<'a> {
     pub fn get_enchantment_damage_abilities(
         &self,
         enchant_type: Option<PassiveEffectType>,
-    ) -> Vec<&Ability> {
+    ) -> Vec<&'static Ability> {
         self.abilities
             .iter()
             .filter(|ability| {
                 // Check if ability has the matching passive enchantment effect
                 let has_matching_passive = ability.effects.iter().any(|effect| {
-                    if effect.effect_type == crate::models::EffectType::Passive {
+                    if effect.effect_type == EffectType::Passive {
                         if let Some(passive_type) = &effect.passive_type {
                             if let Some(ref ench_type) = enchant_type {
                                 // Match specific type
@@ -90,12 +92,16 @@ impl<'a> AbilityProcessor<'a> {
                 // Check if ability provides enchantment damage
                 has_matching_passive && ability.provides_enchantment_damage()
             })
+            .map(|a| *a)
             .collect()
     }
 
     /// Find ability by ID
-    pub fn find_ability(&self, ability_id: &str) -> Option<&Ability> {
-        self.abilities.iter().find(|a| a.id == ability_id)
+    pub fn find_ability(&self, ability_id: &str) -> Option<&'static Ability> {
+        self.abilities
+            .iter()
+            .find(|a| *a.id == *ability_id)
+            .map(|v| &**v)
     }
 }
 
@@ -149,22 +155,6 @@ impl<'a> GameStateHelper<'a> {
             .unwrap_or_default()
     }
 
-    /// Get current turn number
-    pub fn turn_number(&self) -> i64 {
-        self.state
-            .get(GS_TURN_NUMBER)
-            .and_then(|v| v.as_i64())
-            .unwrap_or(1)
-    }
-
-    /// Get player health
-    pub fn player_health(&self, default: i64) -> i64 {
-        self.state
-            .get(GS_PLAYER_HEALTH)
-            .and_then(|v| v.as_i64())
-            .unwrap_or(default)
-    }
-
     /// Get enemy object
     #[allow(dead_code)]
     pub fn enemy(&self) -> Result<&serde_json::Value, AppError> {
@@ -212,8 +202,9 @@ pub fn decrement_buff_durations(active_buffs: Option<Vec<ActiveBuff>>) -> Option
 
 #[cfg(test)]
 mod tests {
+    use crate::game::abilities::{dual_wield::DUAL_WIELD, fire_strike::FIRE_STRIKE};
+
     use super::*;
-    use crate::models::{AbilityEffect, EffectType};
 
     /// Helper to create a basic test character
     fn create_test_character() -> Character {
@@ -261,34 +252,7 @@ mod tests {
     #[test]
     fn test_ability_processor_has_passive() {
         let character = create_test_character();
-
-        // Ability with dual-wield passive
-        let dual_wield_ability = Ability {
-            id: "dual_wield".to_string(),
-            name: "Dual Wield".to_string(),
-            description: "Wield two weapons".to_string(),
-            ability_type: "passive".to_string(),
-            mana_cost: None,
-            cooldown: None,
-            duration: None,
-            damage_formula: None,
-            heal_formula: None,
-            effect_formula: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![AbilityEffect {
-                id: "dual_wield_passive".to_string(),
-                effect_type: EffectType::Passive,
-                active_type: None,
-                passive_type: Some(PassiveEffectType::DualWield),
-                formula: None,
-                attack_description: None,
-                passive_mode: None,
-                stat_modifier: None,
-            }],
-        };
-
-        let abilities = vec![dual_wield_ability];
+        let abilities = vec![&DUAL_WIELD];
         let processor = AbilityProcessor::new(&character, &abilities);
 
         assert!(processor.has_passive(PassiveEffectType::DualWield));
@@ -327,8 +291,6 @@ mod tests {
 
         assert_eq!(helper.primary_enchantment_str(), "fire");
         assert_eq!(helper.secondary_enchantment_str(), "frost");
-        assert_eq!(helper.turn_number(), 5);
-        assert_eq!(helper.player_health(100), 80);
 
         let cooldowns = helper.ability_cooldowns();
         assert_eq!(cooldowns.get("fireball"), Some(&2));
@@ -368,32 +330,7 @@ mod tests {
     fn test_ability_processor_get_weapon_enchantment_type() {
         let character = create_test_character();
 
-        let fire_enchant = Ability {
-            id: "fire_enchant".to_string(),
-            name: "Fire Enchantment".to_string(),
-            description: "Add fire damage".to_string(),
-            ability_type: "passive".to_string(),
-            mana_cost: None,
-            cooldown: None,
-            duration: None,
-            damage_formula: None,
-            heal_formula: None,
-            effect_formula: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![AbilityEffect {
-                id: "fire_ench".to_string(),
-                effect_type: EffectType::Passive,
-                active_type: None,
-                passive_type: Some(PassiveEffectType::EnchantWeaponFire),
-                formula: None,
-                attack_description: None,
-                passive_mode: None,
-                stat_modifier: None,
-            }],
-        };
-
-        let abilities = vec![fire_enchant];
+        let abilities = vec![&FIRE_STRIKE];
         let processor = AbilityProcessor::new(&character, &abilities);
 
         assert_eq!(
@@ -404,27 +341,22 @@ mod tests {
 
     #[test]
     fn test_decrement_buff_durations() {
-        use crate::models::ActiveBuff;
-
         // Create test buffs with different durations
         let buffs = vec![
             ActiveBuff {
                 ability_id: "buff1".to_string(),
                 ability_name: "Buff 1".to_string(),
                 remaining_adventures: 3,
-                effects: vec![],
             },
             ActiveBuff {
                 ability_id: "buff2".to_string(),
                 ability_name: "Buff 2".to_string(),
                 remaining_adventures: 1,
-                effects: vec![],
             },
             ActiveBuff {
                 ability_id: "buff3".to_string(),
                 ability_name: "Buff 3".to_string(),
                 remaining_adventures: 2,
-                effects: vec![],
             },
         ];
 

@@ -1,4 +1,11 @@
-use crate::models::{Character, ActiveBuff, Ability, AbilityEffect, EffectType};
+use crate::{
+    game::{
+        abilities::{get_ability_by_id, Ability, AbilityType, ActiveBuff},
+        ability_effects::{AbilityEffect, EffectType, ModifierType as GameModifierType},
+        Statistic,
+    },
+    models::Character,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -18,6 +25,8 @@ pub struct CalculatedStats {
 /// Type of stat modification
 enum ModifierType {
     Set,
+    #[allow(dead_code)]
+    // Currently not used, but may be needed for future features like "increase by flat 10" vs "increase by 10%"
     Flat,
     Percentage,
 }
@@ -30,29 +39,39 @@ struct StatModifier {
 }
 
 impl StatModifier {
-    fn from_ability_effect(effect: &AbilityEffect) -> Option<Self> {
+    fn from_ability_effect(effect: &AbilityEffect) -> Vec<Self> {
         if effect.effect_type != EffectType::Passive {
-            return None;
+            return vec![];
         }
 
-        if effect.passive_mode.as_deref() != Some("stat_modifier") {
-            return None;
-        }
-
-        let stat_mod = effect.stat_modifier.as_ref()?;
-
-        let modifier_type = match stat_mod.modifier_type.as_str() {
-            "set" => ModifierType::Set,
-            "flat" => ModifierType::Flat,
-            "percentage" => ModifierType::Percentage,
-            _ => return None,
+        let Some(stat_mods) = effect.stat_modifiers.as_ref() else {
+            return vec![];
         };
 
-        Some(StatModifier {
-            stat: stat_mod.stat.clone(),
-            value: stat_mod.value,
-            modifier_type,
-        })
+        stat_mods
+            .iter()
+            .map(|stat_mod| {
+                let modifier_type = match stat_mod.modifier_type {
+                    GameModifierType::Set => ModifierType::Set,
+                    GameModifierType::Percentage => ModifierType::Percentage,
+                };
+                StatModifier {
+                    stat: statistic_key(stat_mod.stat),
+                    value: stat_mod.value,
+                    modifier_type,
+                }
+            })
+            .collect()
+    }
+}
+
+fn statistic_key(stat: Statistic) -> String {
+    match stat {
+        Statistic::Might => "might".to_string(),
+        Statistic::Defense => "defense".to_string(),
+        Statistic::Magic => "magic".to_string(),
+        Statistic::Resistance => "resistance".to_string(),
+        Statistic::Agility => "agility".to_string(),
     }
 }
 
@@ -98,7 +117,7 @@ fn calculate_stat(base_value: i64, modifiers: &[StatModifier]) -> i64 {
 /// Calculate all stats for a character given their abilities and active buffs
 pub fn calculate_character_stats(
     character: &Character,
-    abilities: &[Ability],
+    abilities: &Vec<&Ability>,
     active_buffs: Option<&Vec<ActiveBuff>>,
 ) -> CalculatedStats {
     // Collect all stat modifiers from passive abilities and active buffs
@@ -106,12 +125,12 @@ pub fn calculate_character_stats(
 
     // Extract modifiers from passive abilities
     for ability in abilities {
-        if ability.ability_type == "passive" {
-            for effect in &ability.effects {
-                if let Some(modifier) = StatModifier::from_ability_effect(effect) {
+        if ability.ability_type == AbilityType::Passive {
+            for effect in ability.effects {
+                for modifier in StatModifier::from_ability_effect(effect) {
                     modifiers_by_stat
                         .entry(modifier.stat.clone())
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(modifier);
                 }
             }
@@ -121,11 +140,12 @@ pub fn calculate_character_stats(
     // Extract modifiers from active buffs
     if let Some(buffs) = active_buffs {
         for buff in buffs {
-            for effect in &buff.effects {
-                if let Some(modifier) = StatModifier::from_ability_effect(effect) {
+            let ability = get_ability_by_id(&buff.ability_id).unwrap();
+            for effect in ability.effects {
+                for modifier in StatModifier::from_ability_effect(effect) {
                     modifiers_by_stat
                         .entry(modifier.stat.clone())
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push(modifier);
                 }
             }
@@ -136,31 +156,52 @@ pub fn calculate_character_stats(
     CalculatedStats {
         might: calculate_stat(
             character.might,
-            modifiers_by_stat.get("might").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("might")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
         defense: calculate_stat(
             character.defense,
-            modifiers_by_stat.get("defense").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("defense")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
         magic: calculate_stat(
             character.magic,
-            modifiers_by_stat.get("magic").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("magic")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
         resistance: calculate_stat(
             character.resistance,
-            modifiers_by_stat.get("resistance").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("resistance")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
         agility: calculate_stat(
             character.agility,
-            modifiers_by_stat.get("agility").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("agility")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
         max_health: calculate_stat(
             character.max_health,
-            modifiers_by_stat.get("maxHealth").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("maxHealth")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
         max_mana: calculate_stat(
             character.max_mana,
-            modifiers_by_stat.get("maxMana").map(|v| v.as_slice()).unwrap_or(&[]),
+            modifiers_by_stat
+                .get("maxMana")
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]),
         ),
     }
 }
@@ -168,7 +209,6 @@ pub fn calculate_character_stats(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AbilityEffect, PassiveEffectType};
 
     #[test]
     fn test_calculate_stat_no_modifiers() {

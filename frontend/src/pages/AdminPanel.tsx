@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Database, Shield, Activity, Swords, UserCog, MapPin, Ghost, Compass, Power, Sparkles, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Users, Database, Shield, Activity, UserCog, Power, RefreshCw } from 'lucide-react';
 import { ManageUsers } from './ManageUsers';
-import { ManageClasses } from './ManageClasses';
-import { ManageAbilities } from './ManageAbilities';
 import { ManageCharacters } from './ManageCharacters';
-import ManageCreatures from './ManageCreatures';
-import ManageAdventures from './ManageAdventures';
-import ManageLocations from './ManageLocations';
 import GameAPI from '../services/api';
 import styles from './AdminPanel.module.css';
 
@@ -17,7 +12,7 @@ interface AdminPanelProps {
   requestedView?: AdminView; // Allow parent to request a specific view
 }
 
-type AdminView = 'menu' | 'users' | 'classes' | 'abilities' | 'characters' | 'creatures' | 'adventures' | 'locations' | 'database' | 'permissions' | 'system';
+type AdminView = 'menu' | 'users' | 'characters' | 'database' | 'permissions' | 'system';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onViewChange, requestedView }) => {
   const [currentView, setCurrentView] = useState<AdminView>('menu');
@@ -113,28 +108,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
     return <ManageUsers onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
   }
 
-  if (currentView === 'classes') {
-    return <ManageClasses onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
-  }
-
-  if (currentView === 'abilities') {
-    return <ManageAbilities onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
-  }
-
   if (currentView === 'characters') {
     return <ManageCharacters onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
-  }
-
-  if (currentView === 'creatures') {
-    return <ManageCreatures onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
-  }
-
-  if (currentView === 'adventures') {
-    return <ManageAdventures onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
-  }
-
-  if (currentView === 'locations') {
-    return <ManageLocations onBack={() => handleViewChange('menu')} onLogout={onLogout} />;
   }
 
   // Default menu view
@@ -158,28 +133,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
               <span className={styles.buttonDescription}>View and edit user accounts</span>
             </button>
 
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('users')}>
-              <Users size={32} />
-              <span className={styles.buttonLabel}>Manage Users</span>
-              <span className={styles.buttonDescription}>View and edit user accounts</span>
-            </button>
-
             <button className={styles.adminActionButton} onClick={() => handleViewChange('characters')}>
               <UserCog size={32} />
               <span className={styles.buttonLabel}>Manage Characters</span>
               <span className={styles.buttonDescription}>View and manage all characters</span>
-            </button>
-
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('classes')}>
-              <Shield size={32} />
-              <span className={styles.buttonLabel}>Manage Classes</span>
-              <span className={styles.buttonDescription}>Configure character classes</span>
-            </button>
-
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('abilities')}>
-              <Sparkles size={32} />
-              <span className={styles.buttonLabel}>Manage Abilities</span>
-              <span className={styles.buttonDescription}>Create skills and spells</span>
             </button>
 
             <button className={styles.adminActionButton}>
@@ -187,36 +144,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout, onView
               <span className={styles.buttonLabel}>Database Tools</span>
               <span className={styles.buttonDescription}>Query and manage database</span>
             </button>
-            
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('creatures')}>
-              <Ghost size={32} />
-              <span className={styles.buttonLabel}>Manage Creatures</span>
-              <span className={styles.buttonDescription}>Create enemies and NPCs</span>
-            </button>
-            
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('adventures')}>
-              <Compass size={32} />
-              <span className={styles.buttonLabel}>Manage Adventures</span>
-              <span className={styles.buttonDescription}>Create noncombat encounters</span>
-            </button>
-
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('locations')}>
-              <MapPin size={32} />
-              <span className={styles.buttonLabel}>Manage Locations</span>
-              <span className={styles.buttonDescription}>Create areas and assign content</span>
-            </button>
           </div>
         </div>
 
         <div className={styles.section}>
           <h2 className={styles.sectionTitle}>⚙️ Create Resources</h2>
           <div className={styles.adminGrid}>
-            <button className={styles.adminActionButton} onClick={() => handleViewChange('classes')}>
-              <Swords size={32} />
-              <span className={styles.buttonLabel}>Manage Classes</span>
-              <span className={styles.buttonDescription}>Create and edit character classes</span>
-            </button>
-
             <button className={styles.adminActionButton}>
               <Shield size={32} />
               <span className={styles.buttonLabel}>Permissions</span>

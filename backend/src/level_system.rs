@@ -26,20 +26,6 @@ pub fn experience_for_level(level: i64) -> i64 {
     (base_exp * ((level - 1) as f64).powf(exponent)).round() as i64
 }
 
-/// Calculate the total experience needed to reach a level from level 1.
-/// This is useful for displaying overall progress.
-pub fn total_experience_for_level(level: i64) -> i64 {
-    if level <= 1 {
-        return 0;
-    }
-
-    let mut total = 0;
-    for lvl in 2..=level {
-        total += experience_for_level(lvl);
-    }
-    total
-}
-
 /// Calculate what level a character should be based on their total experience.
 /// Returns (current_level, experience_into_current_level, experience_needed_for_next_level)
 pub fn calculate_level_from_experience(total_exp: i64) -> (i64, i64, i64) {
@@ -139,17 +125,5 @@ mod tests {
         assert_eq!(level, 2);
         assert_eq!(exp_into, 50);
         assert_eq!(exp_needed, 283);
-    }
-
-    #[test]
-    fn test_total_experience() {
-        // Total XP for level 1 should be 0
-        assert_eq!(total_experience_for_level(1), 0);
-
-        // Total XP for level 2 should be 100
-        assert_eq!(total_experience_for_level(2), 100);
-
-        // Total XP for level 3 should be 100 + 283 = 383
-        assert_eq!(total_experience_for_level(3), 383);
     }
 }

@@ -1,7 +1,8 @@
-use crate::error::AppError;
+use crate::game::creatures::{Creature, CreatureInCombat};
+use crate::game::locations::{get_all_locations, get_location_adventures, get_location_creatures};
 use crate::middleware::AuthClaims;
-use crate::models::Location;
 use crate::repository::UserRepository;
+use crate::{error::AppError, game::locations::Location};
 use axum::{
     extract::{Path, State},
     Json,
@@ -16,6 +17,28 @@ pub struct VisitLocationResponse {
     pub encounter_type: String, // "combat" or "adventure"
     #[serde(rename = "encounterId")]
     pub encounter_id: String, // creature_id or adventure_id
+    pub creature: Option<CreatureInCombat>,
+}
+
+fn creature_to_combat(creature: &Creature) -> CreatureInCombat {
+    CreatureInCombat {
+        name: creature.name.to_string(),
+        introduction_text: creature.introduction_text.to_string(),
+        level: creature.level,
+        health: creature.max_health,
+        max_health: creature.max_health,
+        might: creature.might,
+        defense: creature.defense,
+        magic: creature.magic,
+        resistance: creature.resistance,
+        agility: creature.agility,
+        creature_type: Some(creature.creature_type.to_string()),
+        experience_reward: creature.experience_reward,
+        attack_description: creature
+            .attack_description
+            .unwrap_or("The creature attacks!")
+            .to_string(),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -24,10 +47,8 @@ pub struct VisitLocationRequest {
     pub character_id: String,
 }
 
-pub async fn get_locations(
-    State(repo): State<Arc<UserRepository>>,
-) -> Result<Json<Vec<Location>>, AppError> {
-    match repo.get_all_locations().await {
+pub async fn get_locations() -> Result<Json<Vec<Location>>, AppError> {
+    match get_all_locations() {
         Ok(locations) => {
             // Filter out disabled locations
             let enabled_locations: Vec<Location> =
@@ -60,24 +81,15 @@ pub async fn visit_location(
         ));
     }
     // Get creatures and adventures for this location
-    let creatures_result = repo.get_location_creatures(&location_id).await;
-    let adventures_result = repo.get_location_adventures(&location_id).await;
+    let creatures = get_location_creatures(&location_id)?;
+    let adventures = get_location_adventures(&location_id)?;
 
     let mut rng = rand::thread_rng();
 
     // Determine if we have adventures available
-    let has_adventures = match &adventures_result {
-        Ok(adventures) => !adventures.is_empty(),
-        Err(_) => false,
-    };
+    let has_adventures = !adventures.is_empty();
 
     if !has_adventures {
-        // No adventures - always combat
-        let creatures = creatures_result.map_err(|e| {
-            tracing::error!("Failed to get location creatures: {:?}", e);
-            AppError::from(e)
-        })?;
-
         if creatures.is_empty() {
             return Err(AppError::BadRequest(
                 "No encounters available at this location".to_string(),
@@ -88,12 +100,13 @@ pub async fn visit_location(
         let total_weight: i64 = creatures.iter().map(|(_, rate)| rate).sum();
         let mut random_value = rng.gen_range(0..total_weight);
 
-        for (creature_id, spawn_rate) in &creatures {
+        for (location_creature, spawn_rate) in &creatures {
             random_value -= spawn_rate;
             if random_value < 0 {
                 return Ok(Json(VisitLocationResponse {
                     encounter_type: "combat".to_string(),
-                    encounter_id: creature_id.clone(),
+                    encounter_id: location_creature.id.to_string(),
+                    creature: Some(creature_to_combat(location_creature)),
                 }));
             }
         }
@@ -101,7 +114,8 @@ pub async fn visit_location(
         // Fallback to first creature (shouldn't happen)
         return Ok(Json(VisitLocationResponse {
             encounter_type: "combat".to_string(),
-            encounter_id: creatures[0].0.clone(),
+            encounter_id: creatures[0].0.id.to_string(),
+            creature: Some(creature_to_combat(&creatures[0].0)),
         }));
     }
 
@@ -109,32 +123,19 @@ pub async fn visit_location(
     // 50/50 chance between combat and adventure
     let is_combat = rng.gen_bool(0.5);
 
-    // Extract adventures once to avoid moving twice
-    let adventures = match adventures_result {
-        Ok(adventures) => adventures,
-        Err(e) => {
-            tracing::error!("Failed to get location adventures: {:?}", e);
-            return Err(AppError::from(e));
-        }
-    };
-
     if is_combat {
-        let creatures = creatures_result.map_err(|e| {
-            tracing::error!("Failed to get location creatures: {:?}", e);
-            AppError::from(e)
-        })?;
-
         if creatures.is_empty() {
             // No creatures, force adventure instead
             let total_weight: i64 = adventures.iter().map(|(_, rate)| rate).sum();
             let mut random_value = rng.gen_range(0..total_weight);
 
-            for (adventure_id, spawn_rate) in &adventures {
+            for (location_adventure, spawn_rate) in &adventures {
                 random_value -= spawn_rate;
                 if random_value < 0 {
                     return Ok(Json(VisitLocationResponse {
                         encounter_type: "adventure".to_string(),
-                        encounter_id: adventure_id.clone(),
+                        encounter_id: location_adventure.adventure_id.to_string(),
+                        creature: None,
                     }));
                 }
             }
@@ -144,12 +145,13 @@ pub async fn visit_location(
         let total_weight: i64 = creatures.iter().map(|(_, rate)| rate).sum();
         let mut random_value = rng.gen_range(0..total_weight);
 
-        for (creature_id, spawn_rate) in &creatures {
+        for (location_creature, spawn_rate) in &creatures {
             random_value -= spawn_rate;
             if random_value < 0 {
                 return Ok(Json(VisitLocationResponse {
                     encounter_type: "combat".to_string(),
-                    encounter_id: creature_id.clone(),
+                    encounter_id: location_creature.id.to_string(),
+                    creature: Some(creature_to_combat(location_creature)),
                 }));
             }
         }
@@ -160,12 +162,13 @@ pub async fn visit_location(
     let total_weight: i64 = adventures.iter().map(|(_, rate)| rate).sum();
     let mut random_value = rng.gen_range(0..total_weight);
 
-    for (adventure_id, spawn_rate) in adventures {
+    for (location_adventure, spawn_rate) in &adventures {
         random_value -= spawn_rate;
         if random_value < 0 {
             return Ok(Json(VisitLocationResponse {
                 encounter_type: "adventure".to_string(),
-                encounter_id: adventure_id,
+                encounter_id: location_adventure.adventure_id.to_string(),
+                creature: None,
             }));
         }
     }

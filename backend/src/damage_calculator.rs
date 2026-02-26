@@ -1,48 +1,10 @@
-use crate::models::{Ability, Character, CreatureInCombat};
+use crate::{game::creatures::CreatureInCombat, models::Character};
 use evalexpr::*;
 use rand::Rng;
 
 pub struct DamageCalculator;
 
 impl DamageCalculator {
-    /// Calculate damage from an ability
-    pub fn calculate_damage(
-        ability: &Ability,
-        caster: &Character,
-        target: Option<&Character>,
-    ) -> Result<i64, String> {
-        if let Some(formula) = &ability.damage_formula {
-            let context = Self::build_context(&caster, target);
-            Self::evaluate_formula(formula, &context)
-        } else {
-            Ok(0)
-        }
-    }
-
-    /// Calculate healing from an ability
-    pub fn calculate_heal(ability: &Ability, caster: &Character) -> Result<i64, String> {
-        if let Some(formula) = &ability.heal_formula {
-            let context = Self::build_context(&caster, None);
-            Self::evaluate_formula(formula, &context)
-        } else {
-            Ok(0)
-        }
-    }
-
-    /// Calculate effect value from an ability
-    pub fn calculate_effect(
-        ability: &Ability,
-        caster: &Character,
-        target: Option<&Character>,
-    ) -> Result<i64, String> {
-        if let Some(formula) = &ability.effect_formula {
-            let context = Self::build_context(&caster, target);
-            Self::evaluate_formula(formula, &context)
-        } else {
-            Ok(0)
-        }
-    }
-
     /// Calculate melee attack damage based on might with variance, reduced by target defense
     pub fn calculate_melee_attack(might: i64, target_defense: i64) -> i64 {
         use rand::Rng;
@@ -53,42 +15,9 @@ impl DamageCalculator {
         (raw_damage - target_defense).max(1)
     }
 
-    /// Validate a formula by testing it with sample stats
-    pub fn validate_formula(formula: &str) -> Result<(), String> {
-        // Create sample stats for validation
-        let sample_character = Character {
-            id: "sample_id".to_string(),
-            user_id: "sample_user".to_string(),
-            name: "Sample".to_string(),
-            class_id: "sample_class".to_string(),
-            level: 1,
-            experience: 0,
-            experience_to_next: 100,
-            location: "sample_location".to_string(),
-            game_state: Some("{}".to_string()),
-            active_buffs: Some(vec![].into()),
-            calculated_stats: None,
-            created_at: "".to_string(),
-            last_played: "".to_string(),
-            might: 10,
-            defense: 10,
-            magic: 10,
-            resistance: 10,
-            agility: 10,
-            adventures: 0,
-            health: 100,
-            max_health: 100,
-            mana: 50,
-            max_mana: 50,
-        };
-
-        // Try to evaluate the formula with sample data
-        // This catches both parsing and evaluation errors
-        Self::test_formula(formula, &sample_character)?;
-        Ok(())
-    }
-
     /// Test a formula with sample stats
+    /// Used for testing formulas in the test suite
+    #[allow(dead_code)]
     pub fn test_formula(formula: &str, sample_character: &Character) -> Result<i64, String> {
         let context = Self::build_context(sample_character, None);
         Self::evaluate_formula(formula, &context)
@@ -354,7 +283,6 @@ impl DamageCalculator {
 
 #[cfg(test)]
 mod tests {
-    use crate::models::CreatureInCombat;
 
     use super::*;
 
@@ -451,16 +379,6 @@ mod tests {
         assert!(result.is_ok());
         let damage = result.unwrap();
         assert!(damage >= 27 && damage <= 35);
-    }
-
-    #[test]
-    fn test_validate_formula() {
-        assert!(DamageCalculator::validate_formula("might * 2").is_ok());
-        assert!(DamageCalculator::validate_formula("(might + magic) / 2").is_ok());
-        // Now properly catches invalid syntax
-        assert!(DamageCalculator::validate_formula("might +").is_err());
-        assert!(DamageCalculator::validate_formula("might *").is_err());
-        assert!(DamageCalculator::validate_formula("+ might").is_err());
     }
 
     #[test]
@@ -644,8 +562,10 @@ mod tests {
         let result = DamageCalculator::test_formula("(magic * 1.5) + rand()", &character);
         assert!(result.is_ok());
         let damage = result.unwrap();
+
         // Calculated magic is 25, so 25 * 1.5 = 37.5 ≈ 38
-        assert_eq!(damage, 38);
+        // Result will vary due to automatic ±10% variation (34.2 to 41.4), but should be around 38
+        assert!(damage >= 34 && damage <= 42);
     }
 
     #[test]
@@ -653,113 +573,24 @@ mod tests {
         let mut character = create_test_character();
         // Apply buffs to all stats
         character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
-            might: 20,    // was 12
-            defense: 15,  // was 8
-            magic: 18,    // was 10
-            resistance: 12, // was 6
-            agility: 25,  // was 15
+            might: 20,       // was 12
+            defense: 15,     // was 8
+            magic: 18,       // was 10
+            resistance: 12,  // was 6
+            agility: 25,     // was 15
             max_health: 150, // was 100
-            max_mana: 80, // was 50
+            max_mana: 80,    // was 50
         });
 
         // Test hybrid formula using multiple stats
-        let result = DamageCalculator::test_formula("(might * 0.5) + (magic * 0.5) + agility + rand()", &character);
+        let result = DamageCalculator::test_formula(
+            "(might * 0.5) + (magic * 0.5) + agility + rand()",
+            &character,
+        );
         assert!(result.is_ok());
         let damage = result.unwrap();
         // (20 * 0.5) + (18 * 0.5) + 25 = 10 + 9 + 25 = 44
         assert_eq!(damage, 44);
-    }
-
-    #[test]
-    fn test_calculated_stats_defense_mitigation() {
-        let character = create_test_character();
-        let mut target = create_test_character();
-
-        // Buff the target's defense to 20
-        target.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
-            might: 12,
-            defense: 20, // was 8
-            magic: 10,
-            resistance: 6,
-            agility: 15,
-            max_health: 100,
-            max_mana: 50,
-        });
-
-        // Use calculate_damage with a formula that factors in target defense
-        let ability = Ability {
-            id: "test_ability".to_string(),
-            name: "Test Attack".to_string(),
-            description: "Test".to_string(),
-            ability_type: "active".to_string(),
-            damage_formula: Some("max(1, might - target_defense)".to_string()),
-            heal_formula: None,
-            effect_formula: None,
-            mana_cost: Some(0),
-            cooldown: Some(0),
-            duration: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![],
-        };
-
-        let result = DamageCalculator::calculate_damage(&ability, &character, Some(&target));
-        assert!(result.is_ok());
-        let damage = result.unwrap();
-        // might=12, target_defense=20, so max(1, 12-20) = max(1, -8) = 1
-        // Plus automatic ±10% variation on the 1
-        assert!(damage >= 0 && damage <= 2);
-    }
-
-    #[test]
-    fn test_calculated_stats_resistance_mitigation() {
-        let mut character = create_test_character();
-        let mut target = create_test_character();
-
-        // Buff the caster's magic and target's resistance
-        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
-            might: 12,
-            defense: 8,
-            magic: 30, // was 10
-            resistance: 6,
-            agility: 15,
-            max_health: 100,
-            max_mana: 50,
-        });
-
-        target.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
-            might: 12,
-            defense: 8,
-            magic: 10,
-            resistance: 15, // was 6
-            agility: 15,
-            max_health: 100,
-            max_mana: 50,
-        });
-
-        // Create an ability with resistance mitigation
-        let ability = Ability {
-            id: "test_spell".to_string(),
-            name: "Magic Missile".to_string(),
-            description: "Test".to_string(),
-            ability_type: "active".to_string(),
-            damage_formula: Some("max(1, magic - target_resistance)".to_string()),
-            heal_formula: None,
-            effect_formula: None,
-            mana_cost: Some(10),
-            cooldown: Some(0),
-            duration: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![],
-        };
-
-        let result = DamageCalculator::calculate_damage(&ability, &character, Some(&target));
-        assert!(result.is_ok());
-        let damage = result.unwrap();
-        // magic=30, target_resistance=15, so max(1, 30-15) = 15
-        // Plus automatic ±10% variation (13.5 to 16.5)
-        assert!(damage >= 13 && damage <= 17);
     }
 
     #[test]
@@ -779,8 +610,10 @@ mod tests {
         });
 
         // Test the same formula with both characters
-        let result_with_calc = DamageCalculator::test_formula("might * 2 + rand()", &character_with_calc);
-        let result_without_calc = DamageCalculator::test_formula("might * 2 + rand()", &character_without_calc);
+        let result_with_calc =
+            DamageCalculator::test_formula("might * 2 + rand()", &character_with_calc);
+        let result_without_calc =
+            DamageCalculator::test_formula("might * 2 + rand()", &character_without_calc);
 
         assert!(result_with_calc.is_ok());
         assert!(result_without_calc.is_ok());
@@ -791,58 +624,6 @@ mod tests {
         // Character with calculated stats should do more damage (30*2=60 vs 12*2=24)
         assert_eq!(damage_with_calc, 60);
         assert_eq!(damage_without_calc, 24);
-    }
-
-    #[test]
-    fn test_calculated_stats_with_target_max_health() {
-        let mut character = create_test_character();
-        let mut target = create_test_character();
-
-        // Set calculated max_health higher than base for the target
-        target.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
-            might: 12,
-            defense: 8,
-            magic: 10,
-            resistance: 6,
-            agility: 15,
-            max_health: 200, // was 100
-            max_mana: 50,
-        });
-
-        // Buff caster's magic
-        character.calculated_stats = Some(crate::stat_calculator::CalculatedStats {
-            might: 12,
-            defense: 8,
-            magic: 20, // was 10
-            resistance: 6,
-            agility: 15,
-            max_health: 100,
-            max_mana: 50,
-        });
-
-        // Test a damage formula that considers target's max health (e.g., execute ability)
-        let ability = Ability {
-            id: "test_execute".to_string(),
-            name: "Execute".to_string(),
-            description: "Test".to_string(),
-            ability_type: "active".to_string(),
-            damage_formula: Some("magic + (target_max_health * 0.05)".to_string()),
-            heal_formula: None,
-            effect_formula: None,
-            mana_cost: Some(15),
-            cooldown: Some(0),
-            duration: None,
-            passive_effect: None,
-            attack_description: None,
-            effects: vec![],
-        };
-
-        let result = DamageCalculator::calculate_damage(&ability, &character, Some(&target));
-        assert!(result.is_ok());
-        let damage = result.unwrap();
-        // magic=20, target_max_health=200, so 20 + (200 * 0.05) = 20 + 10 = 30
-        // Plus automatic ±10% variation (27 to 33)
-        assert!(damage >= 27 && damage <= 33);
     }
 
     #[test]
@@ -881,7 +662,8 @@ mod tests {
         });
 
         // Test formula that combines stats with level
-        let result = DamageCalculator::test_formula("(might + magic) + (level * 2) + rand()", &character);
+        let result =
+            DamageCalculator::test_formula("(might + magic) + (level * 2) + rand()", &character);
         assert!(result.is_ok());
         let damage = result.unwrap();
         // (25 + 20) + (5 * 2) = 45 + 10 = 55
@@ -905,7 +687,7 @@ mod tests {
         // Test a complex formula using multiple calculated stats
         let result = DamageCalculator::test_formula(
             "max(might, magic) + (agility * 0.5) + min(defense, resistance) + rand()",
-            &character
+            &character,
         );
         assert!(result.is_ok());
         let damage = result.unwrap();

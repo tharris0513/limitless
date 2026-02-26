@@ -70,7 +70,7 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack,
 
   // Categorize abilities by type
   const noncombatAbilities = abilities.filter(
-    a => a.ability.abilityType === 'noncombat'
+    a => a.ability.abilityType === 'nonCombat'
   );
 
   const passiveAbilities = abilities.filter(
@@ -86,7 +86,7 @@ export const AbilitiesPage: React.FC<AbilitiesPageProps> = ({ character, onBack,
     const activeBuff = character.activeBuffs?.find(buff => buff.abilityId === ability.id);
     const isActive = !!activeBuff;
     // Double-check: only allow use if it's truly a noncombat ability
-    const isTrulyNoncombat = isNoncombat && ability.abilityType === 'noncombat';
+    const isTrulyNoncombat = isNoncombat && ability.abilityType === 'nonCombat';
     const canUse = isTrulyNoncombat && character.mana >= (ability.manaCost || 0);
 
     return (

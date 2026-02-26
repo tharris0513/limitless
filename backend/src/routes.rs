@@ -6,9 +6,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::{
-    handlers::{
-        admin, adventure, auth, character, chat, combat_action, health, location, player, user,
-    },
+    handlers::{admin, auth, character, chat, combat_action, health, location, user},
     middleware::{global_error_handler, jwt_auth_middleware, maintenance_mode_middleware},
     repository::UserRepository,
 };
@@ -33,14 +31,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
         .route("/maintenance", get(health::check_maintenance_mode))
         .route("/user/check-username", post(user::check_username_available))
         .route("/classes", get(character::get_classes))
-        .route(
-            "/classes/:class_id/abilities",
-            get(character::get_class_abilities),
-        )
-        // Legacy routes for backward compatibility
-        .route("/player", get(player::get_player))
-        .route("/locations", get(location::get_locations))
-        .route("/adventures/:id/start", post(adventure::start_adventure));
+        .route("/locations", get(location::get_locations));
 
     // WebSocket route for chat (separate router with chat_state)
     let chat_routes = Router::new()
@@ -120,70 +111,7 @@ pub fn create_routes(repo: Arc<UserRepository>) -> Router {
             patch(admin::update_character_adventures),
         )
         .route("/admin/characters/:id", delete(admin::delete_character))
-        // Class management
-        .route("/admin/classes", post(admin::create_class))
-        .route("/admin/classes/:id", patch(admin::update_class))
-        .route("/admin/classes/:id", delete(admin::delete_class))
-        .route(
-            "/admin/classes/:class_id/abilities",
-            post(admin::add_class_ability),
-        )
-        .route(
-            "/admin/classes/:class_id/abilities/:ability_id",
-            delete(admin::remove_class_ability),
-        )
-        // Ability management
-        .route("/admin/abilities", get(admin::get_all_abilities))
-        .route("/admin/abilities", post(admin::create_ability))
-        .route(
-            "/admin/abilities/passive-effects",
-            get(admin::get_passive_effects),
-        )
-        .route("/admin/abilities/:id", patch(admin::update_ability))
-        .route("/admin/abilities/:id", delete(admin::delete_ability))
-        // Config export/import
-        .route("/admin/config/export", get(admin::export_game_config))
-        .route("/admin/config/import", post(admin::import_game_config))
         // Location management
-        .route("/admin/locations", get(admin::get_all_locations))
-        .route("/admin/locations", post(admin::create_location))
-        .route("/admin/locations/:id", patch(admin::update_location))
-        .route("/admin/locations/:id", delete(admin::delete_location))
-        .route(
-            "/admin/locations/:location_id/creatures/:creature_id",
-            post(admin::add_creature_to_location),
-        )
-        .route(
-            "/admin/locations/:location_id/creatures/:creature_id",
-            delete(admin::remove_creature_from_location),
-        )
-        .route(
-            "/admin/locations/:location_id/adventures/:adventure_id",
-            post(admin::add_adventure_to_location),
-        )
-        .route(
-            "/admin/locations/:location_id/adventures/:adventure_id",
-            delete(admin::remove_adventure_from_location),
-        )
-        .route(
-            "/admin/locations/:location_id/creatures",
-            get(admin::get_location_creatures),
-        )
-        .route(
-            "/admin/locations/:location_id/adventures",
-            get(admin::get_location_adventures),
-        )
-        // Creature management
-        .route("/admin/creatures", get(admin::get_all_creatures))
-        .route("/admin/creatures", post(admin::create_creature))
-        .route("/admin/creatures/:id", get(admin::get_creature))
-        .route("/admin/creatures/:id", patch(admin::update_creature))
-        .route("/admin/creatures/:id", delete(admin::delete_creature))
-        // Adventure management
-        .route("/admin/adventures", get(admin::get_all_adventures))
-        .route("/admin/adventures", post(admin::create_adventure))
-        .route("/admin/adventures/:id", patch(admin::update_adventure))
-        .route("/admin/adventures/:id", delete(admin::delete_adventure))
         // Maintenance mode
         .route("/admin/maintenance", get(admin::get_maintenance_mode))
         .route("/admin/maintenance", post(admin::set_maintenance_mode))

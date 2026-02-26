@@ -1,7 +1,7 @@
-use crate::error::AppError;
+use crate::game::abilities::get_ability_by_id;
 use crate::middleware::AuthClaims;
-use crate::models::CharacterAbility;
 use crate::repository::UserRepository;
+use crate::{error::AppError, game::abilities::CharacterAbility};
 use axum::{
     extract::{Path, State},
     Json,
@@ -162,10 +162,14 @@ pub async fn rest_character(
     }
 
     // Get calculated max values (or base values if not calculated)
-    let max_health = character.calculated_stats.as_ref()
+    let max_health = character
+        .calculated_stats
+        .as_ref()
         .map(|s| s.max_health)
         .unwrap_or(character.max_health);
-    let max_mana = character.calculated_stats.as_ref()
+    let max_mana = character
+        .calculated_stats
+        .as_ref()
         .map(|s| s.max_mana)
         .unwrap_or(character.max_mana);
 
@@ -275,7 +279,7 @@ pub async fn perform_combat_action(
 
     let mut abilities = Vec::new();
     for char_ability in character_abilities {
-        if let Ok(ability) = repo.get_ability(&char_ability.ability_id).await {
+        if let Ok(ability) = get_ability_by_id(&char_ability.ability_id) {
             abilities.push(ability);
         }
     }
@@ -306,7 +310,7 @@ pub async fn perform_combat_action(
             // Check if ability is on cooldown
             if let Some(cooldown) = ability.cooldown {
                 if cooldown > 0 {
-                    if let Some(&cooldown_turns) = combat_state.ability_cooldowns().get(&ability.id)
+                    if let Some(&cooldown_turns) = combat_state.ability_cooldowns().get(ability.id)
                     {
                         if cooldown_turns > 0 {
                             return Err(AppError::validation_error(&format!(
@@ -353,10 +357,16 @@ pub async fn perform_combat_action(
     *combat_state.ability_cooldowns_mut() = cooldowns.clone();
 
     // Sync any enchantment changes from ability processing back to combat state
-    if let Some(primary) = game_state.get("primaryWeaponEnchanted").and_then(|v| v.as_str()) {
+    if let Some(primary) = game_state
+        .get("primaryWeaponEnchanted")
+        .and_then(|v| v.as_str())
+    {
         combat_state.set_primary_weapon_enchanted(Some(primary.to_string()));
     }
-    if let Some(secondary) = game_state.get("secondaryWeaponEnchanted").and_then(|v| v.as_str()) {
+    if let Some(secondary) = game_state
+        .get("secondaryWeaponEnchanted")
+        .and_then(|v| v.as_str())
+    {
         combat_state.set_secondary_weapon_enchanted(Some(secondary.to_string()));
     }
 
@@ -423,8 +433,14 @@ pub async fn perform_combat_action(
             let defeat_msg = if defeat {
                 combat_state.update_status(CombatOutcome::Defeat);
                 let enemy_name = combat_state.enemy_name().to_string();
-                handle_defeat(&repo, &character_id, &claims.sub, &mut character, &enemy_name)
-                    .await?
+                handle_defeat(
+                    &repo,
+                    &character_id,
+                    &claims.sub,
+                    &mut character,
+                    &enemy_name,
+                )
+                .await?
             } else {
                 None
             };
@@ -448,7 +464,10 @@ pub async fn perform_combat_action(
         defeat,
         combat_state.enemy_health(),
         combat_state.player_health(),
-        response_game_state.get("status").and_then(|v| v.as_str()).unwrap_or("unknown")
+        response_game_state
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
     );
 
     // Save updated game state if combat continues

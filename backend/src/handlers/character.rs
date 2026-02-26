@@ -1,7 +1,9 @@
-use crate::error::AppError;
+use crate::game::abilities::{get_ability_by_id, AbilityType, ActiveBuff, CharacterAbility};
+use crate::game::classes::{get_all_classes, Class};
 use crate::middleware::AuthClaims;
 use crate::models::Character;
 use crate::repository::UserRepository;
+use crate::{error::AppError, game::abilities::Ability};
 use axum::{
     extract::{Path, State},
     Json,
@@ -58,27 +60,11 @@ pub async fn create_character(
 }
 
 // Get all available classes
-pub async fn get_classes(
-    State(repo): State<Arc<UserRepository>>,
-) -> Result<Json<Vec<crate::models::Class>>, AppError> {
-    match repo.get_all_classes().await {
+pub async fn get_classes() -> Result<Json<Vec<Class>>, AppError> {
+    match get_all_classes() {
         Ok(classes) => Ok(Json(classes)),
         Err(e) => {
             tracing::error!("Failed to get classes: {:?}", e);
-            Err(AppError::from(e))
-        }
-    }
-}
-
-// Get abilities for a class
-pub async fn get_class_abilities(
-    State(repo): State<Arc<UserRepository>>,
-    Path(class_id): Path<String>,
-) -> Result<Json<Vec<(crate::models::Ability, i64)>>, AppError> {
-    match repo.get_class_abilities(&class_id).await {
-        Ok(abilities) => Ok(Json(abilities)),
-        Err(e) => {
-            tracing::error!("Failed to get class abilities: {:?}", e);
             Err(AppError::from(e))
         }
     }
@@ -89,7 +75,7 @@ pub async fn get_character_abilities(
     State(repo): State<Arc<UserRepository>>,
     Path(character_id): Path<String>,
     AuthClaims(_claims): AuthClaims,
-) -> Result<Json<Vec<crate::models::CharacterAbility>>, AppError> {
+) -> Result<Json<Vec<CharacterAbility>>, AppError> {
     match repo.get_character_abilities(&character_id).await {
         Ok(abilities) => Ok(Json(abilities)),
         Err(e) => {
@@ -104,7 +90,7 @@ pub async fn get_character_unlocked_abilities(
     State(repo): State<Arc<UserRepository>>,
     Path(character_id): Path<String>,
     AuthClaims(claims): AuthClaims,
-) -> Result<Json<Vec<(crate::models::Ability, i64)>>, AppError> {
+) -> Result<Json<Vec<(Ability, i64)>>, AppError> {
     // Verify character belongs to authenticated user
     match repo.get_character(&character_id, &claims.sub).await {
         Ok(_) => {}
@@ -112,7 +98,13 @@ pub async fn get_character_unlocked_abilities(
     }
 
     match repo.get_character_unlocked_abilities(&character_id).await {
-        Ok(abilities) => Ok(Json(abilities)),
+        Ok(abilities) => {
+            let owned_abilities = abilities
+                .into_iter()
+                .map(|(ability, level)| (ability.clone(), level))
+                .collect();
+            Ok(Json(owned_abilities))
+        }
         Err(e) => {
             tracing::error!("Failed to get character unlocked abilities: {:?}", e);
             Err(AppError::from(e))
@@ -165,13 +157,11 @@ pub async fn use_noncombat_ability(
         .map_err(|_| AppError::character_not_found(&character_id))?;
 
     // Get the ability
-    let ability = repo
-        .get_ability(&ability_id)
-        .await
+    let ability = get_ability_by_id(&ability_id)
         .map_err(|_| AppError::BadRequest("Ability not found".to_string()))?;
 
     // Verify it's a noncombat ability
-    if ability.ability_type != "noncombat" {
+    if ability.ability_type != AbilityType::NonCombat {
         return Err(AppError::BadRequest(
             "Only noncombat abilities can be used this way".to_string(),
         ));
@@ -205,11 +195,10 @@ pub async fn use_noncombat_ability(
 
     // If buff wasn't extended, add it as new
     if !buff_extended {
-        let new_buff = crate::models::ActiveBuff {
+        let new_buff = ActiveBuff {
             ability_id: ability_id.clone(),
-            ability_name: ability.name.clone(),
+            ability_name: ability.name.to_string(),
             remaining_adventures: duration,
-            effects: ability.effects.clone(),
         };
 
         if let Some(active_buffs) = &mut character.active_buffs {

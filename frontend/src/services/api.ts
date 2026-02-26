@@ -12,6 +12,7 @@ import type {
   ItemType,
   AttackResult,
   Creature,
+  CreatureInCombat,
 } from '../types/game';
 
 // Configure axios instance
@@ -310,7 +311,7 @@ export class GameAPI {
   static async visitLocation(
     locationId: string,
     characterId: string
-  ): Promise<{ encounterType: string; encounterId: string }> {
+  ): Promise<{ encounterType: string; encounterId: string; creature?: CreatureInCombat }> {
     const response = await api.post(`/locations/${locationId}/visit`, {
       characterId,
     });

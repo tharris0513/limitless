@@ -113,7 +113,7 @@ export interface Ability {
   duration?: number; // For noncombat abilities - how many adventures the buff lasts
 
   // Ability type determines visibility in combat
-  abilityType: 'combat' | 'passive' | 'noncombat';
+  abilityType: 'combat' | 'passive' | 'nonCombat';
 
   // Legacy fields (deprecated but kept for backward compatibility)
   damageFormula?: string;
@@ -237,6 +237,23 @@ export interface Location {
   tier: number;
   enabled: boolean;
   createdAt: string;
+}
+
+// Creature as returned by the visit location endpoint during combat setup
+export interface CreatureInCombat {
+  name: string;
+  introductionText: string;
+  level: number;
+  health: number;
+  maxHealth: number;
+  might: number;
+  defense: number;
+  magic: number;
+  resistance: number;
+  agility: number;
+  creatureType: string | null;
+  experienceReward: number;
+  attackDescription: string;
 }
 
 // Creature represents an enemy or NPC

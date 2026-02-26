@@ -8,10 +8,10 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod combat;
-mod config_export;
 mod damage_calculator;
 mod database;
 mod error;
+mod game;
 mod handlers;
 mod jwt;
 mod level_system;

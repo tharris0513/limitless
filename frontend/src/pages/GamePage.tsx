@@ -108,9 +108,8 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
       const response = await GameAPI.visitLocation(locationId, character.id);
       
       if (response.encounterType === 'combat') {
-        // Fetch creature details and start combat
-        const creature = await GameAPI.adminGetCreature(response.encounterId);
-        
+        const creature = response.creature!;
+
         const combatState = {
           inCombat: true as const,
           status: 'started' as const,
@@ -120,10 +119,10 @@ export const GamePage: React.FC<GamePageProps> = ({ character, onCharacterUpdate
           playerHealth: character.health,
           playerMana: character.mana,
           enemy: {
-            id: creature.id,
+            id: response.encounterId,
             name: creature.name,
             introductionText: creature.introductionText,
-            health: creature.health ?? creature.maxHealth,
+            health: creature.health,
             maxHealth: creature.maxHealth,
             level: creature.level,
             experienceReward: creature.experienceReward,
