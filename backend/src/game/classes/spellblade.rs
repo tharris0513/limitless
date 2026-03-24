@@ -1,7 +1,7 @@
 use crate::game::{
     abilities::{
         dual_wield::DUAL_WIELD, enchant_weapon::ENCHANT_WEAPON, fire_strike::FIRE_STRIKE,
-        ice_strike::ICE_STRIKE, overdrive::OVERDRIVE,
+        ice_strike::ICE_STRIKE, lightning_strike::LIGHTNING_STRIKE, overdrive::OVERDRIVE,
     },
     classes::Class,
 };
@@ -22,6 +22,7 @@ pub const SPELLBLADE: Class = Class {
         (2, &[&DUAL_WIELD]),
         (3, &[&ICE_STRIKE]),
         (4, &[&ENCHANT_WEAPON]),
-        (7, &[&OVERDRIVE]),
+        (5, &[&LIGHTNING_STRIKE]),
+        (6, &[&OVERDRIVE]),
     ],
 };

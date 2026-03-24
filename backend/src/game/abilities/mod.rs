@@ -2,6 +2,7 @@ pub mod dual_wield;
 pub mod enchant_weapon;
 pub mod fire_strike;
 pub mod ice_strike;
+pub mod lightning_strike;
 pub mod overdrive;
 
 use std::fmt::Display;

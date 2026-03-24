@@ -34,10 +34,7 @@ fn creature_to_combat(creature: &Creature) -> CreatureInCombat {
         agility: creature.agility,
         creature_type: Some(creature.creature_type.to_string()),
         experience_reward: creature.experience_reward,
-        attack_description: creature
-            .attack_description
-            .unwrap_or("The creature attacks!")
-            .to_string(),
+        attack_description: creature.attack_description.to_string(),
     }
 }
 

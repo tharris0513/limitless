@@ -18,7 +18,7 @@ pub struct Creature {
     pub agility: i64,
     pub experience_reward: i64,
     pub creature_type: &'static str, // 'beast', 'undead', 'humanoid', 'elemental', 'dragon', 'demon', 'horror'
-    pub attack_description: Option<&'static str>, // Template for attack text, e.g., "The creature strikes for ${damage} damage!"
+    pub attack_description: &'static str, // Template for attack text, e.g., "The creature strikes for ${damage} damage!"
 }
 
 /// Creature represents an enemy in the middle of combat

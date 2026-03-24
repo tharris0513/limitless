@@ -13,5 +13,5 @@ pub const A_MISTY_EYED_DWELLER: Creature = Creature {
     agility: 5,
     experience_reward: 800,
     creature_type: "horror",
-    attack_description: Some("The abominable creature swipes at you with its claws, dealing ${damage} damage!"),
+    attack_description: "The abominable creature swipes at you with its claws, dealing ${damage} damage!",
 };

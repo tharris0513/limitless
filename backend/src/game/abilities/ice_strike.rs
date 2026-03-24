@@ -14,7 +14,7 @@ pub const ICE_STRIKE: Ability = Ability {
             id: "ice_strike_damage",
             effect_type: EffectType::Active,
             active_type: Some(ActiveEffectType::Damage),
-            formula: Some("(might * 1.0) + (magic * 1.0)"),
+            formula: Some("(might * 1.0 - enemy_defense) + (magic * 1.0 - enemy_resistance)"),
             combat_description: Some(
                 "You strike the enemy with an icy blow, dealing **${damage}** damage!",
             ),
